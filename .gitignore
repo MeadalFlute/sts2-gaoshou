@@ -1,0 +1,40 @@
+# ---- Godot / .NET build artifacts ----
+.godot/
+bin/
+obj/
+*.user
+*.suo
+.vs/
+
+# ---- NuGet ----
+*.nupkg
+packages/
+
+# ---- IDE ----
+.vscode/
+.idea/
+*.swp
+*.tmp
+
+# ---- OS ----
+Thumbs.db
+.DS_Store
+Desktop.ini
+
+# ---- Build / publish output ----
+dist/
+release/
+*.zip
+*.7z
+
+# ---- Local logs & dumps ----
+*.log
+crashdumps/
+
+# ---- Asset pipeline workspace (optional, dev-only) ----
+# 若不想把素材提取/渲染工作区上传，取消下面两行的注释：
+# _workspace/
+# cardart_out/
+
+# ---- Secrets ----
+.env

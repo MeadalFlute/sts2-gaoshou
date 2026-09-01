@@ -1,0 +1,18 @@
+{
+  "GAOSHOU_KEYWORD_FLOW.title": "流转",
+  "GAOSHOU_KEYWORD_FLOW.description": "这张牌与上一张打出的牌颜色完全不同时触发额外效果。",
+  "GAOSHOU_KEYWORD_AMPLIFY.title": "增幅",
+  "GAOSHOU_KEYWORD_AMPLIFY.description": "弃置最多n张牌，每弃置一张，本卡牌重复打出一次。",
+  "GAOSHOU_KEYWORD_MIRACLE.title": "奇迹",
+  "GAOSHOU_KEYWORD_MIRACLE.description": "该卡以“回合开始时抽牌”以外的任意方式进入手牌时触发。",
+  "GAOSHOU_KEYWORD_PHANTOM.title": "幻影",
+  "GAOSHOU_KEYWORD_PHANTOM.description": "将一张费用-1，没有幻影、没有回响、带有消耗的临时复制品加入手牌。",
+  "GAOSHOU_KEYWORD_STORM.title": "风暴",
+  "GAOSHOU_KEYWORD_STORM.description": "风暴（条件）：打出后，若当前[gold]能量[/gold]/[gold]星辉[/gold]满足（牌面标注的条件），则重放1次。",
+  "GAOSHOU_KEYWORD_ECHO.title": "回响",
+  "GAOSHOU_KEYWORD_ECHO.description": "打出后回到手牌。",
+  "GAOSHOU_KEYWORD_TEMPORARY.title": "临时",
+  "GAOSHOU_KEYWORD_TEMPORARY.description": "在本局临时使用，不加入牌组。",
+  "GAOSHOU_KEYWORD_HOARD.title": "囤积",
+  "GAOSHOU_KEYWORD_HOARD.description": "回合结束时，选择最多n张牌保留，随后层数减少x（x为实际保留的数量）。"
+}

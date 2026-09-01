@@ -1,0 +1,71 @@
+using System.Linq;
+using MegaCrit.Sts2.Core.Commands;
+using MegaCrit.Sts2.Core.Entities.Cards;
+using MegaCrit.Sts2.Core.GameActions.Multiplayer;
+using MegaCrit.Sts2.Core.Localization.DynamicVars;
+using MegaCrit.Sts2.Core.Models;
+using Gaoshou.Characters;
+using Gaoshou.Keywords;
+using STS2RitsuLib.Cards.DynamicVars;
+using STS2RitsuLib.Interop.AutoRegistration;
+using STS2RitsuLib.Scaffolding.Content;
+
+namespace Gaoshou.Cards;
+
+// 新视野：技能（稀有）。耗 1 能量（升级 0）。交换你的抽牌堆和弃牌堆。
+// 奇迹（非回合开始抽牌进入手牌）：抽 3 张牌。消耗。
+[RegisterCard(typeof(GaoshouCardPool))]
+public sealed class NewPerspective : ModCardTemplate
+{
+    private const int BaseEnergyCost = 1;
+    private const CardType CardKind = CardType.Skill;
+    private const CardRarity CardRarityValue = CardRarity.Rare;
+    private const TargetType CardTarget = TargetType.Self;
+    private const bool ShowInCardLibrary = true;
+
+    private bool _enteredByTurnStartDraw;
+
+    public GaoshouCardColor CardColor => GaoshouCardColor.Blue;
+
+    public override CardAssetProfile AssetProfile => new(
+        PortraitPath: $"{Entry.ResPath}/images/cards/{GetType().Name}.png");
+
+    public override IEnumerable<CardKeyword> CanonicalKeywords =>
+    [
+        GaoshouKeyword.Miracle,
+        CardKeyword.Exhaust,
+    ];
+
+    public NewPerspective() : base(BaseEnergyCost, CardKind, CardRarityValue, CardTarget, ShowInCardLibrary)
+    {
+    }
+
+    // 记录进入手牌的方式（奇迹判定）。
+    public override Task AfterCardDrawn(PlayerChoiceContext choiceContext, CardModel card, bool fromHandDraw)
+    {
+        if (card == this)
+            _enteredByTurnStartDraw = fromHandDraw;
+        return Task.CompletedTask;
+    }
+
+    protected override async Task OnPlay(PlayerChoiceContext choiceContext, CardPlay cardPlay)
+    {
+        // 交换抽牌堆与弃牌堆（保留各自原有顺序；先移弃牌→抽牌，再移原抽牌→弃牌）。
+        var drawCards = PileType.Draw.GetPile(Owner)?.Cards.ToList() ?? [];
+        var discCards = PileType.Discard.GetPile(Owner)?.Cards.ToList() ?? [];
+
+        foreach (var c in discCards)
+            await CardPileCmd.Add(c, PileType.Draw);
+        foreach (var c in drawCards)
+            await CardPileCmd.Add(c, PileType.Discard);
+
+        // 奇迹：非回合开始抽牌进入手牌 → 抽 3 张牌。
+        if (!_enteredByTurnStartDraw)
+            await CardPileCmd.Draw(choiceContext, 3, Owner);
+    }
+
+    protected override void OnUpgrade()
+    {
+        EnergyCost.UpgradeBy(-1);   // 1 -> 0
+    }
+}

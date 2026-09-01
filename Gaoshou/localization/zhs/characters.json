@@ -1,0 +1,21 @@
+{
+  "GAOSHOU_CHARACTER_GAOSHOU_CHARACTER.aromaPrinciple": "[sine][gold]所谓高手，不过是在无数次出手中，找到那唯一正确的节奏。[/gold][/sine]",
+  "GAOSHOU_CHARACTER_GAOSHOU_CHARACTER.banter.alive.endTurnPing": "回合结束。",
+  "GAOSHOU_CHARACTER_GAOSHOU_CHARACTER.banter.dead.endTurnPing": "……这次是我收招慢了。",
+  "GAOSHOU_CHARACTER_GAOSHOU_CHARACTER.cardsModifierDescription": "高手的卡牌现在会出现在奖励和商店中。",
+  "GAOSHOU_CHARACTER_GAOSHOU_CHARACTER.cardsModifierTitle": "高手卡牌",
+  "GAOSHOU_CHARACTER_GAOSHOU_CHARACTER.defeatMessage": "胜负乃兵家常事，高手亦然。",
+  "GAOSHOU_CHARACTER_GAOSHOU_CHARACTER.description": "习武之人，讲求一环扣一环的连击。\n[gold]能量[/gold]与[gold]星辉[/gold]在他手中此消彼长。",
+  "GAOSHOU_CHARACTER_GAOSHOU_CHARACTER.eventDeathPrevention": "还没到倒下的时候。",
+  "GAOSHOU_CHARACTER_GAOSHOU_CHARACTER.flavor": "刀不在快，在于每一次落点都算得准。",
+  "GAOSHOU_CHARACTER_GAOSHOU_CHARACTER.goldMonologue": "盘缠是次要的，招式才是根本。",
+  "GAOSHOU_CHARACTER_GAOSHOU_CHARACTER.possessiveAdjective": "他的",
+  "GAOSHOU_CHARACTER_GAOSHOU_CHARACTER.pronounObject": "他",
+  "GAOSHOU_CHARACTER_GAOSHOU_CHARACTER.pronounPossessive": "他的",
+  "GAOSHOU_CHARACTER_GAOSHOU_CHARACTER.pronounSubject": "他",
+  "GAOSHOU_CHARACTER_GAOSHOU_CHARACTER.selectMessage": "高手登场。",
+  "GAOSHOU_CHARACTER_GAOSHOU_CHARACTER.title": "高手",
+  "GAOSHOU_CHARACTER_GAOSHOU_CHARACTER.titleObject": "高手",
+  "GAOSHOU_CHARACTER_GAOSHOU_CHARACTER.unlockText": "用[pink]{Prerequisite}[/pink]进行一局游戏来解锁这个角色。",
+  "GAOSHOU_CHARACTER_GAOSHOU_CHARACTER.victoryMessage": "这一局，落点分毫不差。"
+}

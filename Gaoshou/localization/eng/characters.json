@@ -1,0 +1,21 @@
+{
+  "GAOSHOU_CHARACTER_GAOSHOU_CHARACTER.aromaPrinciple": "[sine][gold]A master is simply someone who finds the one correct rhythm among countless strikes.[/gold][/sine]",
+  "GAOSHOU_CHARACTER_GAOSHOU_CHARACTER.banter.alive.endTurnPing": "End of turn.",
+  "GAOSHOU_CHARACTER_GAOSHOU_CHARACTER.banter.dead.endTurnPing": "...I was a beat too slow this time.",
+  "GAOSHOU_CHARACTER_GAOSHOU_CHARACTER.cardsModifierDescription": "Master cards now appear in rewards and shops.",
+  "GAOSHOU_CHARACTER_GAOSHOU_CHARACTER.cardsModifierTitle": "Master Cards",
+  "GAOSHOU_CHARACTER_GAOSHOU_CHARACTER.defeatMessage": "Victory and defeat are a master's everyday companions.",
+  "GAOSHOU_CHARACTER_GAOSHOU_CHARACTER.description": "A martial artist who prizes interlocking combos.\n[gold]Energy[/gold] and [gold]Star[/gold] ebb and flow in his hands.",
+  "GAOSHOU_CHARACTER_GAOSHOU_CHARACTER.eventDeathPrevention": "It is not yet time to fall.",
+  "GAOSHOU_CHARACTER_GAOSHOU_CHARACTER.flavor": "Speed is not the point; every landing is precisely calculated.",
+  "GAOSHOU_CHARACTER_GAOSHOU_CHARACTER.goldMonologue": "Coin is secondary; technique is everything.",
+  "GAOSHOU_CHARACTER_GAOSHOU_CHARACTER.possessiveAdjective": "his",
+  "GAOSHOU_CHARACTER_GAOSHOU_CHARACTER.pronounObject": "him",
+  "GAOSHOU_CHARACTER_GAOSHOU_CHARACTER.pronounPossessive": "his",
+  "GAOSHOU_CHARACTER_GAOSHOU_CHARACTER.pronounSubject": "he",
+  "GAOSHOU_CHARACTER_GAOSHOU_CHARACTER.selectMessage": "The Master takes the stage.",
+  "GAOSHOU_CHARACTER_GAOSHOU_CHARACTER.title": "Master",
+  "GAOSHOU_CHARACTER_GAOSHOU_CHARACTER.titleObject": "Master",
+  "GAOSHOU_CHARACTER_GAOSHOU_CHARACTER.unlockText": "Complete a run as [pink]{Prerequisite}[/pink] to unlock this character.",
+  "GAOSHOU_CHARACTER_GAOSHOU_CHARACTER.victoryMessage": "This round, every landing was precise."
+}
