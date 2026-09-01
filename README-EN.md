@@ -1,24 +1,34 @@
 [中文](../README.md) | EN
 
-# Gaoshou — Slay the Spire 2 Character Mod
+# Gaoshou — A Slay the Spire 2 Character Mod
 
-> **Work In Progress**: This mod is still under **active development** — bugs are likely, and **card balance is not final**. Feedback is welcome.
+> **⚠️ Work in Progress**: Still in **active development** — expect bugs, and **balance is very much subject to change**. Feedback and ideas are more than welcome.
 
-## About
+## What's This?
 
-"Gaoshou" is a character mod for **[Slay the Spire 2](https://store.steampowered.com/app/2868840/Slay_the_Spire_2/)**, built on the **RitsuLib 0.5.x** framework (C# / Harmony / Godot asset pipeline). It adds:
+"Gaoshou" (a.k.a. "The Pro") is a character mod for **[Slay the Spire 2](https://store.steampowered.com/app/2868840/Slay_the_Spire_2/)**, built on the **RitsuLib 0.5.x** framework. It adds:
 
-- A new character "Gaoshou" with its own card pool, relics and powers
-- Dual-resource system: **Energy** and **Stars** costs
-- Signature keywords: **Flow** (triggers when played after a card of a different color), **Storm** (replays when resource thresholds are met), **Amplify**, **Miracle** (triggers when entering hand outside the turn-start draw), **Stockpile**, and more
-- Card art recolored/re-rendered from the source-game assets (gradient & radial themes)
+- A brand-new character with their own card pool, relics and buffs
+- **91 cards** in total: 4 starters · 18 commons · 31 uncommons · 24 rares · 2 ancient-exclusives · 11 signature "Junk" tokens · 1 generated card
+- A dual-resource economy + card-color **Flow** system
+- Plenty of custom keywords and buffs
+- A full set of stylized card art
+- Crisp, readable descriptions with keyword tooltips
 
-## Gameplay Overview
+## How to Play (The Vibes)
 
-- Spend **Energy** and **Stars** to play cards; some cards cost Stars, so plan your resources.
-- Card colors drive **Flow** chains and **Storm** checks — build combos for repeat plays.
-- **Miracle**: cards that enter your hand through generation/retention (not the turn-start draw) trigger extra effects when played.
-- Mix archetypes: Red (offense) / Blue (control) / Purple (growth) / Green (survival).
+Play as a day-one Slayer. Facing Antonio's relentless walls of bullshit and his *impeccable* number design, you whip out this thunder of a mod and yell: **"I'm done playing vanilla, Antonio!"**
+
+- Your starter relic lets you convert **Energy ↔ Stars** mid-combat for nice profits.
+- Draft carefully, pick your colors, and let cards **flow** through your hand — finish fights swift and stylish.
+- Time your plays to trigger **Storm** and seize game-changing turns.
+- Transform, generate, retain, draw — chain **Miracles** in a dazzling one-turn show.
+- ~~Struggle in multiplayer.~~
+- Learn misty Chinese characters(NOT, just kidding.)
+- Savor the quirky design touches, then come file a *Future* — add your own, and let's ascend(?) together LOL
+- And much more! ~~Get it on the Workshop right now!~~ Not yet — hold on, it's in uploading.
+
+![Flavor Rune Dome.png](ReadmeImage/风味圆顶_EN_ver.png)
 
 ## Structure
 
@@ -29,14 +39,14 @@ Gaoshou/       resource root (localization, images, scenes)
 
 ## Credits
 
-- **Assets**: Card art and icons are extracted from **[Diceomancer](https://store.steampowered.com/app/2501600/_/)**. **All assets belong to their original creators**; this project is a fan rework for learning purposes only.
+- **Assets**: Card art & icons are extracted from **[Diceomancer](https://store.steampowered.com/app/2501600/_/)**. **All rights to the assets belong to their original creators**; this project is a fan rework for learning purposes only.
 - **AssetRipper**: asset extraction — https://github.com/AssetRipper/AssetRipper
-- **RitsuLib**: mod framework — https://github.com/Ritsu-Ritsu/RitsuLib
+- **RitsuLib**: the mod framework — https://github.com/Ritsu-Ritsu/RitsuLib
 - **LexNinja2**: framework & card-pool injection references — https://github.com/Flimsyyy/LexNinja2
 - **Well Laid Plans Multiplayer**: multiplayer patch references — https://github.com/Redem714233/WellLaidPlansMultiplayer
 
 ## Feedback
 
-- 🐛 Bugs? Please follow the [bug report template](.github/ISSUE_TEMPLATE/bug_report.md).
-- 💡 Ideas? Please follow the [feature request template](.github/ISSUE_TEMPLATE/feature_request.md).
-- ⚖️ Balance opinions are welcome in feature requests too.
+- 🐛 Found a bug? File it via the [bug report template](.github/ISSUE_TEMPLATE/bug_report.md).
+- 💡 Got an idea? Throw it in via the [feature request template](.github/ISSUE_TEMPLATE/feature_request.md).
+- ⚖️ Balance opinions? They belong in feature requests too.
