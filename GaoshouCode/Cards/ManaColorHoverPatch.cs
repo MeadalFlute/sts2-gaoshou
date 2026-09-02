@@ -48,7 +48,7 @@ public class ManaColorHoverPatch : IPatchMethod
     public static IEnumerable<IHoverTip> Postfix(IEnumerable<IHoverTip> __result, AbstractModel __instance)
     {
         if (__instance is CardModel card
-            && card.Id.Entry.StartsWith("GAOSHOU_CARD")
+            && card.Id?.Entry?.StartsWith("GAOSHOU_CARD") == true
             && TryGetManaTip(card, out var manaTip))
         {
             return new IHoverTip[] { manaTip }.Concat(__result ?? Enumerable.Empty<IHoverTip>());

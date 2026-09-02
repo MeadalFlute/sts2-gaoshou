@@ -26,6 +26,10 @@ public sealed class Impatient : ModCardTemplate
     public override CardAssetProfile AssetProfile => new(
         PortraitPath: $"{Entry.ResPath}/images/cards/{GetType().Name}.png");
 
+    // 泛光：风暴条件可触发（扣除本卡费用后）。
+    protected override bool ShouldGlowGoldInternal =>
+        (Owner?.PlayerCombatState?.Stars ?? 0) >= (IsUpgraded ? 2 : 3);
+
     public override IEnumerable<CardKeyword> CanonicalKeywords =>
     [
         GaoshouKeyword.Storm,

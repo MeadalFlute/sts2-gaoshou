@@ -36,6 +36,9 @@ public sealed class DualSMG : ModCardTemplate
     ];
 
     // 词条：风暴、消耗（打出后生成装弹加入抽牌堆）。
+    // 泛光：风暴条件可触发（扣除本卡费用后）。
+    protected override bool ShouldGlowGoldInternal => StormGlow.Ready(this, 1, 1);
+
     public override IEnumerable<CardKeyword> CanonicalKeywords =>
     [
         GaoshouKeyword.Storm,
@@ -59,12 +62,16 @@ public sealed class DualSMG : ModCardTemplate
     private async Task PlayOnce(PlayerChoiceContext choiceContext, CardPlay cardPlay)
     {
         var times = DynamicVars.GetRequired<IntVar>("Times").BaseValue;
-        // 单次 Execute：全敌 × times 次命中（焚烧同款）——敌人受击效果在所有命中后统一触发。
-        await DamageCmd.Attack(DynamicVars.Damage.BaseValue)
-            .WithHitCount((int)times)
-            .FromCard(this, cardPlay)
-            .TargetingAllOpponents(this.CombatState)
-            .Execute(choiceContext);
+        // 逐敌依次攻击（保留演出）：每个敌人的 times 次命中在单次 Execute 内完成——
+        // 该敌人全部命中结算完后才触发其受击效果，再轮到下一个敌人。
+        foreach (var enemy in this.CombatState?.HittableEnemies ?? [])
+        {
+            await DamageCmd.Attack(DynamicVars.Damage.BaseValue)
+                .WithHitCount((int)times)
+                .FromCard(this, cardPlay)
+                .Targeting(enemy)
+                .Execute(choiceContext);
+        }
     }
 
     // 1 能量 1 星辉。

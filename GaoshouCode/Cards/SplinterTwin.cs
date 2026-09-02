@@ -22,7 +22,7 @@ namespace Gaoshou.Cards;
 [RegisterCard(typeof(GaoshouCardPool))]
 public sealed class SplinterTwin : ModCardTemplate
 {
-    private const int BaseEnergyCost = 1;
+    private const int BaseEnergyCost = 2;
     private const CardType CardKind = CardType.Skill;
     private const CardRarity CardRarityValue = CardRarity.Rare;
     private const TargetType CardTarget = TargetType.Self;
@@ -35,7 +35,7 @@ public sealed class SplinterTwin : ModCardTemplate
 
     protected override IEnumerable<DynamicVar> CanonicalVars =>
     [
-        ModCardVars.Int("AmplifyCount", 2),
+        ModCardVars.Int("AmplifyCount", 1),
     ];
 
     public SplinterTwin() : base(BaseEnergyCost, CardKind, CardRarityValue, CardTarget, ShowInCardLibrary)

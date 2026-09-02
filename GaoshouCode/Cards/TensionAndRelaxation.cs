@@ -39,9 +39,7 @@ public sealed class TensionAndRelaxation : ModCardTemplate
         await DrawByColorAsync(choiceContext, GaoshouCardColor.Red);
         await DrawByColorAsync(choiceContext, GaoshouCardColor.Blue);
 
-        // 升级后增幅 1：弃置最多 1 张手牌重放本卡。
-        if (IsUpgraded)
-            await this.AmplifyAsync(choiceContext, 1, _ => Task.CompletedTask);
+
     }
 
     private async Task DrawByColorAsync(PlayerChoiceContext choiceContext, GaoshouCardColor want)

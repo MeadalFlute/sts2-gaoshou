@@ -29,6 +29,12 @@ public sealed class GaoshouAmulet : ModRelicTemplate, IRelicExtraIconAmountLabel
 
     public override RelicRarity Rarity => RelicRarity.Starter;
 
+    // 供风暴泛光等读取剩余转换次数。
+    public int RemainingUses => _usesRemaining;
+
+    public bool HasUsesRemainingForBoth(int energyCost, int starsCost)
+        => _usesRemaining >= System.Math.Max(energyCost, starsCost);
+
     // 描述中的能量/星辉图标变量。
     protected override IEnumerable<DynamicVar> CanonicalVars =>
     [

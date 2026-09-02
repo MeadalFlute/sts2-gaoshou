@@ -49,7 +49,8 @@ public sealed class Spark : ModCardTemplate
     protected override async Task OnPlay(PlayerChoiceContext choiceContext, CardPlay cardPlay)
     {
         // 施加能力：计数 buff（Amount=0 起步，每 5 张临时牌结算）。
-        await PowerCmd.Apply<SparkPower>(choiceContext, Owner.Creature, 0m, Owner.Creature, this);
+        // 以 1 层起步（Apply 0 层不会被挂载）；计数语义见 SparkPower（每 5 张 → 1 能 1 星）。
+        await PowerCmd.Apply<SparkPower>(choiceContext, Owner.Creature, 1m, Owner.Creature, this);
     }
 
     protected override void OnUpgrade()

@@ -27,6 +27,16 @@ public sealed class LoomingPresence : ModCardTemplate
     public override CardAssetProfile AssetProfile => new(
         PortraitPath: $"{Entry.ResPath}/images/cards/{GetType().Name}.png");
 
+    // 泛光：流转就绪时（颜色与上一张牌完全不同）。
+    protected override bool ShouldGlowGoldInternal => GaoshouFlowTracker.IsFlowReady(this);
+
+    // 词条：流转、虚无（升级移除虚无）。
+    public override IEnumerable<CardKeyword> CanonicalKeywords =>
+    [
+        GaoshouKeyword.Flow,
+        CardKeyword.Ethereal,
+    ];
+
     protected override IEnumerable<IHoverTip> AdditionalHoverTips =>
     [
         HoverTipFactory.FromPower<LoomingPresencePower>(),
@@ -34,7 +44,7 @@ public sealed class LoomingPresence : ModCardTemplate
 
     protected override IEnumerable<DynamicVar> CanonicalVars =>
     [
-        ModCardVars.Int("FlowGain", 2),
+        ModCardVars.Int("FlowGain", 1),
     ];
 
     public LoomingPresence() : base(BaseEnergyCost, CardKind, CardRarityValue, CardTarget, ShowInCardLibrary)
@@ -46,7 +56,7 @@ public sealed class LoomingPresence : ModCardTemplate
         // 获得 1 层浮光掠影。
         await PowerCmd.Apply<LoomingPresencePower>(choiceContext, Owner.Creature, 1m, Owner.Creature, this);
 
-        // 流转（颜色与上一张牌完全不同）：额外获得 2(3) 层。
+        // 流转（颜色与上一张牌完全不同）：额外获得 1 层。
         if (GaoshouFlowTracker.IsFlowReady(this))
             await PowerCmd.Apply<LoomingPresencePower>(choiceContext, Owner.Creature,
                 DynamicVars.GetRequired<IntVar>("FlowGain").BaseValue, Owner.Creature, this);
@@ -54,6 +64,7 @@ public sealed class LoomingPresence : ModCardTemplate
 
     protected override void OnUpgrade()
     {
-        DynamicVars.GetRequired<IntVar>("FlowGain").UpgradeValueBy(1);   // 2 -> 3
+        // 升级后移除"虚无"（流转获得固定 1 层）。
+        RemoveKeyword(CardKeyword.Ethereal);
     }
 }

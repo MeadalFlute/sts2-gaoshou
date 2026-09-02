@@ -37,6 +37,9 @@ public sealed class FistOfStupid : ModCardTemplate
         HoverTipFactory.FromCard<Dazed>(),
     ];
 
+    // 泛光：风暴条件可触发（扣除本卡费用后）。
+    protected override bool ShouldGlowGoldInternal => StormGlow.Ready(this, 2, 0);
+
     public override IEnumerable<CardKeyword> CanonicalKeywords =>
     [
         GaoshouKeyword.Storm,

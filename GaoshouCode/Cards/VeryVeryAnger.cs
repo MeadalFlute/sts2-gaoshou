@@ -37,6 +37,9 @@ public sealed class VeryVeryAnger : ModCardTemplate
     ];
 
     // 词条：风暴（自定义，可悬停显示释义）+ 消耗（游戏原生词条）。
+    // 泛光：风暴条件可触发（扣除本卡费用后）。
+    protected override bool ShouldGlowGoldInternal => StormGlow.Ready(this, 2, 0);
+
     public override IEnumerable<CardKeyword> CanonicalKeywords =>
     [
         GaoshouKeyword.Storm,

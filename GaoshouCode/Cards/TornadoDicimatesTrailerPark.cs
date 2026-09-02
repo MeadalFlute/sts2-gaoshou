@@ -40,6 +40,9 @@ public sealed class TornadoDicimatesTrailerPark : ModCardTemplate
     ];
 
     // 词条：消耗（保留关键词以兼容"移除消耗"类遗物）、风暴。增幅2 写入描述文本。
+    // 泛光：风暴条件可触发（扣除本卡费用后）。
+    protected override bool ShouldGlowGoldInternal => StormGlow.Ready(this, 2, 2);
+
     public override IEnumerable<CardKeyword> CanonicalKeywords =>
     [
         CardKeyword.Exhaust,

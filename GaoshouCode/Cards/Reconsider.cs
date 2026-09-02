@@ -85,6 +85,7 @@ public sealed class Reconsider : ModCardTemplate
     protected override void OnUpgrade()
     {
         // 升级后移除"消耗"（直接改实例词条）。
-        RemoveKeyword(CardKeyword.Exhaust);
+        // RemoveKeyword(CardKeyword.Exhaust);
+        AddKeyword(CardKeyword.Retain);
     }
 }

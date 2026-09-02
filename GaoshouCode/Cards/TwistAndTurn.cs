@@ -52,6 +52,9 @@ public sealed class TwistAndTurn : ModCardTemplate
     {
         // X = 本次为 X 费用实际消耗的能量（含 ChemicalX 类修正）；获得 X（升级后 X+1）点星辉。
         var x = ResolveEnergyXValue();
+        // 当 X>=2 时，X 本身翻倍（能量消耗翻倍计星辉）；升级 +1 在翻倍后追加。
+        if (x >= 2)
+            x *= 2;
         var gain = x + (IsUpgraded ? 1 : 0);
         await PlayerCmd.GainStars(gain, Owner);
     }

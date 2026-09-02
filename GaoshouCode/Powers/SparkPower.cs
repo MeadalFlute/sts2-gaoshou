@@ -7,18 +7,26 @@ using STS2RitsuLib.Scaffolding.Content;
 
 namespace Gaoshou.Powers;
 
-// 火花（能力）：每当你打出【临时】牌时计数，每累计 5 张获得 1 点能量与 1 点星辉。
-// 计数直接使用 buff 的 Amount（同步且可见，参考储君-环绕轨道），无需私有字段。
+// 火花（能力，环绕轨道同款）：每当你打出【临时】牌时计数（倒计时显示）。
+// 多个火花 buff 各自独立：Amount = 火花数量；每累计 5 张临时牌 → 奖励 数量×1 能量与星辉（数量叠加）。
 // 临时机制：打出的牌「临时」（局内生成、不属于牌组 DeckVersion==null）。仅响应自己的打出（多人防串触发）。
 [RegisterPower]
 public sealed class SparkPower : ModPowerTemplate
 {
+    public class Data
+    {
+        public int tempPlayed;
+    }
+
     public override PowerType Type => PowerType.Buff;
     public override PowerStackType StackType => PowerStackType.Counter;
 
     public override PowerAssetProfile AssetProfile => new(
         IconPath: $"{Entry.ResPath}/images/powers/spark.png",
         BigIconPath: $"{Entry.ResPath}/images/powers/spark.png");
+
+    // 倒计时显示：5 → 4 → … → 1 → 结算后回到 5（环绕轨道同款 4 - n%4）。
+    public override int DisplayAmount => 5 - GetInternalData<Data>().tempPlayed % 5;
 
     public override async Task AfterCardPlayed(PlayerChoiceContext choiceContext, CardPlay cardPlay)
     {
@@ -30,15 +38,14 @@ public sealed class SparkPower : ModPowerTemplate
         if (cardPlay.Card.DeckVersion != null)
             return;
 
-        // 计数 +1（Amount 为计数器，随战斗状态同步，客户端可见层数）。
-        Amount++;
+        var data = GetInternalData<Data>();
+        data.tempPlayed++;
         InvokeDisplayAmountChanged();
-        if (Amount < 5)
+        if (data.tempPlayed % 5 != 0)
             return;
 
-        Amount = 0;
-        InvokeDisplayAmountChanged();
-        await PlayerCmd.GainEnergy(1, player);
-        await PlayerCmd.GainStars(1, player);
+        // 每累计 5 张：奖励 火花数量×1 能量与星辉（多个火花 buff 独立叠加）。
+        await PlayerCmd.GainEnergy(Amount, player);
+        await PlayerCmd.GainStars(Amount, player);
     }
 }

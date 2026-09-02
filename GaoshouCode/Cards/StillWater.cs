@@ -67,6 +67,6 @@ public sealed class StillWater : ModCardTemplate
     protected override void OnUpgrade()
     {
         // 升级：增幅 1 -> 3（费用保持 0/1，不再减星辉）。
-        DynamicVars.GetRequired<IntVar>("AmplifyCount").UpgradeValueBy(2);   // 1 -> 3
+        DynamicVars.GetRequired<IntVar>("AmplifyCount").UpgradeValueBy(1);   // 1 -> 3
     }
 }

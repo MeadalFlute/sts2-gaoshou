@@ -33,6 +33,7 @@ public sealed class Parrys : ModCardTemplate
 
     // 打点：高亮评估入口（临时诊断，验收后删除）。
     // 高亮条件：奇迹可触发（非回合开始抽牌进手）且存在意图攻击的敌人。
+    // 高亮：奇迹可触发（非回合开始抽牌进手）且存在意图攻击的敌人。
     protected override bool ShouldGlowGoldInternal
     {
         get
@@ -40,22 +41,24 @@ public sealed class Parrys : ModCardTemplate
             var attackers = (this.CombatState?.HittableEnemies ?? [])
                 .Where(e => e.Monster?.NextMove?.Intents.Any(i => i.IntentType == IntentType.Attack) ?? false).ToList();
             var miracle = !_enteredByTurnStartDraw;
-            Godot.GD.Print($"GAOSHOU-PARRYS-GLOW miracle={miracle} enteredByTurnStartDraw={_enteredByTurnStartDraw} attackers={attackers.Count} glow={miracle && attackers.Count > 0}");
             return miracle && attackers.Count > 0;
         }
     }
 
+    // 悬浮释义：击晕。词条联想由 canonical 自动生成。
     protected override IEnumerable<IHoverTip> AdditionalHoverTips =>
     [
         HoverTipFactory.Static(MegaCrit.Sts2.Core.HoverTips.StaticHoverTip.Stun),
     ];
 
+    // 词条：奇迹、虚无、消耗（canonical 含消耗以正常渲染描述；升级 tooltip 的消耗由 ManaColorHoverPatch 过滤）。
     public override IEnumerable<CardKeyword> CanonicalKeywords =>
     [
         GaoshouKeyword.Miracle,
         CardKeyword.Ethereal,
         CardKeyword.Exhaust,
     ];
+
 
     public Parrys() : base(BaseEnergyCost, CardKind, CardRarityValue, CardTarget, ShowInCardLibrary)
     {
@@ -96,5 +99,6 @@ public sealed class Parrys : ModCardTemplate
     {
         // 升级后移除"消耗"（临时敏捷固定 2）。
         RemoveKeyword(CardKeyword.Exhaust);
+        Godot.GD.Print($"GAOSHOU-PARRYS-UP hasexhaust={Keywords.Contains(CardKeyword.Exhaust)}");
     }
 }
