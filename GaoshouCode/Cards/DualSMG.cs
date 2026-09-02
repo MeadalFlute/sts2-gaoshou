@@ -86,7 +86,7 @@ public sealed class DualSMG : ModCardTemplate
         // 将一张装弹加入你的抽牌堆（本卡照常进消耗）。
         var reload = Owner.Creature.CombatState?.CreateCard(ModelDb.Card<Reload>(), Owner);
         if (reload != null)
-            await CardPileCmd.Add(reload, PileType.Draw);
+            CardCmd.PreviewCardPileAdd(await CardPileCmd.AddGeneratedCardToCombat(reload, PileType.Draw, Owner));
     }
 
     protected override void OnUpgrade()

@@ -60,7 +60,7 @@ public sealed class HorseSlayer : ModCardTemplate
     protected override async Task OnPlay(PlayerChoiceContext choiceContext, CardPlay cardPlay)
     {
         // 对所有敌人各造成一次伤害（真 AOE）。
-        DamageCmd.Attack(DynamicVars.Damage.BaseValue)
+        await DamageCmd.Attack(DynamicVars.Damage.BaseValue)
                 .FromCard(this, cardPlay)
                 .TargetingAllOpponents(this.CombatState)
                 .Execute(choiceContext);

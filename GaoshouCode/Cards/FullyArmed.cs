@@ -19,7 +19,7 @@ namespace Gaoshou.Cards;
 public sealed class FullyArmed : ModCardTemplate
 {
     private const int BaseEnergyCost = 0;
-    private const CardType CardKind = CardType.Skill;
+    private const CardType CardKind = CardType.Power;
     private const CardRarity CardRarityValue = CardRarity.Rare;
     private const TargetType CardTarget = TargetType.Self;
     private const bool ShowInCardLibrary = true;

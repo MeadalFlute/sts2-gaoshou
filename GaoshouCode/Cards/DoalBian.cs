@@ -37,8 +37,8 @@ public sealed class DoalBian : ModCardTemplate
 
     protected override IEnumerable<DynamicVar> CanonicalVars =>
     [
-        new DamageVar(8m, ValueProp.Move),
-        new DamageVar("secondHit", 8m, ValueProp.Move),
+        new DamageVar(3m, ValueProp.Move),
+        new DamageVar("secondHit", 5m, ValueProp.Move),
         ModCardVars.Energy("EnergyGain", 1),
         ModCardVars.Stars("StarGain", 1),
     ];
@@ -71,7 +71,7 @@ public sealed class DoalBian : ModCardTemplate
 
     protected override void OnUpgrade()
     {
-        DynamicVars.Damage.UpgradeValueBy(2);
-        DynamicVars.GetRequired<DamageVar>("secondHit").UpgradeValueBy(2);
+        DynamicVars.Damage.UpgradeValueBy(1);                          // 3 -> 4
+        DynamicVars.GetRequired<DamageVar>("secondHit").UpgradeValueBy(1);   // 5 -> 6
     }
 }

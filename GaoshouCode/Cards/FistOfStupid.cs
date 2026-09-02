@@ -80,7 +80,7 @@ public sealed class FistOfStupid : ModCardTemplate
         // 将 1 张眩晕加入你的弃牌堆（突破极限「凋萎」同款模式）。
         var dazed = Owner.Creature.CombatState?.CreateCard(ModelDb.Card<Dazed>(), Owner);
         if (dazed != null)
-            await CardPileCmd.Add(dazed, PileType.Discard);
+            CardCmd.PreviewCardPileAdd(await CardPileCmd.AddGeneratedCardToCombat(dazed, PileType.Discard, Owner));
     }
 
     protected override void OnUpgrade()

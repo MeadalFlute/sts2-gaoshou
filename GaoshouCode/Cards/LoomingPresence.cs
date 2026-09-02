@@ -17,7 +17,7 @@ namespace Gaoshou.Cards;
 public sealed class LoomingPresence : ModCardTemplate
 {
     private const int BaseEnergyCost = 1;
-    private const CardType CardKind = CardType.Power;
+    private const CardType CardKind = CardType.Skill;
     private const CardRarity CardRarityValue = CardRarity.Rare;
     private const TargetType CardTarget = TargetType.Self;
     private const bool ShowInCardLibrary = true;

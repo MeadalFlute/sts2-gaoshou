@@ -14,6 +14,7 @@
 - Plenty of custom keywords and buffs
 - A full set of stylized card art
 - Crisp, readable descriptions with keyword tooltips
+- Character model is regent, cause idk how to create a character model, and I think regent is much better than a standing picture.
 
 ## How to Play (The Vibes)
 

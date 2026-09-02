@@ -49,7 +49,7 @@ public sealed class FaceTank : ModCardTemplate
         {
             var dazed = Owner.Creature.CombatState?.CreateCard(ModelDb.Card<Dazed>(), Owner);
             if (dazed != null)
-                await CardPileCmd.Add(dazed, PileType.Draw);
+                CardCmd.PreviewCardPileAdd(await CardPileCmd.AddGeneratedCardToCombat(dazed, PileType.Draw, Owner));
         }
     }
 

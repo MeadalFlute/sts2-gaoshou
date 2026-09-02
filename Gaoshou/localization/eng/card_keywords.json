@@ -14,5 +14,17 @@
   "GAOSHOU_KEYWORD_TEMPORARY.title": "Temporary",
   "GAOSHOU_KEYWORD_TEMPORARY.description": "Used temporarily this run; it is not added to your deck.",
   "GAOSHOU_KEYWORD_HOARD.title": "Hoard",
-  "GAOSHOU_KEYWORD_HOARD.description": "At end of turn, retain up to n cards, then lose stacks equal to the number retained."
+  "GAOSHOU_KEYWORD_HOARD.description": "At end of turn, retain up to n cards, then lose stacks equal to the number retained.",
+  "EXHAUST.title": "Exhaust",
+  "EXHAUST.description": "Removed from your deck until the end of combat.",
+  "INNATE.title": "Innate",
+  "INNATE.description": "Start each combat with this card in your hand.",
+  "ETHEREAL.title": "Ethereal",
+  "ETHEREAL.description": "If this card is in your hand at the end of your turn, it is exhausted.",
+  "RETAIN.title": "Retain",
+  "RETAIN.description": "This card stays in your hand at the end of your turn.",
+  "UNPLAYABLE.title": "Unplayable",
+  "SLY.title": "Sly",
+  "PERIOD": ".",
+  "UNPLAYABLE.description": "This card cannot be played."
 }

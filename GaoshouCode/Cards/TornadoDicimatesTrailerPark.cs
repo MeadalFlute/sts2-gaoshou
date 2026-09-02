@@ -65,7 +65,7 @@ public sealed class TornadoDicimatesTrailerPark : ModCardTemplate
     private async Task MainOnceAsync(PlayerChoiceContext choiceContext, CardPlay cardPlay)
     {
         // 全体伤害（真 AOE：一次攻击同时作用于所有敌人）。
-        DamageCmd.Attack(DynamicVars.Damage.BaseValue)
+        await DamageCmd.Attack(DynamicVars.Damage.BaseValue)
                 .FromCard(this, cardPlay)
                 .TargetingAllOpponents(this.CombatState)
                 .Execute(choiceContext);

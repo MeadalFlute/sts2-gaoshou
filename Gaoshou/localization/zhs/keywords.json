@@ -14,5 +14,11 @@
   "GAOSHOU_KEYWORD_TEMPORARY.title": "临时",
   "GAOSHOU_KEYWORD_TEMPORARY.description": "在本局临时使用，不加入牌组。",
   "GAOSHOU_KEYWORD_HOARD.title": "囤积",
-  "GAOSHOU_KEYWORD_HOARD.description": "回合结束时，选择最多n张牌保留，随后层数减少x（x为实际保留的数量）。"
+  "GAOSHOU_KEYWORD_HOARD.description": "回合结束时，选择最多n张牌保留，随后层数减少x（x为实际保留的数量）。",
+  "EXHAUST.title": "消耗",
+  "INNATE.title": "固有",
+  "ETHEREAL.title": "虚无",
+  "RETAIN.title": "保留",
+  "UNPLAYABLE.title": "不可打出",
+  "SLY.title": "灵巧"
 }
