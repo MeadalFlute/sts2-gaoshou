@@ -72,10 +72,14 @@ public sealed class GaoshouFlowTracker : SingletonModel
     }
 
     /// <summary>
-    /// 读取卡的 GaoshouCardColor（按类型缓存反射结果；无该属性的卡视为无色）。
+    /// 读取卡的 GaoshouCardColor：幻影复制品优先用实例级单色（杠式霰弹枪等双色卡幻影=随机单色，
+    /// 流转判定必须按实例颜色而非类型缓存）；否则按类型缓存反射结果；无该属性的卡视为无色。
     /// </summary>
     public static GaoshouCardColor GetColor(CardModel card)
     {
+        if (PhantomColorRegistry.TryGet(card, out var assigned))
+            return assigned;
+
         var type = card.GetType();
         if (_colorCache.TryGetValue(type, out var cached))
             return cached;

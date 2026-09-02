@@ -64,18 +64,13 @@ public sealed class FistOfStupid : ModCardTemplate
 
     private async Task PlayOnceAsync(PlayerChoiceContext choiceContext, CardPlay cardPlay)
     {
-        var enemies = (this.CombatState?.HittableEnemies ?? []).ToList();
-
-        // 对随机敌人造成 2 点伤害 2(3) 次。
+        // 对随机敌人造成 2 点伤害 2(3) 次（弹射同款：随机命中在单次 Execute 内完成）。
         var times = (int)DynamicVars.GetRequired<IntVar>("Times").BaseValue;
-        for (var i = 0; i < times; i++)
-        {
-            var random = enemies.Count > 0 ? Owner.RunState.Rng.CombatTargets.NextItem(enemies) : null;
-            if (random == null)
-                break;
-            await DamageCmd.Attack(DynamicVars.Damage.BaseValue)
-                .FromCard(this, cardPlay).Targeting(random).Execute(choiceContext);
-        }
+        await DamageCmd.Attack(DynamicVars.Damage.BaseValue)
+            .WithHitCount(times)
+            .FromCard(this, cardPlay)
+            .TargetingRandomOpponents(this.CombatState)
+            .Execute(choiceContext);
 
         // 将 1 张眩晕加入你的弃牌堆（突破极限「凋萎」同款模式）。
         var dazed = Owner.Creature.CombatState?.CreateCard(ModelDb.Card<Dazed>(), Owner);

@@ -59,16 +59,12 @@ public sealed class DualSMG : ModCardTemplate
     private async Task PlayOnce(PlayerChoiceContext choiceContext, CardPlay cardPlay)
     {
         var times = DynamicVars.GetRequired<IntVar>("Times").BaseValue;
-        foreach (var enemy in this.CombatState?.HittableEnemies ?? [])
-        {
-            for (var i = 0; i < times; i++)
-            {
-                await DamageCmd.Attack(DynamicVars.Damage.BaseValue)
-                    .FromCard(this, cardPlay)
-                    .Targeting(enemy)
-                    .Execute(choiceContext);
-            }
-        }
+        // 单次 Execute：全敌 × times 次命中（焚烧同款）——敌人受击效果在所有命中后统一触发。
+        await DamageCmd.Attack(DynamicVars.Damage.BaseValue)
+            .WithHitCount((int)times)
+            .FromCard(this, cardPlay)
+            .TargetingAllOpponents(this.CombatState)
+            .Execute(choiceContext);
     }
 
     // 1 能量 1 星辉。

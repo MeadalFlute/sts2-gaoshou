@@ -53,11 +53,12 @@ public sealed class ChargeBlade : ModCardTemplate
 
     protected override async Task OnPlay(PlayerChoiceContext choiceContext, CardPlay cardPlay)
     {
-        // 对所有敌人造成 2 点伤害 4（5）次。
-        for (int i = 0; i < DynamicVars.GetRequired<IntVar>("Times").BaseValue; i++)
-            foreach (var enemy in this.CombatState?.HittableEnemies ?? [])
-                await DamageCmd.Attack(DynamicVars.Damage.BaseValue)
-                    .FromCard(this, cardPlay).Targeting(enemy).Execute(choiceContext);
+        // 对所有敌人造成 2 点伤害 4（5）次（焚烧同款：全敌 × N 单次 Execute）。
+        await DamageCmd.Attack(DynamicVars.Damage.BaseValue)
+            .WithHitCount((int)DynamicVars.GetRequired<IntVar>("Times").BaseValue)
+            .FromCard(this, cardPlay)
+            .TargetingAllOpponents(this.CombatState)
+            .Execute(choiceContext);
 
         // 获得 1（2）层缓冲。
         await PowerCmd.Apply<BufferPower>(choiceContext, Owner.Creature,

@@ -29,6 +29,10 @@ public sealed class ThirteenOrphans : ModCardTemplate
 
     public GaoshouCardColor CardColor => GaoshouCardColor.BluePurple;
 
+    // 泛光：手牌中含有 >= 9 种不同卡牌时亮起（触发条件就绪）。
+    protected override bool ShouldGlowGoldInternal =>
+        (Owner?.PlayerCombatState?.Hand.Cards.Select(c => c.GetType()).Distinct().Count() ?? 0) >= 9;
+
     public override CardAssetProfile AssetProfile => new(
         PortraitPath: $"{Entry.ResPath}/images/cards/{GetType().Name}.png");
 

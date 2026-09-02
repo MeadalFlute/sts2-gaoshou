@@ -51,21 +51,18 @@ public sealed class PerfectStickSword : ModCardTemplate, Gaoshou.Keywords.IWaste
         var target = cardPlay.Target;
 
         var times = DynamicVars.GetRequired<IntVar>("Times").BaseValue;
-        for (var i = 0; i < times; i++)
-        {
-            await DamageCmd.Attack(DynamicVars.Damage.BaseValue)
-                .FromCard(this, cardPlay)
-                .Targeting(target)
-                .Execute(choiceContext);
-        }
+        // 对目标造成 times 次伤害（焚烧同款：单次 Execute 多段命中）。
+        await DamageCmd.Attack(DynamicVars.Damage.BaseValue)
+            .WithHitCount((int)times)
+            .FromCard(this, cardPlay)
+            .Targeting(target)
+            .Execute(choiceContext);
 
-        foreach (var enemy in this.CombatState?.HittableEnemies ?? [])
-        {
-            await DamageCmd.Attack(DynamicVars.GetRequired<DamageVar>("all").BaseValue)
-                .FromCard(this, cardPlay)
-                .Targeting(enemy)
-                .Execute(choiceContext);
-        }
+        // 对所有敌人造成伤害（单次 Execute）。
+        await DamageCmd.Attack(DynamicVars.GetRequired<DamageVar>("all").BaseValue)
+            .FromCard(this, cardPlay)
+            .TargetingAllOpponents(this.CombatState)
+            .Execute(choiceContext);
     }
 
     protected override void OnUpgrade()

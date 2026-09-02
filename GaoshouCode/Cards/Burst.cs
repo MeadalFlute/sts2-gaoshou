@@ -1,6 +1,7 @@
 using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
+using MegaCrit.Sts2.Core.HoverTips;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Localization.DynamicVars;
 using Gaoshou.Characters;
@@ -24,6 +25,16 @@ public sealed class Burst : ModCardTemplate
     private const bool ShowInCardLibrary = true;
 
     private bool _enteredByTurnStartDraw;
+
+    // 泛光：流转可触发或奇迹可触发时亮起。
+    protected override bool ShouldGlowGoldInternal =>
+        GaoshouFlowTracker.IsFlowReady(this) || !_enteredByTurnStartDraw;
+
+    // 悬浮释义：奇迹。
+    protected override IEnumerable<IHoverTip> AdditionalHoverTips =>
+    [
+        HoverTipFactory.FromKeyword(GaoshouKeyword.Miracle),
+    ];
 
     public GaoshouCardColor CardColor => GaoshouCardColor.Red;
 

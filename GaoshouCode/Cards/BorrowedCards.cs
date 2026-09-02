@@ -14,11 +14,11 @@ using STS2RitsuLib.Scaffolding.Content;
 
 namespace Gaoshou.Cards;
 
-// 借用之牌：技能（稀有）。耗 1 能量。选择手牌中至多 2(3) 张牌，将它们的一张临时复制品加入你的手牌。消耗、虚无。
+// 借用之牌：技能（稀有）。耗 2 能量。选择手牌中至多 2 张牌，将它们的一张临时复制品加入你的手牌。消耗、虚无（升级移除）。
 [RegisterCard(typeof(GaoshouCardPool))]
 public sealed class BorrowedCards : ModCardTemplate
 {
-    private const int BaseEnergyCost = 1;
+    private const int BaseEnergyCost = 2;
     private const CardType CardKind = CardType.Skill;
     private const CardRarity CardRarityValue = CardRarity.Rare;
     private const TargetType CardTarget = TargetType.Self;
@@ -65,6 +65,7 @@ public sealed class BorrowedCards : ModCardTemplate
 
     protected override void OnUpgrade()
     {
-        DynamicVars.GetRequired<IntVar>("CopyCount").UpgradeValueBy(1);   // 2 -> 3
+        // 复制数量固定 2；升级后移除"虚无"。
+        RemoveKeyword(CardKeyword.Ethereal);
     }
 }

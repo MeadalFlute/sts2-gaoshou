@@ -47,19 +47,13 @@ public sealed class ChaosStrike : ModCardTemplate
 
     protected override async Task OnPlay(PlayerChoiceContext choiceContext, CardPlay cardPlay)
     {
-        // 对随机敌人造成 Times 次伤害（与旋风斧同款自动索敌）。
-        var enemy = cardPlay.Target
-            ?? Owner.RunState.Rng.CombatTargets.NextItem((this.CombatState?.HittableEnemies ?? []).ToList())!;
-        if (enemy == null) return;
-
+        // 对随机敌人造成 Times 次伤害（弹射同款：每次命中独立随机，单次 Execute）。
         var times = DynamicVars.GetRequired<IntVar>("Times").BaseValue;
-        for (var i = 0; i < times; i++)
-        {
-            await DamageCmd.Attack(DynamicVars.Damage.BaseValue)
-                .FromCard(this, cardPlay)
-                .Targeting(enemy)
-                .Execute(choiceContext);
-        }
+        await DamageCmd.Attack(DynamicVars.Damage.BaseValue)
+            .WithHitCount((int)times)
+            .FromCard(this, cardPlay)
+            .TargetingRandomOpponents(this.CombatState)
+            .Execute(choiceContext);
     }
 
     protected override void OnUpgrade()

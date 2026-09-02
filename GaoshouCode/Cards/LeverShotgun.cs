@@ -52,9 +52,9 @@ public sealed class LeverShotgun : ModCardTemplate
                 .TargetingAllOpponents(this.CombatState)
                 .Execute(choiceContext);
 
-        // 流转（颜色与上一张牌完全不同时触发）：抽 1 张牌。
+        // 流转（颜色与上一张牌完全不同时触发）：抽 2 张牌。
         if (GaoshouFlowTracker.IsFlowReady(this))
-            await CardPileCmd.Draw(choiceContext, 1, Owner);
+            await CardPileCmd.Draw(choiceContext, 2, Owner);
     }
 
     protected override void OnUpgrade()

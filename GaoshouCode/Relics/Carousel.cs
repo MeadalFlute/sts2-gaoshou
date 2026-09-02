@@ -65,7 +65,8 @@ public override RelicAssetProfile AssetProfile => new(
 
         _triggeredThisTurn = true;
         InvokeDisplayAmountChanged();
-        await PlayerCmd.GainEnergy(1, player);
+        // 先给星辉（受 ShouldGainStars 门控，打点其被判否的情况）再给能量。
         await PlayerCmd.GainStars(1, player);
+        await PlayerCmd.GainEnergy(1, player);
     }
 }

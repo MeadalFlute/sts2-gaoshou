@@ -32,6 +32,7 @@ public sealed class LinkedStrike : ModCardTemplate
     // 第一段伤害使用默认 "Damage" 变量，第二段使用具名 "secondHit"。
     protected override IEnumerable<DynamicVar> CanonicalVars =>
     [
+        // 两段不同伤害（4+5，升级 6+7）：引擎无"多义伤害单次执行"，此为游戏原生两段式。
         new DamageVar(4m, ValueProp.Move),
         new DamageVar("secondHit", 5m, ValueProp.Move),
     ];

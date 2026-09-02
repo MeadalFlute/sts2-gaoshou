@@ -29,10 +29,10 @@ public sealed class FlyingAxe : ModCardTemplate
     public override CardAssetProfile AssetProfile => new(
         PortraitPath: $"{Entry.ResPath}/images/cards/FlyingAxe.png");
 
-    // 悬浮释义：临时力量（能力）。
+    // 悬浮释义：易伤（施加给目标）。
     protected override IEnumerable<IHoverTip> AdditionalHoverTips =>
     [
-        HoverTipFactory.FromPower<GaoshouTemporaryStrengthPower>(),
+        HoverTipFactory.FromPower<VulnerablePower>(),
     ];
 
     protected override IEnumerable<DynamicVar> CanonicalVars =>
