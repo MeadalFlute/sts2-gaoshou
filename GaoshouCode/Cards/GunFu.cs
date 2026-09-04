@@ -3,6 +3,7 @@ using STS2RitsuLib.Cards.DynamicVars;
 using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
+using MegaCrit.Sts2.Core.HoverTips;
 using Gaoshou.Characters;
 using Gaoshou.Keywords;
 using Gaoshou.Powers;
@@ -16,6 +17,12 @@ namespace Gaoshou.Cards;
 [RegisterCard(typeof(GaoshouCardPool))]
 public sealed class GunFu : ModCardTemplate
 {
+    // 悬浮释义：流转。
+    protected override IEnumerable<IHoverTip> AdditionalHoverTips =>
+    [
+        HoverTipFactory.FromKeyword(GaoshouKeyword.Flow),
+    ];
+
     public GaoshouCardColor CardColor => GaoshouCardColor.RedBlue;
 
     private const int BaseEnergyCost = 1;

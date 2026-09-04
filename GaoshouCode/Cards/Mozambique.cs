@@ -39,6 +39,12 @@ public sealed class Mozambique : ModCardTemplate
         HoverTipFactory.FromPower<VulnerablePower>(),
     ];
 
+    // 幻影（自动追加词条行，复制品移除关键字后该行自动隐藏）。
+    public override IEnumerable<CardKeyword> CanonicalKeywords =>
+    [
+        GaoshouKeyword.Phantom,
+    ];
+
     protected override IEnumerable<DynamicVar> CanonicalVars =>
     [
         new DamageVar(3m, ValueProp.Move),

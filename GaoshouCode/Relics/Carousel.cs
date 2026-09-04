@@ -31,7 +31,7 @@ public sealed class Carousel : ModRelicTemplate
         protected override IEnumerable<MegaCrit.Sts2.Core.Localization.DynamicVars.DynamicVar> CanonicalVars =>
     [
         ModCardVars.Energy("Energy", 1),
-        ModCardVars.Stars("Star", 1),
+        ModCardVars.Stars("Stars", 1),
     ];
 
 

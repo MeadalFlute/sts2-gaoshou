@@ -32,8 +32,7 @@ public sealed class TakeCover : ModCardTemplate
     protected override IEnumerable<DynamicVar> CanonicalVars =>
     [
         new BlockVar(9m, ValueProp.Move),
-        ModCardVars.Stars("StarA", 1),
-        ModCardVars.Stars("StarB", 1),
+        ModCardVars.Stars("Stars", 1),
     ];
 
     public TakeCover() : base(BaseEnergyCost, CardKind, CardRarityValue, CardTarget, ShowInCardLibrary)
@@ -44,14 +43,14 @@ public sealed class TakeCover : ModCardTemplate
     {
         await CreatureCmd.GainBlock(Owner.Creature, DynamicVars.Block, cardPlay);
 
-        // 下回合开始时获得 1(升级2) 星辉（原生"下回合星辉"buff）。
-        var starsGain = IsUpgraded ? 2 : 1;
+        // 下回合开始时获得 1(升级2) 星辉（原生"下回合星辉"buff；数量由 Stars 变量驱动）。
+        var starsGain = (int)DynamicVars.GetRequired<StarsVar>("Stars").BaseValue;
         await PowerCmd.Apply<StarNextTurnPower>(choiceContext, Owner.Creature, starsGain, Owner.Creature, this);
     }
 
     protected override void OnUpgrade()
     {
         DynamicVars.Block.UpgradeValueBy(3);   // 9 -> 12
-        // 升级：下回合星辉 1 -> 2（OnPlay 内按 IsUpgraded 处理）。
+        DynamicVars.GetRequired<StarsVar>("Stars").UpgradeValueBy(1);   // 下回合星辉 1 -> 2
     }
 }

@@ -36,9 +36,7 @@ public sealed class Stance : ModCardTemplate
 
     protected override IEnumerable<DynamicVar> CanonicalVars =>
     [
-        ModCardVars.Stars("StarA", 1),
-        ModCardVars.Stars("StarB", 1),
-        ModCardVars.Stars("StarC", 1),
+        ModCardVars.Stars("Stars", 2),
     ];
 
     public Stance() : base(BaseEnergyCost, CardKind, CardRarityValue, CardTarget, ShowInCardLibrary)
@@ -50,13 +48,13 @@ public sealed class Stance : ModCardTemplate
         // 获得 2 层临时敏捷（同步敏捷）。
         await GaoshouTemporaryDexterityPower.GrantAsync(choiceContext, Owner.Creature, 2m, Owner.Creature, this);
 
-        // 下回合开始时获得 2(3) 星辉（原生"下回合星辉"buff）。
-        var next = IsUpgraded ? 3 : 2;
+        // 下回合开始时获得 2(3) 星辉（原生"下回合星辉"buff；数量由 Stars 变量驱动）。
+        var next = (int)DynamicVars.GetRequired<StarsVar>("Stars").BaseValue;
         await PowerCmd.Apply<StarNextTurnPower>(choiceContext, Owner.Creature, next, Owner.Creature, this);
     }
 
     protected override void OnUpgrade()
     {
-        // 升级：下回合星辉 2 -> 3（OnPlay 内按 IsUpgraded 处理）。
+        DynamicVars.GetRequired<StarsVar>("Stars").UpgradeValueBy(1);   // 下回合星辉 2 -> 3
     }
 }

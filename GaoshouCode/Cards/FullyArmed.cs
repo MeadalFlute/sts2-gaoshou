@@ -32,7 +32,7 @@ public sealed class FullyArmed : ModCardTemplate
     // 悬浮释义：全副武装（至多保留格挡）。
     protected override IEnumerable<IHoverTip> AdditionalHoverTips =>
     [
-        HoverTipFactory.FromPower<GaohouRetainBlockPower>(),
+        HoverTipFactory.FromPower<GaoshouRetainBlockPower>(),
     ];
 
     protected override IEnumerable<DynamicVar> CanonicalVars =>
@@ -49,7 +49,7 @@ public sealed class FullyArmed : ModCardTemplate
     protected override async Task OnPlay(PlayerChoiceContext choiceContext, CardPlay cardPlay)
     {
         // 获得 10(15) 层"全副武装"：下次回合开始最多保留等量格挡。
-        await PowerCmd.Apply<GaohouRetainBlockPower>(choiceContext, Owner.Creature,
+        await PowerCmd.Apply<GaoshouRetainBlockPower>(choiceContext, Owner.Creature,
             DynamicVars.GetRequired<IntVar>("Blur").BaseValue, Owner.Creature, this);
     }
 

@@ -35,8 +35,8 @@ public sealed class TaiChi : ModCardTemplate
     // 用于描述中的能量/星辉图标（单图标）。
     protected override IEnumerable<DynamicVar> CanonicalVars =>
     [
-        ModCardVars.Energy("EnergyGain", 1),
-        ModCardVars.Stars("StarGain", 1),
+        ModCardVars.Energy("Energy", 1),
+        ModCardVars.Stars("Stars", 1),
     ];
 
     public TaiChi() : base(BaseEnergyCost, CardKind, CardRarityValue, CardTarget, ShowInCardLibrary)

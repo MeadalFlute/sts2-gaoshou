@@ -26,11 +26,12 @@ public sealed class WaitingforChance : ModCardTemplate
     public override CardAssetProfile AssetProfile => new(
         PortraitPath: $"{Entry.ResPath}/images/cards/WaitingforChance.png");
 
-    // 能量/星辉图标变量（描述用 {EnergyGain:energyIcons()}、{StarGain:starIcons()}）。
+    // 能量/星辉图标变量（描述用 {Energy:energyIcons()}、{Stars:starIcons()}）。
     protected override IEnumerable<DynamicVar> CanonicalVars =>
     [
-        ModCardVars.Energy("EnergyGain", 1),
-        ModCardVars.Stars("StarGain", 1),
+        ModCardVars.Int("Cards", 2),
+        ModCardVars.Energy("Energy", 1),
+        ModCardVars.Stars("Stars", 1),
     ];
 
     // 消耗：升级后移除。

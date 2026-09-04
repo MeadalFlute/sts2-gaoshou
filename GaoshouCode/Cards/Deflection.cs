@@ -34,6 +34,7 @@ public sealed class Deflection : ModCardTemplate
     protected override IEnumerable<IHoverTip> AdditionalHoverTips =>
     [
         HoverTipFactory.FromPower<BlurPower>(),
+        HoverTipFactory.Static(MegaCrit.Sts2.Core.HoverTips.StaticHoverTip.Block),
     ];
 
     public override IEnumerable<CardKeyword> CanonicalKeywords =>

@@ -11,7 +11,7 @@ using STS2RitsuLib.Scaffolding.Content;
 namespace Gaoshou.Powers;
 
 // 战斗直觉（能力）：敌人的血条与意图被隐藏。
-// 意图：由 BattleInstinctPatch 在渲染源头拦截；血条：打出时隐藏一次即持续生效（敌人节点不重置血条显隐）。
+// 意图：由 BattleInstinctPatch 在渲染源头拦截；血条：打出时隐藏一次 + 每次意图刷新(含新敌人入场)时由补丁再隐藏一次。
 [RegisterPower]
 public sealed class BattleInstinctPower : ModPowerTemplate
 {

@@ -35,11 +35,11 @@ public sealed class Spark : ModCardTemplate
         HoverTipFactory.FromKeyword(GaoshouKeyword.Temporary),
     ];
 
-    // 能量/星辉图标变量（描述用 {EnergyGain:energyIcons()}、{StarGain:starIcons()}）。
+    // 能量/星辉图标变量（描述用 {Energy:energyIcons()}、{Stars:starIcons()}）。
     protected override IEnumerable<DynamicVar> CanonicalVars =>
     [
-        ModCardVars.Energy("EnergyGain", 1),
-        ModCardVars.Stars("StarGain", 1),
+        ModCardVars.Energy("Energy", 1),
+        ModCardVars.Stars("Stars", 1),
     ];
 
     public Spark() : base(BaseEnergyCost, CardKind, CardRarityValue, CardTarget, ShowInCardLibrary)

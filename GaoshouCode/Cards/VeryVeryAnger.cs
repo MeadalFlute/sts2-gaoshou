@@ -38,7 +38,8 @@ public sealed class VeryVeryAnger : ModCardTemplate
 
     // 词条：风暴（自定义，可悬停显示释义）+ 消耗（游戏原生词条）。
     // 泛光：风暴条件可触发（扣除本卡费用后）。
-    protected override bool ShouldGlowGoldInternal => StormGlow.Ready(this, 2, 0);
+    protected override bool ShouldGlowGoldInternal =>
+        StormGlow.Ready(this, (int)DynamicVars.GetRequired<EnergyVar>("EnergyStorm").BaseValue, 0);
 
     public override IEnumerable<CardKeyword> CanonicalKeywords =>
     [
@@ -50,9 +51,7 @@ public sealed class VeryVeryAnger : ModCardTemplate
     protected override IEnumerable<DynamicVar> CanonicalVars =>
     [
         ModCardVars.Int("HealGain", 3),
-
-        ModCardVars.Energy("EnergyA", 1),
-        ModCardVars.Energy("EnergyB", 1),
+        ModCardVars.Energy("EnergyStorm", 2),
     ];
 
     public VeryVeryAnger() : base(BaseEnergyCost, CardKind, CardRarityValue, CardTarget, ShowInCardLibrary)
@@ -70,8 +69,8 @@ public sealed class VeryVeryAnger : ModCardTemplate
         // 获得 1 层力量（普通力量，非临时）。
         await PowerCmd.Apply<StrengthPower>(choiceContext, Owner.Creature, 1m, Owner.Creature, this);
 
-        // 风暴（红红）：当前能量>=2 才重放。
-        if (Owner.PlayerCombatState!.Energy >= 2)
+        // 风暴（红红）：当前能量>=EnergyStorm 才重放。
+        if (Owner.PlayerCombatState!.Energy >= (int)DynamicVars.GetRequired<EnergyVar>("EnergyStorm").BaseValue)
         {
             await CreatureCmd.Heal(Owner.Creature, DynamicVars.GetRequired<IntVar>("HealGain").BaseValue);
             await PowerCmd.Apply<StrengthPower>(choiceContext, Owner.Creature, 1m, Owner.Creature, this);

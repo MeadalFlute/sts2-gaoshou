@@ -54,14 +54,13 @@ public sealed class Lore : ModCardTemplate
             var picked = await RollAndChooseOnce(choiceContext);
             if (picked == null)
                 continue;   // 跳过本次选择：后续轮次照常进行
-            if (IsUpgraded)
-                CardCmd.Upgrade(picked);
             picked.SetToFreeThisTurn();
             await CardPileCmd.AddGeneratedCardToCombat(picked, PileType.Hand, Owner);
         }
     }
 
     // 从三张其他角色的稀有牌中选一张（Splash 同款管线）。
+    // 升级（传说+）：先升级所有选项再展示，选择预览即显示“升级过的”稀有牌（参考 Splash）。
     private async Task<CardModel?> RollAndChooseOnce(PlayerChoiceContext choiceContext)
     {
         var pools = Owner.UnlockState.CharacterCardPools.ToList();
@@ -80,11 +79,17 @@ public sealed class Lore : ModCardTemplate
         if (options.Count == 0)
             return null;
 
+        // 升级：让选择界面的预览显示升级版（升级在展示前完成）。
+        if (IsUpgraded)
+            foreach (var o in options)
+                CardCmd.Upgrade(o);
+
         return await CardSelectCmd.FromChooseACardScreen(choiceContext, options, Owner, canSkip: true);
     }
 
     protected override void OnUpgrade()
     {
-        // 升级：三张选择均改为"升级过的"稀有牌（次数保持 3）。
+        // 升级：三张选择均改为"升级过的"稀有牌（次数保持）。
+        // 注：Times 基础/升级与描述“重复 2(3) 次”存在出入，见代码规范清单【Lore】。
     }
 }

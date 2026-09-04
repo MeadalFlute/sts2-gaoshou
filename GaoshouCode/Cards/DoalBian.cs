@@ -39,8 +39,8 @@ public sealed class DoalBian : ModCardTemplate
     [
         new DamageVar(3m, ValueProp.Move),
         new DamageVar("secondHit", 5m, ValueProp.Move),
-        ModCardVars.Energy("EnergyGain", 1),
-        ModCardVars.Stars("StarGain", 1),
+        ModCardVars.Energy("Energy", 1),
+        ModCardVars.Stars("Stars", 1),
     ];
 
     public DoalBian() : base(BaseEnergyCost, CardKind, CardRarityValue, CardTarget, ShowInCardLibrary)
@@ -64,14 +64,14 @@ public sealed class DoalBian : ModCardTemplate
         // 流转（颜色与上一张牌完全不同时触发）：获得 1 能量、1 星辉。
         if (GaoshouFlowTracker.IsFlowReady(this))
         {
-            await PlayerCmd.GainEnergy(1, Owner);
-            await PlayerCmd.GainStars(1, Owner);
+            await PlayerCmd.GainEnergy(DynamicVars.GetRequired<EnergyVar>("Energy").BaseValue, Owner);
+            await PlayerCmd.GainStars(DynamicVars.GetRequired<StarsVar>("Stars").BaseValue, Owner);
         }
     }
 
     protected override void OnUpgrade()
     {
-        DynamicVars.Damage.UpgradeValueBy(1);                          // 3 -> 4
-        DynamicVars.GetRequired<DamageVar>("secondHit").UpgradeValueBy(1);   // 5 -> 6
+        DynamicVars.Damage.UpgradeValueBy(2);                          // 3 -> 4
+        DynamicVars.GetRequired<DamageVar>("secondHit").UpgradeValueBy(2);   // 5 -> 6
     }
 }

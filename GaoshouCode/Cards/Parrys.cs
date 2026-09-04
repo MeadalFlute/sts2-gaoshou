@@ -49,6 +49,7 @@ public sealed class Parrys : ModCardTemplate
     protected override IEnumerable<IHoverTip> AdditionalHoverTips =>
     [
         HoverTipFactory.Static(MegaCrit.Sts2.Core.HoverTips.StaticHoverTip.Stun),
+        HoverTipFactory.FromPower<GaoshouTemporaryDexterityPower>(),
     ];
 
     // 词条：奇迹、虚无、消耗（canonical 含消耗以正常渲染描述；升级 tooltip 的消耗由 ManaColorHoverPatch 过滤）。

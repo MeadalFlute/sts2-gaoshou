@@ -34,7 +34,7 @@ public sealed class TwistAndTurn : ModCardTemplate
 
     protected override IEnumerable<DynamicVar> CanonicalVars =>
     [
-        ModCardVars.Stars("StarGain", 1),
+        ModCardVars.Stars("Stars", 1),
     ];
 
     public TwistAndTurn() : base(BaseEnergyCost, CardKind, CardRarityValue, CardTarget, ShowInCardLibrary)

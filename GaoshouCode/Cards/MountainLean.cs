@@ -2,6 +2,7 @@ using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Entities.Creatures;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
+using MegaCrit.Sts2.Core.HoverTips;
 using MegaCrit.Sts2.Core.Localization.DynamicVars;
 using MegaCrit.Sts2.Core.ValueProps;
 using Gaoshou.Characters;
@@ -24,6 +25,12 @@ public sealed class MountainLean : ModCardTemplate
     private const bool ShowInCardLibrary = true;
 
     public GaoshouCardColor CardColor => GaoshouCardColor.Red;
+
+    // 悬浮释义：格挡。
+    protected override IEnumerable<IHoverTip> AdditionalHoverTips =>
+    [
+        HoverTipFactory.Static(MegaCrit.Sts2.Core.HoverTips.StaticHoverTip.Block),
+    ];
 
     public override CardAssetProfile AssetProfile => new(
         PortraitPath: $"{Entry.ResPath}/images/cards/MountainLean.png");

@@ -3,7 +3,6 @@ using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
 using MegaCrit.Sts2.Core.HoverTips;
 using MegaCrit.Sts2.Core.Localization.DynamicVars;
-using MegaCrit.Sts2.Core.Models.CardPools;
 using MegaCrit.Sts2.Core.Models.Powers;
 using MegaCrit.Sts2.Core.ValueProps;
 using Gaoshou.Characters;
@@ -15,7 +14,8 @@ using STS2RitsuLib.Scaffolding.Content;
 namespace Gaoshou.Cards;
 
 // 盾斧（先古）：攻击。耗 1 能量。对所有敌人造成 2 点伤害 4（5）次；获得 1（2）层缓冲。词条：保留。
-[RegisterCard(typeof(ColorlessCardPool))]
+// 注册在角色卡池（先古卡也归属角色，百科同处“角色池 + 先古”，与原版/参照 LexNinja2 一致）。
+[RegisterCard(typeof(GaoshouCardPool))]
 public sealed class ChargeBlade : ModCardTemplate
 {
     private const int BaseEnergyCost = 1;

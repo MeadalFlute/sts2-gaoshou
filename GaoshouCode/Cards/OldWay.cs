@@ -28,12 +28,14 @@ public sealed class OldWay : ModCardTemplate
 
         protected override IEnumerable<MegaCrit.Sts2.Core.Localization.DynamicVars.DynamicVar> CanonicalVars =>
     [
-        ModCardVars.Stars("StarGain", 1),
+        ModCardVars.Stars("Stars", 1),
     ];
 
     // 悬浮释义：力量、敏捷（原版能力可达；临时力敏的模组类泛型在本文件解析失败，暂略）。
     protected override IEnumerable<IHoverTip> AdditionalHoverTips =>
     [
+        HoverTipFactory.FromPower<GaoshouTemporaryStrengthPower>(),
+        HoverTipFactory.FromPower<GaoshouTemporaryDexterityPower>(),
         HoverTipFactory.FromPower<StrengthPower>(),
         HoverTipFactory.FromPower<DexterityPower>(),
     ];

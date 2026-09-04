@@ -33,7 +33,7 @@ public sealed class LittleStone : ModCardTemplate, Gaoshou.Keywords.IWasteCard
 
     protected override IEnumerable<DynamicVar> CanonicalVars =>
     [
-        ModCardVars.Energy("EnergyGain", 1),
+        ModCardVars.Energy("Energy", 1),
         ModCardVars.Cards(1),
     ];
 
@@ -44,7 +44,7 @@ public sealed class LittleStone : ModCardTemplate, Gaoshou.Keywords.IWasteCard
 
     protected override async Task OnPlay(PlayerChoiceContext choiceContext, CardPlay cardPlay)
     {
-        await PlayerCmd.GainEnergy(1, Owner);
+        await PlayerCmd.GainEnergy(DynamicVars.GetRequired<EnergyVar>("Energy").BaseValue, Owner);
         await CardPileCmd.Draw(choiceContext, DynamicVars.Cards.IntValue, Owner);
     }
 

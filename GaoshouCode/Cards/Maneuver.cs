@@ -36,6 +36,7 @@ public sealed class Maneuver : ModCardTemplate
 
     protected override IEnumerable<DynamicVar> CanonicalVars =>
     [
+        ModCardVars.Int("Cards", 4),
         ModCardVars.Int("ReturnCount", 2),
     ];
 
@@ -46,7 +47,7 @@ public sealed class Maneuver : ModCardTemplate
 
     protected override async Task OnPlay(PlayerChoiceContext choiceContext, CardPlay cardPlay)
     {
-        await CardPileCmd.Draw(choiceContext, 4, Owner);
+        await CardPileCmd.Draw(choiceContext, DynamicVars.GetRequired<IntVar>("Cards").BaseValue, Owner);
 
         // 让玩家从手牌中选出"最少 2 张"放回抽牌堆顶。
         var returnCount = Math.Max(DynamicVars.GetIntOrDefault("ReturnCount"), 0);

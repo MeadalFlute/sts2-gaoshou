@@ -40,6 +40,7 @@ public sealed class MistStep : ModCardTemplate
     protected override IEnumerable<DynamicVar> CanonicalVars =>
     [
         new BlockVar(6m, ValueProp.Move),
+        ModCardVars.Int("Cards", 3),
     ];
 
     public MistStep() : base(BaseEnergyCost, CardKind, CardRarityValue, CardTarget, ShowInCardLibrary)
@@ -56,7 +57,7 @@ public sealed class MistStep : ModCardTemplate
         // 流转（颜色与上一张牌完全不同时触发）：抽牌直到手牌有 3(4) 张。
         if (GaoshouFlowTracker.IsFlowReady(this))
         {
-            var target = IsUpgraded ? 4 : 3;
+            var target = DynamicVars.GetRequired<IntVar>("Cards").BaseValue;
             var hand = Owner.PlayerCombatState!.Hand;
             while (hand.Cards.Count < target)
             {
@@ -71,6 +72,6 @@ public sealed class MistStep : ModCardTemplate
     protected override void OnUpgrade()
     {
         DynamicVars.Block.UpgradeValueBy(3m);   // 6 -> 9
-        // 流转目标 3 -> 4（OnPlay 内按 IsUpgraded 处理）。
+        DynamicVars.GetRequired<IntVar>("Cards").UpgradeValueBy(1);   // 流转目标 3 -> 4
     }
 }

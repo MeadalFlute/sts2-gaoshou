@@ -29,15 +29,18 @@ public sealed class DualSMG : ModCardTemplate
     public override CardAssetProfile AssetProfile => new(
         PortraitPath: $"{Entry.ResPath}/images/cards/{GetType().Name}.png");
 
-    // 悬浮释义：装弹（变化目标卡）。
+    // 悬浮释义：装弹（升级后：装弹+，变化目标卡）。
     protected override IEnumerable<IHoverTip> AdditionalHoverTips =>
     [
-        HoverTipFactory.FromCard<Reload>(),
+        HoverTipFactory.FromCard<Reload>(IsUpgraded),
     ];
 
     // 词条：风暴、消耗（打出后生成装弹加入抽牌堆）。
     // 泛光：风暴条件可触发（扣除本卡费用后）。
-    protected override bool ShouldGlowGoldInternal => StormGlow.Ready(this, 1, 1);
+    protected override bool ShouldGlowGoldInternal =>
+        StormGlow.Ready(this,
+            (int)DynamicVars.GetRequired<EnergyVar>("EnergyStorm").BaseValue,
+            (int)DynamicVars.GetRequired<StarsVar>("StarsStorm").BaseValue);
 
     public override IEnumerable<CardKeyword> CanonicalKeywords =>
     [
@@ -49,8 +52,8 @@ public sealed class DualSMG : ModCardTemplate
     [
         new DamageVar(2m, ValueProp.Move),
         ModCardVars.Int("Times", 3),
-        ModCardVars.Energy("EnergyA", 1),
-        ModCardVars.Stars("StarA", 1),
+        ModCardVars.Energy("EnergyStorm", 1),
+        ModCardVars.Stars("StarsStorm", 1),
     ];
 
     public DualSMG() : base(BaseEnergyCost, CardKind, CardRarityValue, CardTarget, ShowInCardLibrary)
@@ -82,14 +85,19 @@ public sealed class DualSMG : ModCardTemplate
         // 依次攻击每个敌人（保留的演出：逐敌、逐次命中）。
         await PlayOnce(choiceContext, cardPlay);
 
-        // 风暴（能量、星辉）：当前能量>=1 且 星辉>=1 才重复打出一次。
-        if (Owner.PlayerCombatState!.Energy >= 1 && Owner.PlayerCombatState.Stars >= 1)
+        // 风暴（能量、星辉）：当前能量>=EnergyStorm 且 星辉>=StarsStorm 才重复打出一次。
+        if (Owner.PlayerCombatState!.Energy >= (int)DynamicVars.GetRequired<EnergyVar>("EnergyStorm").BaseValue
+            && Owner.PlayerCombatState.Stars >= (int)DynamicVars.GetRequired<StarsVar>("StarsStorm").BaseValue)
             await PlayOnce(choiceContext, cardPlay);
 
-        // 将一张装弹加入你的抽牌堆（本卡照常进消耗）。
+        // 将一张装弹（升级后：装弹+）加入你的抽牌堆（本卡照常进消耗）。
         var reload = Owner.Creature.CombatState?.CreateCard(ModelDb.Card<Reload>(), Owner);
         if (reload != null)
-            CardCmd.PreviewCardPileAdd(await CardPileCmd.AddGeneratedCardToCombat(reload, PileType.Draw, Owner));
+        {
+            if (IsUpgraded)
+                CardCmd.Upgrade(reload);   // 升级效果：装弹+
+            CardCmd.PreviewCardPileAdd(await CardPileCmd.AddGeneratedCardToCombat(reload, PileType.Draw, Owner, CardPilePosition.Random));
+        }
     }
 
     protected override void OnUpgrade()

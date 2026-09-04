@@ -37,8 +37,11 @@ public sealed class PureAnger : ModCardTemplate
     // 星辉/能量图标变量（描述中转换为图标）。
     protected override IEnumerable<DynamicVar> CanonicalVars =>
     [
-        ModCardVars.Energy("EnergyGain", 1),
-        ModCardVars.Stars("StarGain", 1),
+        ModCardVars.Int("Cards", 1),
+        ModCardVars.Energy("Energy", 1),
+        ModCardVars.Stars("Stars", 1),
+        // 升级首次打出获得 3 能量的“3”（图标变量=1 配合“3{icon}”显示；数量由该变量驱动，可被外挂修改）。
+        ModCardVars.Int("EnergyAmount", 3),
     ];
 
     public PureAnger() : base(BaseEnergyCost, CardKind, CardRarityValue, CardTarget, ShowInCardLibrary)
@@ -51,16 +54,21 @@ public sealed class PureAnger : ModCardTemplate
     {
         if (card != this)
             return Task.CompletedTask;
-        return CardPileCmd.Draw(choiceContext, 1, Owner);
+        return CardPileCmd.Draw(choiceContext, DynamicVars.GetRequired<IntVar>("Cards").BaseValue, Owner);
     }
 
     protected override async Task OnPlay(PlayerChoiceContext choiceContext, CardPlay cardPlay)
     {
-        // 将所有星辉变为能量。
+        // 将所有星辉变为能量：实际给予能量 = 当前星辉 / Stars（每 Stars 点星辉折算 1 点能量）。
         var stars = Owner.PlayerCombatState!.Stars;
         if (stars > 0)
         {
-            await PlayerCmd.GainEnergy(stars, Owner);
+            var ratio = DynamicVars.GetRequired<StarsVar>("Stars").BaseValue;
+            if (ratio <= 0m)
+                ratio = 1m;   // 除零保护：折算基数为 0 或负数时按 1:1 处理
+            var energy = (int)(stars / ratio);   // 向下取整截断到 int（Energy 底层为 int）
+            if (energy > 0)
+                await PlayerCmd.GainEnergy(energy, Owner);
             Owner.PlayerCombatState.LoseStars(stars);
         }
 
@@ -68,7 +76,7 @@ public sealed class PureAnger : ModCardTemplate
         if (IsUpgraded && !_firstPlayBonusUsed)
         {
             _firstPlayBonusUsed = true;
-            await PlayerCmd.GainEnergy(3, Owner);
+            await PlayerCmd.GainEnergy(DynamicVars.GetRequired<IntVar>("EnergyAmount").BaseValue, Owner);
         }
     }
 

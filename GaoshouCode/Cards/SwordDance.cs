@@ -3,7 +3,6 @@ using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
 using MegaCrit.Sts2.Core.HoverTips;
 using MegaCrit.Sts2.Core.Localization.DynamicVars;
-using MegaCrit.Sts2.Core.Models.CardPools;
 using Gaoshou.Characters;
 using Gaoshou.Keywords;
 using Gaoshou.Powers;
@@ -15,7 +14,8 @@ namespace Gaoshou.Cards;
 
 // 剑舞（先古）：能力。耗 3 能量（升级 2）。
 // 每当你触发【流转】或【风暴】效果时：抽 2 张牌，获得 1 能量。由尘封魔典获取（取代原"占位"）。
-[RegisterCard(typeof(ColorlessCardPool))]
+// 注册在角色卡池（先古卡也归属角色，百科同处“角色池 + 先古”，与原版/参照 LexNinja2 一致）。
+[RegisterCard(typeof(GaoshouCardPool))]
 public sealed class SwordDance : ModCardTemplate
 {
     private const int BaseEnergyCost = 3;
@@ -39,8 +39,8 @@ public sealed class SwordDance : ModCardTemplate
     // 显示变量（效果在能力里）：抽牌数 + 能量图标。
     protected override IEnumerable<DynamicVar> CanonicalVars =>
     [
-        ModCardVars.Int("draw", 1),
-        ModCardVars.Energy("EnergyGain", 1),
+        ModCardVars.Int("Draw", 1),
+        ModCardVars.Energy("Energy", 1),
     ];
 
     public SwordDance() : base(BaseEnergyCost, CardKind, CardRarityValue, CardTarget, ShowInCardLibrary)
@@ -50,7 +50,9 @@ public sealed class SwordDance : ModCardTemplate
 
     protected override async Task OnPlay(PlayerChoiceContext choiceContext, CardPlay cardPlay)
     {
-        await PowerCmd.Apply<SwordDancePower>(choiceContext, Owner.Creature, 1m, Owner.Creature, this);
+        // 把卡牌 Draw 变量值作为能力的 Amount 固化（PaleBlueDot 同款）：能力触发时按此抽牌。
+        await PowerCmd.Apply<SwordDancePower>(choiceContext, Owner.Creature,
+            DynamicVars.GetRequired<IntVar>("Draw").BaseValue, Owner.Creature, this);
     }
 
     protected override void OnUpgrade()

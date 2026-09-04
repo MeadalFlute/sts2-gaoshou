@@ -38,6 +38,7 @@ public sealed class ThrowingKnife : ModCardTemplate
 
     protected override IEnumerable<DynamicVar> CanonicalVars =>
     [
+        ModCardVars.Int("Cards", 1),
         new DamageVar(4m, ValueProp.Move),
     ];
 
@@ -56,7 +57,7 @@ public sealed class ThrowingKnife : ModCardTemplate
 
         // 流转（颜色与上一张牌完全不同时触发）：抽一张牌。
         if (GaoshouFlowTracker.IsFlowReady(this))
-            await CardPileCmd.Draw(choiceContext, 1, Owner);
+            await CardPileCmd.Draw(choiceContext, DynamicVars.GetRequired<IntVar>("Cards").BaseValue, Owner);
     }
 
     protected override void OnUpgrade()

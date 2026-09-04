@@ -38,7 +38,8 @@ public sealed class FistOfStupid : ModCardTemplate
     ];
 
     // 泛光：风暴条件可触发（扣除本卡费用后）。
-    protected override bool ShouldGlowGoldInternal => StormGlow.Ready(this, 2, 0);
+    protected override bool ShouldGlowGoldInternal =>
+        StormGlow.Ready(this, (int)DynamicVars.GetRequired<EnergyVar>("EnergyStorm").BaseValue, 0);
 
     public override IEnumerable<CardKeyword> CanonicalKeywords =>
     [
@@ -49,8 +50,7 @@ public sealed class FistOfStupid : ModCardTemplate
     [
         new DamageVar(2m, ValueProp.Move),
         ModCardVars.Int("Times", 3),
-        ModCardVars.Energy("EnergyA", 1),
-        ModCardVars.Energy("EnergyB", 1),
+        ModCardVars.Energy("EnergyStorm", 2),
     ];
 
     public FistOfStupid() : base(BaseEnergyCost, CardKind, CardRarityValue, CardTarget, ShowInCardLibrary)
@@ -61,7 +61,7 @@ public sealed class FistOfStupid : ModCardTemplate
     {
         // 风暴（能量、能量）：打出一次主效果；当前能量>=2 时额外重放一次。
         await PlayOnceAsync(choiceContext, cardPlay);
-        if (Owner.PlayerCombatState!.Energy >= 2)
+        if (Owner.PlayerCombatState!.Energy >= (int)DynamicVars.GetRequired<EnergyVar>("EnergyStorm").BaseValue)
             await PlayOnceAsync(choiceContext, cardPlay);
     }
 

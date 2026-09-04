@@ -49,9 +49,7 @@ public sealed class OneinchPunch : ModCardTemplate
     protected override IEnumerable<DynamicVar> CanonicalVars =>
     [
         ModCardVars.Int("TemporaryStrength", 3),
-        ModCardVars.Energy("EnergyGain", 2),
-        ModCardVars.Energy("EnergyA", 1),
-        ModCardVars.Energy("EnergyB", 1),
+        ModCardVars.Energy("Energy", 2),
     ];
 
     public OneinchPunch() : base(BaseEnergyCost, CardKind, CardRarityValue, CardTarget, ShowInCardLibrary)
@@ -65,7 +63,7 @@ public sealed class OneinchPunch : ModCardTemplate
 
         // 流转（颜色与上一张牌完全不同时触发）：获得 2 能量。
         if (GaoshouFlowTracker.IsFlowReady(this))
-            await PlayerCmd.GainEnergy(DynamicVars.GetRequired<EnergyVar>("EnergyGain").BaseValue, Owner);
+            await PlayerCmd.GainEnergy(DynamicVars.GetRequired<EnergyVar>("Energy").BaseValue, Owner);
     }
 
     protected override void OnUpgrade()

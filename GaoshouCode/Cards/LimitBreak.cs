@@ -47,10 +47,10 @@ public sealed class LimitBreak : ModCardTemplate
     {
         await CardPileCmd.Draw(choiceContext, (int)DynamicVars.GetRequired<IntVar>("Draw").BaseValue, Owner);
 
-        // 往弃牌堆加入一张「凋萎」状态牌。
+        // 往弃牌堆加入一张「凋萎」状态牌（生成牌动画/预览：参考没脑子拳）。
         var wither = Owner.Creature.CombatState?.CreateCard(ModelDb.Card<Wither>(), Owner);
         if (wither != null)
-            await CardPileCmd.Add(wither, PileType.Discard);
+            CardCmd.PreviewCardPileAdd(await CardPileCmd.AddGeneratedCardToCombat(wither, PileType.Discard, Owner));
     }
 
     protected override void OnUpgrade()

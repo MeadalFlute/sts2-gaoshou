@@ -34,7 +34,7 @@ public sealed class LightningStrike : ModCardTemplate
         HoverTipFactory.FromKeyword(GaoshouKeyword.Phantom),
     ];
 
-    // 虚无（自动追加词条行）；幻影以 PhantomCount 数量实现，不挂关键词避免重复。
+    // 虚无（自动追加词条行）；幻影以 PhantomCount 数量实现，不挂关键词避免重复（复制品显示幻影0 无害）。
     public override IEnumerable<CardKeyword> CanonicalKeywords =>
     [
         CardKeyword.Ethereal,

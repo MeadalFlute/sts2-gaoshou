@@ -47,9 +47,10 @@ public sealed class DyingSurge : ModCardTemplate
 
     protected override IEnumerable<DynamicVar> CanonicalVars =>
     [
-        // 图标变量取 1（配合描述中文字"3{icon}"单图标显示；实际获得 3 由代码硬编码）。
-        ModCardVars.Energy("EnergyGain", 1),
-        ModCardVars.Stars("StarGain", 1),
+        // Energy/Stars 即实际获得数量（{Energy:energyIcons()} 显示 N 个图标），一并驱动代码，减少变量数。
+        ModCardVars.Energy("Energy", 3),
+        ModCardVars.Stars("Stars", 3),
+        ModCardVars.Int("Cards", 3),
     ];
 
     public DyingSurge() : base(BaseEnergyCost, CardKind, CardRarityValue, CardTarget, ShowInCardLibrary)
@@ -58,9 +59,9 @@ public sealed class DyingSurge : ModCardTemplate
 
     protected override async Task OnPlay(PlayerChoiceContext choiceContext, CardPlay cardPlay)
     {
-        await PlayerCmd.GainEnergy(3, Owner);
-        await PlayerCmd.GainStars(3, Owner);
-        await CardPileCmd.Draw(choiceContext, 3, Owner);
+        await PlayerCmd.GainEnergy(DynamicVars.GetRequired<EnergyVar>("Energy").BaseValue, Owner);
+        await PlayerCmd.GainStars(DynamicVars.GetRequired<StarsVar>("Stars").BaseValue, Owner);
+        await CardPileCmd.Draw(choiceContext, DynamicVars.GetRequired<IntVar>("Cards").BaseValue, Owner);
 
         // 搏命：本回合伤害翻倍；下回合开始直接死亡。
         await PowerCmd.Apply<DyingSurgePower>(choiceContext, Owner.Creature, 1m, Owner.Creature, this);

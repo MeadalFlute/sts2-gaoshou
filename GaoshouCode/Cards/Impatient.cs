@@ -26,22 +26,21 @@ public sealed class Impatient : ModCardTemplate
     public override CardAssetProfile AssetProfile => new(
         PortraitPath: $"{Entry.ResPath}/images/cards/{GetType().Name}.png");
 
-    // 泛光：风暴条件可触发（扣除本卡费用后）。
+    // 泛光：风暴条件可触发（扣除本卡费用后）。风暴泛光：需扣除护符互抵的 +1 星辉信用
+    // （打出后护符补星会抬高当前星辉，风暴条件按"真实星辉"算）。
     protected override bool ShouldGlowGoldInternal =>
-        (Owner?.PlayerCombatState?.Stars ?? 0) >= (IsUpgraded ? 2 : 3);
+        StormGlow.Ready(this, 0, (int)DynamicVars.GetRequired<StarsVar>("StarsStorm").BaseValue);
 
     public override IEnumerable<CardKeyword> CanonicalKeywords =>
     [
         GaoshouKeyword.Storm,
     ];
 
-    // 风暴条件图标变量（星辉≥3(4)：三/四个星辉图标）。
+    // 风暴条件图标变量（星辉≥3：三个星辉图标；升级后 3->2：两个图标）。
     protected override IEnumerable<DynamicVar> CanonicalVars =>
     [
-        ModCardVars.Stars("StarA", 1),
-        ModCardVars.Stars("StarB", 1),
-        ModCardVars.Stars("StarC", 1),
-        ModCardVars.Stars("StarD", 1),
+        ModCardVars.Int("Cards", 2),
+        ModCardVars.Stars("StarsStorm", 3),
     ];
 
     public Impatient() : base(BaseEnergyCost, CardKind, CardRarityValue, CardTarget, ShowInCardLibrary)
@@ -52,14 +51,14 @@ public sealed class Impatient : ModCardTemplate
     // 后者依赖 AfterCreated 设置，多人远端克隆不会执行会导致状态分歧。
     protected override async Task OnPlay(PlayerChoiceContext choiceContext, CardPlay cardPlay)
     {
-        await CardPileCmd.Draw(choiceContext, 2, Owner);
-        // 风暴（星星星(星)）：当前星辉>=3(4) 才重复抽 2 张。
-        if (Owner.PlayerCombatState!.Stars >= (IsUpgraded ? 2 : 3))
-            await CardPileCmd.Draw(choiceContext, 2, Owner);
+        await CardPileCmd.Draw(choiceContext, DynamicVars.GetRequired<IntVar>("Cards").BaseValue, Owner);
+        // 风暴（星星星(星)）：当前星辉>=StarsStorm 才重复抽 2 张。
+        if (Owner.PlayerCombatState!.Stars >= (int)DynamicVars.GetRequired<StarsVar>("StarsStorm").BaseValue)
+            await CardPileCmd.Draw(choiceContext, DynamicVars.GetRequired<IntVar>("Cards").BaseValue, Owner);
     }
 
     protected override void OnUpgrade()
     {
-        // 费用保持 1；风暴门槛 3 -> 2（升级更易触发）。
+        DynamicVars.GetRequired<StarsVar>("StarsStorm").UpgradeValueBy(-1);   // 风暴门槛 3 -> 2
     }
 }

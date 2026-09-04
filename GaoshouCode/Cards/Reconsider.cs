@@ -49,8 +49,9 @@ public sealed class Reconsider : ModCardTemplate
 
     protected override IEnumerable<DynamicVar> CanonicalVars =>
     [
-        ModCardVars.Energy("EnergyGain", 1),
-        ModCardVars.Stars("StarGain", 1),
+        ModCardVars.Energy("Energy", 1),
+        ModCardVars.Stars("Stars", 1),
+        ModCardVars.Int("Cards", 4),
     ];
 
     public Reconsider() : base(BaseEnergyCost, CardKind, CardRarityValue, CardTarget, ShowInCardLibrary)
@@ -72,13 +73,13 @@ public sealed class Reconsider : ModCardTemplate
         await CardCmd.Discard(choiceContext, Owner.PlayerCombatState!.Hand.Cards);
 
         // 抽 4 张牌。
-        await CardPileCmd.Draw(choiceContext, 4, Owner);
+        await CardPileCmd.Draw(choiceContext, DynamicVars.GetRequired<IntVar>("Cards").BaseValue, Owner);
 
         // 奇迹：非回合开始时抽牌进入手牌才触发 → 获得 1 能量、1 星辉。
         if (!_enteredByTurnStartDraw)
         {
-            await PlayerCmd.GainEnergy(DynamicVars.GetRequired<EnergyVar>("EnergyGain").BaseValue, Owner);
-            await PlayerCmd.GainStars(DynamicVars.GetRequired<StarsVar>("StarGain").BaseValue, Owner);
+            await PlayerCmd.GainEnergy(DynamicVars.GetRequired<EnergyVar>("Energy").BaseValue, Owner);
+            await PlayerCmd.GainStars(DynamicVars.GetRequired<StarsVar>("Stars").BaseValue, Owner);
         }
     }
 

@@ -39,7 +39,7 @@ public sealed class GaoshouAmulet : ModRelicTemplate, IRelicExtraIconAmountLabel
     protected override IEnumerable<DynamicVar> CanonicalVars =>
     [
         ModCardVars.Energy("Energy", 1),
-        ModCardVars.Stars("Star", 1),
+        ModCardVars.Stars("Stars", 1),
     ];
 
     public override RelicAssetProfile AssetProfile => new(

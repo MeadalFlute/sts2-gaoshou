@@ -35,8 +35,8 @@ public sealed class LinkedPalms : ModCardTemplate
 
     protected override IEnumerable<DynamicVar> CanonicalVars =>
     [
-        ModCardVars.Energy("EnergyGain", 1),
-        ModCardVars.Stars("StarGain", 1),
+        ModCardVars.Energy("Energy", 1),
+        ModCardVars.Stars("Stars", 1),
     ];
 
     public LinkedPalms() : base(BaseEnergyCost, CardKind, CardRarityValue, CardTarget, ShowInCardLibrary)
@@ -46,13 +46,13 @@ public sealed class LinkedPalms : ModCardTemplate
 
     protected override async Task OnPlay(PlayerChoiceContext choiceContext, CardPlay cardPlay)
     {
-        await PlayerCmd.GainEnergy(1, Owner);
-        await PlayerCmd.GainStars(1, Owner);
+        await PlayerCmd.GainEnergy(DynamicVars.GetRequired<EnergyVar>("Energy").BaseValue, Owner);
+        await PlayerCmd.GainStars(DynamicVars.GetRequired<StarsVar>("Stars").BaseValue, Owner);
     }
 
     protected override void OnUpgrade()
     {
         EnergyCost.UpgradeBy(-1);   // 1 能量 -> 0 能量
-        DynamicVars.GetRequired<StarsVar>("StarGain").UpgradeValueBy(1);   // 1 星辉 -> 2 星辉
+        DynamicVars.GetRequired<StarsVar>("Stars").UpgradeValueBy(1);   // 1 星辉 -> 2 星辉
     }
 }

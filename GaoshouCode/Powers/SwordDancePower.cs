@@ -31,7 +31,8 @@ public sealed class SwordDancePower : ModPowerTemplate
         if (!card.Keywords.Contains(GaoshouKeyword.Flow) || !GaoshouFlowTracker.IsFlowReady(card))
             return;
 
-        await CardPileCmd.Draw(choiceContext, 1, player);
+        // 抽牌数取能力的 Amount（由 SwordDance 卡的 Draw 变量固化而来）。
+        await CardPileCmd.Draw(choiceContext, Amount, player);
         await PlayerCmd.GainEnergy(1, player);
     }
 }

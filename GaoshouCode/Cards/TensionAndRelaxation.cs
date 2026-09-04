@@ -2,6 +2,7 @@ using System.Linq;
 using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
+using MegaCrit.Sts2.Core.Hooks;
 using MegaCrit.Sts2.Core.Models;
 using Gaoshou.Characters;
 using Gaoshou.Keywords;
@@ -44,6 +45,14 @@ public sealed class TensionAndRelaxation : ModCardTemplate
 
     private async Task DrawByColorAsync(PlayerChoiceContext choiceContext, GaoshouCardColor want)
     {
+        // 尊重“不可抽牌”debuff（如 NoDrawPower）：与游戏 CardPileCmd.Draw 一致，先判定是否可抽。
+        if (!Hook.ShouldDraw(Owner.Creature.CombatState, Owner, false, out var modifier))
+        {
+            if (modifier != null)
+                await Hook.AfterPreventingDraw(Owner.Creature.CombatState, modifier);
+            return;
+        }
+
         var draw = PileType.Draw.GetPile(Owner)?.Cards.ToList() ?? [];
         var candidates = draw.Where(c => MatchesColor(c, want)).ToList();
         if (candidates.Count == 0)

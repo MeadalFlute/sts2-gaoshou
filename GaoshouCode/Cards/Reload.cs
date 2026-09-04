@@ -1,3 +1,4 @@
+using System.Linq;
 using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.HoverTips;
 using MegaCrit.Sts2.Core.Entities.Cards;
@@ -11,7 +12,7 @@ using STS2RitsuLib.Scaffolding.Content;
 
 namespace Gaoshou.Cards;
 
-// 装弹：状态（无色衍生）。耗 1 能量 1 星辉。打出后把自己变化回双持冲锋枪。
+// 装弹：状态（无色衍生）。耗 1 能量 1 星辉。使消耗牌堆的 1 张双持冲锋枪（装弹+升级后为双持冲锋枪+）返回手牌。
 [RegisterCard(typeof(TokenCardPool))]
 public sealed class Reload : ModCardTemplate
 {
@@ -26,10 +27,10 @@ public sealed class Reload : ModCardTemplate
     public override CardAssetProfile AssetProfile => new(
         PortraitPath: $"{Entry.ResPath}/images/cards/Reload.png");
 
-    // 悬浮释义：双持冲锋枪（变化目标卡）。
+    // 悬浮释义：双持冲锋枪（升级后：双持冲锋枪+，从消耗牌堆返回目标卡）。
     protected override IEnumerable<IHoverTip> AdditionalHoverTips =>
     [
-        HoverTipFactory.FromCard<DualSMG>(),
+        HoverTipFactory.FromCard<DualSMG>(IsUpgraded),
     ];
 
     public override int CanonicalStarCost => 1;
@@ -45,9 +46,21 @@ public sealed class Reload : ModCardTemplate
 
     protected override async Task OnPlay(PlayerChoiceContext choiceContext, CardPlay cardPlay)
     {
-        // 将一张双持冲锋枪加入你的手牌（本卡照常进消耗）。
-        var smg = Owner.Creature.CombatState?.CreateCard(ModelDb.Card<DualSMG>(), Owner);
-        if (smg != null)
-            await CardPileCmd.AddGeneratedCardToCombat(smg, PileType.Hand, Owner);
+        // 从消耗牌堆随机取一张双持冲锋枪返回手牌（装弹+升级后返回 双持冲锋枪+）。
+        var dualSmgId = ModelDb.GetId(typeof(DualSMG));
+        var exhaust = PileType.Exhaust.GetPile(Owner)?.Cards
+            .Where(c => c.Id == dualSmgId).ToList() ?? [];
+        if (exhaust.Count == 0)
+            return;   // 消耗牌堆没有双持冲锋枪：无事发生。
+
+        var pick = Owner.RunState.Rng.CombatCardSelection.NextItem(exhaust);
+        if (IsUpgraded)
+            CardCmd.Upgrade(pick);   // 双持冲锋枪+
+        await CardPileCmd.Add(pick, PileType.Hand);
+    }
+
+    protected override void OnUpgrade()
+    {
+        // 装弹自身无数值升级；升级体现在「返回的是双持冲锋枪+」上（OnPlay 里用 IsUpgraded 判断）。
     }
 }

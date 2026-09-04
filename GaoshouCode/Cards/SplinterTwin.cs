@@ -7,6 +7,7 @@ using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Entities.Creatures;
 using MegaCrit.Sts2.Core.Entities.Powers;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
+using MegaCrit.Sts2.Core.HoverTips;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Localization.DynamicVars;
 using Gaoshou.Characters;
@@ -29,6 +30,12 @@ public sealed class SplinterTwin : ModCardTemplate
     private const bool ShowInCardLibrary = true;
 
     public GaoshouCardColor CardColor => GaoshouCardColor.Purple;
+
+    // 悬浮释义：增幅。
+    protected override IEnumerable<IHoverTip> AdditionalHoverTips =>
+    [
+        HoverTipFactory.FromKeyword(GaoshouKeyword.Amplify),
+    ];
 
     public override CardAssetProfile AssetProfile => new(
         PortraitPath: $"{Entry.ResPath}/images/cards/SplinterTwin.png");

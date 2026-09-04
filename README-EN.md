@@ -9,7 +9,7 @@
 "Gaoshou" (a.k.a. "The Pro") is a character mod for **[Slay the Spire 2](https://store.steampowered.com/app/2868840/Slay_the_Spire_2/)**, built on the **RitsuLib 0.5.x** framework. It adds:
 
 - A brand-new character with their own card pool, relics and buffs
-- **91 cards** in total: 4 starters · 18 commons · 31 uncommons · 24 rares · 2 ancient-exclusives · 11 signature "Junk" tokens · 1 generated card
+- **91 cards** in total: 4 starters · 19/20 commons · 30/38 uncommons · 24/25 rares · 2/2 ancient-exclusives · 0/0 Multiplayers · 11 signature "Junk" tokens · 1 generated card
 - A dual-resource economy + card-color **Flow** system
 - Plenty of custom keywords and buffs
 - A full set of stylized card art
@@ -27,7 +27,7 @@ Play as a day-one Slayer. Facing Antonio's relentless walls of bullshit and his 
 - ~~Struggle in multiplayer.~~
 - Learn misty Chinese characters(NOT, just kidding.)
 - Savor the quirky design touches, then come file a *Future* — add your own, and let's ascend(?) together LOL
-- And much more! ~~Get it on the Workshop right now!~~ Not yet — hold on, it's in uploading.
+- And much more! Get it on the Workshop right now!
 
 ![Flavor Rune Dome.png](ReadmeImage/风味圆顶_EN_ver.png)
 

@@ -22,9 +22,7 @@ public sealed class Wheelchair : ModRelicTemplate
 
     protected override IEnumerable<MegaCrit.Sts2.Core.Localization.DynamicVars.DynamicVar> CanonicalVars =>
     [
-        ModCardVars.Stars("Star", 1),
-        ModCardVars.Stars("StarB", 1),
-        ModCardVars.Stars("StarC", 1),
+        ModCardVars.Stars("Stars", 1),
         ModCardVars.Energy("Energy", 1),
     ];
 

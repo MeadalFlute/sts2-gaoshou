@@ -32,6 +32,7 @@ public sealed class HeavyStrick : ModCardTemplate
     protected override IEnumerable<IHoverTip> AdditionalHoverTips =>
     [
         HoverTipFactory.FromPower<VulnerablePower>(),
+        HoverTipFactory.Static(MegaCrit.Sts2.Core.HoverTips.StaticHoverTip.Block),
     ];
 
     protected override IEnumerable<DynamicVar> CanonicalVars =>

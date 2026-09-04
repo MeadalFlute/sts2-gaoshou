@@ -1,12 +1,12 @@
 {
   "GAOSHOU_RELIC_GAOSHOU_AMULET.title": "高手护符",
-  "GAOSHOU_RELIC_GAOSHOU_AMULET.description": "每回合3次：当你消耗{Energy:energyIcons()}时，获得1{Star:starIcons()}；当你消耗{Star:starIcons()}时，获得1{Energy:energyIcons()}。",
+  "GAOSHOU_RELIC_GAOSHOU_AMULET.description": "每回合3次：当你消耗{Energy:energyIcons()}时，获得1{Stars:starIcons()}；当你消耗{Stars:starIcons()}时，获得1{Energy:energyIcons()}。",
   "GAOSHOU_RELIC_GAOSHOU_AMULET.flavor": "越是精妙的招法，越懂得如何借力打力。",
   "GAOSHOU_RELIC_ADAPTIVE_CAPACITOR.title": "自适应电容",
   "GAOSHOU_RELIC_ADAPTIVE_CAPACITOR.description": "回合结束时，若你剩余{Energy:energyIcons()}大于能量上限，能量上限+1。",
   "GAOSHOU_RELIC_ADAPTIVE_CAPACITOR.flavor": "自动调节储能。",
   "GAOSHOU_RELIC_CAROUSEL.title": "走马灯",
-  "GAOSHOU_RELIC_CAROUSEL.description": "每回合，你打出第3张[gold]临时[/gold]牌时，获得{Energy:energyIcons()}{Star:starIcons()}。",
+  "GAOSHOU_RELIC_CAROUSEL.description": "每回合，你打出第3张[gold]临时[/gold]牌时，获得{Energy:energyIcons()}{Stars:starIcons()}。",
   "GAOSHOU_RELIC_CAROUSEL.flavor": "轮转不息。",
   "GAOSHOU_RELIC_TRASH_CAN.title": "垃圾桶",
   "GAOSHOU_RELIC_TRASH_CAN.description": "每3回合，往你的手牌中添加一张随机[gold]废品牌[/gold]。",
@@ -18,13 +18,13 @@
   "GAOSHOU_RELIC_SANDEVISTAN.description": "每当你即将失去[gold]临时力量[/gold]或[gold]临时敏捷[/gold]时，仅失去1层，然后失去1点生命。",
   "GAOSHOU_RELIC_SANDEVISTAN.flavor": "超频运转。",
   "GAOSHOU_RELIC_MARTIAL_ARTS_MANUAL.title": "武林秘籍",
-  "GAOSHOU_RELIC_MARTIAL_ARTS_MANUAL.description": "每当你消耗{Energy:energyIcons()}{EnergyB:energyIcons()}时，获得1层[gold]临时敏捷[/gold]。每当你消耗{Star:starIcons()}{StarB:starIcons()}时，获得1层[gold]临时力量[/gold]。",
+  "GAOSHOU_RELIC_MARTIAL_ARTS_MANUAL.description": "每当你消耗{Energy:energyIcons()}时，获得1层[gold]临时敏捷[/gold]。每当你消耗{Stars:starIcons()}时，获得1层[gold]临时力量[/gold]。",
   "GAOSHOU_RELIC_MARTIAL_ARTS_MANUAL.flavor": "内外兼修。",
   "GAOSHOU_RELIC_BATTLE_PASS.title": "战斗通行证",
   "GAOSHOU_RELIC_BATTLE_PASS.description": "每场战斗结束后，失去15[gold]金币[/gold]，获得一组额外的卡牌奖励。",
   "GAOSHOU_RELIC_BATTLE_PASS.flavor": "充值才能变强。",
   "GAOSHOU_RELIC_WHEELCHAIR.title": "轮椅",
-  "GAOSHOU_RELIC_WHEELCHAIR.description": "每回合开始时，获得3{Star:starIcons()}。\n你可以使用2{Star:starIcons()}代替{Energy:energyIcons()}支付。",
+  "GAOSHOU_RELIC_WHEELCHAIR.description": "每回合开始时，获得3{Stars:starIcons()}。\n你可以使用2{Stars:starIcons()}代替{Energy:energyIcons()}支付。",
   "GAOSHOU_RELIC_WHEELCHAIR.flavor": "行动不便，能量不缺。",
-  "GAOSHOU_RELIC_WHEELCHAIR.smartDescription": "每回合开始时，获得3{Star:starIcons()}。\n你可以使用2{Star:starIcons()}代替{Energy:energyIcons()}支付。"
+  "GAOSHOU_RELIC_WHEELCHAIR.smartDescription": "每回合开始时，获得3{Stars:starIcons()}。\n你可以使用2{Stars:starIcons()}代替{Energy:energyIcons()}支付。"
 }

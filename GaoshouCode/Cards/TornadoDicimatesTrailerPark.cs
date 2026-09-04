@@ -41,7 +41,10 @@ public sealed class TornadoDicimatesTrailerPark : ModCardTemplate
 
     // 词条：消耗（保留关键词以兼容"移除消耗"类遗物）、风暴。增幅2 写入描述文本。
     // 泛光：风暴条件可触发（扣除本卡费用后）。
-    protected override bool ShouldGlowGoldInternal => StormGlow.Ready(this, 2, 2);
+    protected override bool ShouldGlowGoldInternal =>
+        StormGlow.Ready(this,
+            (int)DynamicVars.GetRequired<EnergyVar>("EnergyStorm").BaseValue,
+            (int)DynamicVars.GetRequired<StarsVar>("StarsStorm").BaseValue);
 
     public override IEnumerable<CardKeyword> CanonicalKeywords =>
     [
@@ -54,10 +57,8 @@ public sealed class TornadoDicimatesTrailerPark : ModCardTemplate
         new DamageVar(2m, ValueProp.Move),
         ModCardVars.Int("TemporaryStrength", 1),
         ModCardVars.Int("AmplifyCount", 1),
-        ModCardVars.Energy("EnergyA", 1),
-        ModCardVars.Energy("EnergyB", 1),
-        ModCardVars.Stars("StarA", 1),
-        ModCardVars.Stars("StarB", 1),
+        ModCardVars.Energy("EnergyStorm", 2),
+        ModCardVars.Stars("StarsStorm", 2),
     ];
 
     public TornadoDicimatesTrailerPark() : base(BaseEnergyCost, CardKind, CardRarityValue, CardTarget, ShowInCardLibrary)
@@ -78,9 +79,10 @@ public sealed class TornadoDicimatesTrailerPark : ModCardTemplate
             DynamicVars.GetRequired<IntVar>("TemporaryStrength").BaseValue, Owner.Creature, this);
     }
 
-    // 风暴条件：当前能量≥1 且 星辉≥1。
+    // 风暴条件：当前能量>=EnergyStorm 且 星辉>=StarsStorm。
     private bool StormActive()
-        => Owner.PlayerCombatState!.Energy >= 2 && Owner.PlayerCombatState.Stars >= 2;
+        => Owner.PlayerCombatState!.Energy >= (int)DynamicVars.GetRequired<EnergyVar>("EnergyStorm").BaseValue
+           && Owner.PlayerCombatState.Stars >= (int)DynamicVars.GetRequired<StarsVar>("StarsStorm").BaseValue;
 
     /// <summary>
     /// 一次"可风暴"的打出：先执行主效果；若满足风暴条件，再额外打出一次主效果。

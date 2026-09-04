@@ -22,10 +22,8 @@ public sealed class MartialArtsManual : ModRelicTemplate
 
         protected override IEnumerable<MegaCrit.Sts2.Core.Localization.DynamicVars.DynamicVar> CanonicalVars =>
     [
-        ModCardVars.Energy("Energy", 1),
-        ModCardVars.Energy("EnergyB", 1),
-        ModCardVars.Stars("Star", 1),
-        ModCardVars.Stars("StarB", 1),
+        ModCardVars.Energy("Energy", 2),
+        ModCardVars.Stars("Stars", 2),
     ];
 
 

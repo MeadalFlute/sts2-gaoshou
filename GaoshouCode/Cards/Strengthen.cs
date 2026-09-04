@@ -3,6 +3,7 @@ using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Entities.Creatures;
 using MegaCrit.Sts2.Core.Entities.Powers;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
+using MegaCrit.Sts2.Core.HoverTips;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Localization.DynamicVars;
 using Gaoshou.Characters;
@@ -26,6 +27,13 @@ public sealed class Strengthen : ModCardTemplate
     private const bool ShowInCardLibrary = true;
 
     public GaoshouCardColor CardColor => GaoshouCardColor.Green;
+
+    // 悬浮释义：临时力量、临时敏捷。
+    protected override IEnumerable<IHoverTip> AdditionalHoverTips =>
+    [
+        HoverTipFactory.FromPower<GaoshouTemporaryStrengthPower>(),
+        HoverTipFactory.FromPower<GaoshouTemporaryDexterityPower>(),
+    ];
 
     public override CardAssetProfile AssetProfile => new(
         PortraitPath: $"{Entry.ResPath}/images/cards/Strengthen.png");
@@ -57,9 +65,10 @@ public sealed class Strengthen : ModCardTemplate
 
     protected override async Task OnPlay(PlayerChoiceContext choiceContext, CardPlay cardPlay)
     {
-        // 每张变强单独计数：第 N 次打出获得 基准2 + GainUp×(N-1)（与预览一致：2、5、8…）。
+        // 每张变强单独计数：第 N 次打出获得 基准(CalculationBase) + GainUp×(N-1)（与图鉴预览一致）。
         _playsThisCombat++;
-        var gain = 2 + (int)DynamicVars.GetRequired<IntVar>("GainUp").BaseValue * (_playsThisCombat - 1);
+        var baseGain = (int)DynamicVars.CalculationBase.BaseValue;
+        var gain = baseGain + (int)DynamicVars.GetRequired<IntVar>("GainUp").BaseValue * (_playsThisCombat - 1);
 
         await GaoshouTemporaryStrengthPower.GrantAsync(choiceContext, Owner.Creature, gain, Owner.Creature, this);
         await GaoshouTemporaryDexterityPower.GrantAsync(choiceContext, Owner.Creature, gain, Owner.Creature, this);
@@ -67,7 +76,8 @@ public sealed class Strengthen : ModCardTemplate
 
     protected override void OnUpgrade()
     {
-        DynamicVars.GetRequired<IntVar>("GainUp").UpgradeValueBy(1);   // 2 -> 3
+        DynamicVars.GetRequired<IntVar>("GainUp").UpgradeValueBy(1);        // 每次递增 2 -> 3
+        DynamicVars.CalculationBase.UpgradeValueBy(1);                      // 起始层 2 -> 3（图鉴基准与实际打出同步）
     }
 
     private static int PlaysSoFar(CardModel card)

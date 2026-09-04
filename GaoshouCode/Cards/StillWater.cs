@@ -61,7 +61,7 @@ public sealed class StillWater : ModCardTemplate
 
         // 增幅1：弃置最多 1 张牌，然后按实际弃置数重放。
         // 增幅：弃置最多 1(3) 张牌后重放主效果。
-        await this.AmplifyAsync(choiceContext, IsUpgraded ? 3 : 1, MainOnceAsync);
+        await this.AmplifyAsync(choiceContext, IsUpgraded ? 2 : 1, MainOnceAsync);
     }
 
     protected override void OnUpgrade()

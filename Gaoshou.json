@@ -4,7 +4,7 @@
   "pck_name": "Gaoshou",
   "author": "DSH",
   "description": "自定义角色“高手”。白模继承储君，使用能量与星辉双资源。包含连环打击、连环防御、枪盾、连环手四张初始牌以及初始遗物高手护符。",
-  "version": "0.2.7",
+  "version": "1.0.2",
   "has_pck": true,
   "has_dll": true,
   "affects_gameplay": true,

@@ -32,10 +32,11 @@ public sealed class Breath : ModCardTemplate
         CardKeyword.Exhaust,
     ];
 
-    // 能量图标变量（弃置奖励）。
+    // 能量图标变量（弃置奖励）+ 抽牌数。
     protected override IEnumerable<DynamicVar> CanonicalVars =>
     [
-        ModCardVars.Energy("EnergyGain", 1),
+        ModCardVars.Energy("Energy", 1),
+        ModCardVars.Int("Cards", 4),
     ];
 
     public Breath() : base(BaseEnergyCost, CardKind, CardRarityValue, CardTarget, ShowInCardLibrary)
@@ -45,7 +46,7 @@ public sealed class Breath : ModCardTemplate
     protected override async Task OnPlay(PlayerChoiceContext choiceContext, CardPlay cardPlay)
     {
         // 若被打出：抽 4 张牌（消耗由 Exhaust 词条处理）。
-        await CardPileCmd.Draw(choiceContext, 4, Owner);
+        await CardPileCmd.Draw(choiceContext, DynamicVars.GetRequired<IntVar>("Cards").BaseValue, Owner);
     }
 
     // 若被弃置：获得 1 能量（不触发抽牌/消耗）。

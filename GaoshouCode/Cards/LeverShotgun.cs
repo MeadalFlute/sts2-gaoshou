@@ -38,6 +38,7 @@ public sealed class LeverShotgun : ModCardTemplate
 
     protected override IEnumerable<DynamicVar> CanonicalVars =>
     [
+        ModCardVars.Int("Cards", 2),
         new DamageVar(10m, ValueProp.Move),
     ];
 
@@ -54,7 +55,7 @@ public sealed class LeverShotgun : ModCardTemplate
 
         // 流转（颜色与上一张牌完全不同时触发）：抽 2 张牌。
         if (GaoshouFlowTracker.IsFlowReady(this))
-            await CardPileCmd.Draw(choiceContext, 2, Owner);
+            await CardPileCmd.Draw(choiceContext, DynamicVars.GetRequired<IntVar>("Cards").BaseValue, Owner);
     }
 
     protected override void OnUpgrade()

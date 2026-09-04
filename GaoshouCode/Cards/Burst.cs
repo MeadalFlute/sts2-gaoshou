@@ -48,8 +48,8 @@ public sealed class Burst : ModCardTemplate
 
     protected override IEnumerable<DynamicVar> CanonicalVars =>
     [
-        ModCardVars.Energy("EnergyGain", 1),
-        ModCardVars.Stars("StarGain", 1),
+        ModCardVars.Energy("Energy", 1),
+        ModCardVars.Stars("Stars", 1),
     ];
 
     public Burst() : base(BaseEnergyCost, CardKind, CardRarityValue, CardTarget, ShowInCardLibrary)
@@ -71,17 +71,17 @@ public sealed class Burst : ModCardTemplate
     {
         // 流转：获得 1(2) 点能量。
         if (GaoshouFlowTracker.IsFlowReady(this))
-            await PlayerCmd.GainEnergy(DynamicVars.GetRequired<EnergyVar>("EnergyGain").BaseValue, Owner);
+            await PlayerCmd.GainEnergy(DynamicVars.GetRequired<EnergyVar>("Energy").BaseValue, Owner);
 
         // 奇迹：获得 1(2) 点星辉。
         if (!_enteredByTurnStartDraw)
-            await PlayerCmd.GainStars(DynamicVars.GetRequired<StarsVar>("StarGain").BaseValue, Owner);
+            await PlayerCmd.GainStars(DynamicVars.GetRequired<StarsVar>("Stars").BaseValue, Owner);
     }
 
     protected override void OnUpgrade()
     {
         // 能量 1 -> 2、星辉 1 -> 2。
         // 能量固定 1（不再升级）；星辉 1 -> 2。
-        DynamicVars.GetRequired<StarsVar>("StarGain").UpgradeValueBy(1);
+        DynamicVars.GetRequired<StarsVar>("Stars").UpgradeValueBy(1);
     }
 }

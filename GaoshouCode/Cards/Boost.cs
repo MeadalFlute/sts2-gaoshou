@@ -1,6 +1,7 @@
 using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
+using MegaCrit.Sts2.Core.HoverTips;
 using MegaCrit.Sts2.Core.Localization.DynamicVars;
 using Gaoshou.Characters;
 using Gaoshou.Keywords;
@@ -22,6 +23,12 @@ public sealed class Boost : ModCardTemplate
     private const bool ShowInCardLibrary = true;
 
     public GaoshouCardColor CardColor => GaoshouCardColor.Red;
+
+    // 悬浮释义：临时敏捷。
+    protected override IEnumerable<IHoverTip> AdditionalHoverTips =>
+    [
+        HoverTipFactory.FromPower<GaoshouTemporaryDexterityPower>(),
+    ];
 
     public override CardAssetProfile AssetProfile => new(
         PortraitPath: $"{Entry.ResPath}/images/cards/Boost.png");

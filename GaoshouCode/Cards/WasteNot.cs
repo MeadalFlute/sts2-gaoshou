@@ -25,7 +25,7 @@ public sealed class WasteNot : ModCardTemplate
     private const TargetType CardTarget = TargetType.Self;
     private const bool ShowInCardLibrary = true;
 
-    public GaoshouCardColor CardColor => GaoshouCardColor.RedPurple;
+    public GaoshouCardColor CardColor => GaoshouCardColor.BluePurple;
 
     public override CardAssetProfile AssetProfile => new(
         PortraitPath: $"{Entry.ResPath}/images/cards/WasteNot.png");

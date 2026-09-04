@@ -62,14 +62,33 @@ public sealed class RitualDagger : ModCardTemplate
         var n = CurrentUpgradeLevel;
         var total = DynamicVars.Damage.BaseValue + n * (n + 7) / 2m;
 
-        await DamageCmd.Attack(total)
+        var cmd = await DamageCmd.Attack(total)
             .FromCard(this, cardPlay)
             .Targeting(enemy)
             .Execute(choiceContext);
 
-        // 斩杀时：升级自己（可无限升级）。
-        if (enemy.IsDead && CurrentUpgradeLevel < MaxUpgradeLevel)
-            CardCmd.Upgrade(this);
+        // 斩杀判定：以攻击结算的 DamageResult.WasTargetKilled 为准（比 IsDead/IsAlive 可靠，观者-勤学精进同款）。
+        var killed = cmd.Results.SelectMany(r => r).Any(r => r.WasTargetKilled && r.Receiver == enemy);
+        if (killed && CurrentUpgradeLevel < MaxUpgradeLevel)
+        {
+            // 手动升级路径：绕过 CardCmd.Upgrade 的 IsEnding 门控（末敌斩杀时会被吞）。
+            UpgradeInternal();
+            FinalizeUpgradeInternal();
+            // 敲牌动画：NCardSmithVfx（勤学精进同款，挂卡片预览容器）。
+            try
+            {
+                if (MegaCrit.Sts2.Core.Context.LocalContext.IsMe(Owner))
+                {
+                    MegaCrit.Sts2.Core.Helpers.GodotTreeExtensions.AddChildSafely(
+                        MegaCrit.Sts2.Core.Nodes.NRun.Instance?.GlobalUi.CardPreviewContainer,
+                        MegaCrit.Sts2.Core.Nodes.Vfx.NCardSmithVfx.Create(new[] { this }, true));
+                }
+            }
+            catch
+            {
+                // 特效失败不影响升级。
+            }
+        }
     }
 
     protected override void OnUpgrade()

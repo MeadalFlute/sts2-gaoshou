@@ -11,7 +11,7 @@ namespace Gaoshou.Powers;
 
 // 至多保留（能力）：你的回合开始时，最多保留与层数等量的格挡（超出部分失去）。
 [RegisterPower]
-public sealed class GaohouRetainBlockPower : ModPowerTemplate
+public sealed class GaoshouRetainBlockPower : ModPowerTemplate
 {
     public override PowerType Type => PowerType.Buff;
     public override PowerStackType StackType => PowerStackType.Counter;

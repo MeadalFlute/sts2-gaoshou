@@ -36,6 +36,14 @@ public sealed class NewPerspective : ModCardTemplate
         CardKeyword.Exhaust,
     ];
 
+    // 奇迹就绪（非回合开始抽牌进入手牌）时泛橙光。
+    protected override bool ShouldGlowGoldInternal => !_enteredByTurnStartDraw;
+
+    protected override IEnumerable<DynamicVar> CanonicalVars =>
+    [
+        ModCardVars.Int("Cards", 3),
+    ];
+
     public NewPerspective() : base(BaseEnergyCost, CardKind, CardRarityValue, CardTarget, ShowInCardLibrary)
     {
     }
@@ -61,7 +69,7 @@ public sealed class NewPerspective : ModCardTemplate
 
         // 奇迹：非回合开始抽牌进入手牌 → 抽 3 张牌。
         if (!_enteredByTurnStartDraw)
-            await CardPileCmd.Draw(choiceContext, 3, Owner);
+            await CardPileCmd.Draw(choiceContext, DynamicVars.GetRequired<IntVar>("Cards").BaseValue, Owner);
     }
 
     protected override void OnUpgrade()

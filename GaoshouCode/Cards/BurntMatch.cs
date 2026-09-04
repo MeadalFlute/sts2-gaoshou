@@ -35,7 +35,7 @@ public sealed class BurntMatch : ModCardTemplate, Gaoshou.Keywords.IWasteCard
 
     protected override IEnumerable<DynamicVar> CanonicalVars =>
     [
-        ModCardVars.Energy("EnergyGain", 1),
+        ModCardVars.Energy("Energy", 1),
     ];
 
     public BurntMatch() : base(BaseEnergyCost, CardKind, CardRarityValue, CardTarget, ShowInCardLibrary)
@@ -45,7 +45,7 @@ public sealed class BurntMatch : ModCardTemplate, Gaoshou.Keywords.IWasteCard
 
     protected override async Task OnPlay(PlayerChoiceContext choiceContext, CardPlay cardPlay)
     {
-        await PlayerCmd.GainEnergy(DynamicVars.GetRequired<EnergyVar>("EnergyGain").BaseValue, Owner);
+        await PlayerCmd.GainEnergy(DynamicVars.GetRequired<EnergyVar>("Energy").BaseValue, Owner);
 
         // 对自己造成 2 点伤害（可格挡：不带 Unblockable，格挡正常生效；不带力量加成）。
         await CreatureCmd.Damage(choiceContext, Owner.Creature, 2m, ValueProp.Unpowered, Owner.Creature, this, cardPlay);
@@ -53,6 +53,6 @@ public sealed class BurntMatch : ModCardTemplate, Gaoshou.Keywords.IWasteCard
 
     protected override void OnUpgrade()
     {
-        DynamicVars.GetRequired<EnergyVar>("EnergyGain").UpgradeValueBy(1);   // 1 -> 2
+        DynamicVars.GetRequired<EnergyVar>("Energy").UpgradeValueBy(1);   // 1 -> 2
     }
 }

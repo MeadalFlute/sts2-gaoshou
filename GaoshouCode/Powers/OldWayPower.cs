@@ -5,7 +5,7 @@ using STS2RitsuLib.Scaffolding.Content;
 namespace Gaoshou.Powers;
 
 // 遵循古道（能力）：持有时，获得临时力量/临时敏捷改为消耗 1 星辉、获得 1 层基础力量/敏捷。
-// 实际转换逻辑写在 GaohouTemporaryStrengthPower / GaohouTemporaryDexterityPower 的 GrantAsync 中。
+// 实际转换逻辑写在 GaoshouTemporaryStrengthPower / GaoshouTemporaryDexterityPower 的 GrantAsync 中。
 [RegisterPower]
 public sealed class OldWayPower : ModPowerTemplate
 {
