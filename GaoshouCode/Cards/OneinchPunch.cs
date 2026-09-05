@@ -15,7 +15,7 @@ using STS2RitsuLib.Scaffolding.Content;
 namespace Gaoshou.Cards;
 
 // 寸劲：技能（罕见）。耗 2 能量（无升级费用变化）。
-// 获得 2(4) 点临时力量；流转（直接触发）：获得 2 点能量。消耗。
+// 获得 2(3) 点临时力量；流转（直接触发）：获得 2 点能量。
 [RegisterCard(typeof(GaoshouCardPool))]
 public sealed class OneinchPunch : ModCardTemplate
 {
@@ -39,16 +39,15 @@ public sealed class OneinchPunch : ModCardTemplate
         HoverTipFactory.FromPower<GaoshouTemporaryStrengthPower>(),
     ];
 
-    // 词条：流转、消耗。
+    // 词条：流转。
     public override IEnumerable<CardKeyword> CanonicalKeywords =>
     [
         GaoshouKeyword.Flow,
-        CardKeyword.Exhaust,
     ];
 
     protected override IEnumerable<DynamicVar> CanonicalVars =>
     [
-        ModCardVars.Int("TemporaryStrength", 3),
+        ModCardVars.Int("TemporaryStrength", 2),
         ModCardVars.Energy("Energy", 2),
     ];
 
@@ -68,6 +67,6 @@ public sealed class OneinchPunch : ModCardTemplate
 
     protected override void OnUpgrade()
     {
-        RemoveKeyword(CardKeyword.Exhaust);   // 升级移除"消耗"（临时力量固定 3）
+        DynamicVars.GetRequired<IntVar>("TemporaryStrength").UpgradeValueBy(1);   // 2 -> 3
     }
 }

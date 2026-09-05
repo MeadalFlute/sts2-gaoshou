@@ -36,6 +36,7 @@ public static class GaoshouKeywordMechanics
         // TODO(费用-1): 幻影应为"费用-1"。用 TryModifyEnergyCostInCombat / CardEnergyCost 把能量费用降 1。
         ph.RemoveKeyword(GaoshouKeyword.Phantom);
         ph.RemoveKeyword(GaoshouKeyword.Echo);   // 移除回响，避免消耗复制品从消耗牌堆反复回手。
+        // 保留"流转"：复制品正常承载流转伤害效果；无回响故不回手。
         ph.AddKeyword(CardKeyword.Exhaust);
         // 幻影复制品是局内生成的临时牌（不属于牌组），火花/百货战神/这个顺手等
         // 通过 card.DeckVersion == null 直接鉴定，无需额外词条。

@@ -68,6 +68,7 @@ public sealed class ChargeBlade : ModCardTemplate
     protected override void OnUpgrade()
     {
         DynamicVars.GetRequired<IntVar>("Times").UpgradeValueBy(1);        // 4 -> 5
-        DynamicVars.GetRequired<IntVar>("BufferGain").UpgradeValueBy(1);   // 1 -> 2
+        // DynamicVars.GetRequired<IntVar>("BufferGain").UpgradeValueBy(1);   // 1 -> 2
+        DynamicVars.Damage.UpgradeValueBy(2); 
     }
 }

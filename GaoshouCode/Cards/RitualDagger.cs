@@ -1,8 +1,11 @@
+using System.Linq;
 using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
 using MegaCrit.Sts2.Core.HoverTips;
 using MegaCrit.Sts2.Core.Localization.DynamicVars;
+using MegaCrit.Sts2.Core.Models;
+using MegaCrit.Sts2.Core.Runs.History;
 using MegaCrit.Sts2.Core.ValueProps;
 using Gaoshou.Characters;
 using Gaoshou.Keywords;
@@ -58,9 +61,8 @@ public sealed class RitualDagger : ModCardTemplate
         ArgumentNullException.ThrowIfNull(cardPlay.Target);
         var enemy = cardPlay.Target;
 
-        // 伤害 = 12 + n(n+7)/2（n = 升级次数，可无限叠加；DamageVar 每级 +n+4）。
-        var n = CurrentUpgradeLevel;
-        var total = DynamicVars.Damage.BaseValue + n * (n + 7) / 2m;
+        // 伤害 = 12 + n(n+7)/2（n = 升级次数；DamageVar 经 OnUpgrade 已随升级累加为 12 + n(n+7)/2，故直接用 BaseValue）。
+        var total = DynamicVars.Damage.BaseValue;
 
         var cmd = await DamageCmd.Attack(total)
             .FromCard(this, cardPlay)
@@ -69,19 +71,25 @@ public sealed class RitualDagger : ModCardTemplate
 
         // 斩杀判定：以攻击结算的 DamageResult.WasTargetKilled 为准（比 IsDead/IsAlive 可靠，观者-勤学精进同款）。
         var killed = cmd.Results.SelectMany(r => r).Any(r => r.WasTargetKilled && r.Receiver == enemy);
-        if (killed && CurrentUpgradeLevel < MaxUpgradeLevel)
+        if (killed)
         {
-            // 手动升级路径：绕过 CardCmd.Upgrade 的 IsEnding 门控（末敌斩杀时会被吞）。
-            UpgradeInternal();
-            FinalizeUpgradeInternal();
-            // 敲牌动画：NCardSmithVfx（勤学精进同款，挂卡片预览容器）。
+            // 精确升级"本卡对应的牌组母本"（this.DeckVersion，由 PopulateCombatState 指向牌库母本）；
+            // 临时卡（借用复制/局内生成，DeckVersion null）无母本 → 只升 this，跳过升牌库。
+            UpgradeDeckCopies();
+            if (IsUpgradable)
+            {
+                UpgradeInternal();
+                FinalizeUpgradeInternal();
+            }
+            // 敲牌动画：NCardSmithVfx（Lesson Learned 同款；用本卡对应的母本，而非 this）。
             try
             {
                 if (MegaCrit.Sts2.Core.Context.LocalContext.IsMe(Owner))
                 {
+                    var upgraded = DeckVersion;
                     MegaCrit.Sts2.Core.Helpers.GodotTreeExtensions.AddChildSafely(
                         MegaCrit.Sts2.Core.Nodes.NRun.Instance?.GlobalUi.CardPreviewContainer,
-                        MegaCrit.Sts2.Core.Nodes.Vfx.NCardSmithVfx.Create(new[] { this }, true));
+                        MegaCrit.Sts2.Core.Nodes.Vfx.NCardSmithVfx.Create(new[] { upgraded ?? (CardModel)this }, true));
                 }
             }
             catch
@@ -91,9 +99,21 @@ public sealed class RitualDagger : ModCardTemplate
         }
     }
 
+    // 精确升级"本卡对应的牌组母本"（战斗副本 DeckVersion 指向牌库母本；跨战斗持久）。
+    // 临时卡（无 DeckVersion）则跳过升级牌库，只由 OnPlay 升级 this。
+    private void UpgradeDeckCopies()
+    {
+        if (DeckVersion is not { } master || master is not RitualDagger || !master.IsUpgradable)
+            return;
+        var history = Owner.RunState.CurrentMapPointHistoryEntry;
+        history?.GetEntry(Owner.NetId).UpgradedCards.Add(master.Id);
+        master.UpgradeInternal();
+        master.FinalizeUpgradeInternal();
+    }
+
     protected override void OnUpgrade()
     {
-        // 每第 n 次升级增加 (n+4) 点伤害：12 -> 16 -> 21 -> 27 ...（n(n+7)/2 的差分）。
-        DynamicVars.Damage.UpgradeValueBy(CurrentUpgradeLevel + 4);
+        // 每第 n 次升级增加 (n+3) 点伤害（f(n)=12+n(n+7)/2 的差分 = n+3）：12 -> 16 -> 21 -> 27 ...
+        DynamicVars.Damage.UpgradeValueBy(CurrentUpgradeLevel + 3);
     }
 }

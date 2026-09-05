@@ -24,11 +24,9 @@ public sealed class Burst : ModCardTemplate
     private const TargetType CardTarget = TargetType.Self;
     private const bool ShowInCardLibrary = true;
 
-    private bool _enteredByTurnStartDraw;
-
     // 泛光：流转可触发或奇迹可触发时亮起。
     protected override bool ShouldGlowGoldInternal =>
-        GaoshouFlowTracker.IsFlowReady(this) || !_enteredByTurnStartDraw;
+        GaoshouFlowTracker.IsFlowReady(this) || MiracleCounter.IsMiracleReady(this);
 
     // 悬浮释义：奇迹。
     protected override IEnumerable<IHoverTip> AdditionalHoverTips =>
@@ -59,14 +57,6 @@ public sealed class Burst : ModCardTemplate
     // 0 能量 1 星辉。
     public override int CanonicalStarCost => 1;
 
-    // 记录进入手牌方式（奇迹判定）。
-    public override Task AfterCardDrawn(PlayerChoiceContext choiceContext, CardModel card, bool fromHandDraw)
-    {
-        if (card == this)
-            _enteredByTurnStartDraw = fromHandDraw;
-        return Task.CompletedTask;
-    }
-
     protected override async Task OnPlay(PlayerChoiceContext choiceContext, CardPlay cardPlay)
     {
         // 流转：获得 1(2) 点能量。
@@ -74,7 +64,7 @@ public sealed class Burst : ModCardTemplate
             await PlayerCmd.GainEnergy(DynamicVars.GetRequired<EnergyVar>("Energy").BaseValue, Owner);
 
         // 奇迹：获得 1(2) 点星辉。
-        if (!_enteredByTurnStartDraw)
+        if (MiracleCounter.IsMiracleReady(this))
             await PlayerCmd.GainStars(DynamicVars.GetRequired<StarsVar>("Stars").BaseValue, Owner);
     }
 

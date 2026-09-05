@@ -13,8 +13,7 @@ using STS2RitsuLib.Scaffolding.Content;
 namespace Gaoshou.Cards;
 
 // 火花：能力（罕见）。耗 1 能量。
-// 每当你打出【临时】牌后，随机获得 1 点能量或 1 点星辉（临时暂未实装，简化为"打出任意牌后"触发）。
-// 升级后获得"固有"。
+// 你每打出 5（升级 4）张【临时】牌，获得 1 能量、1 星辉。
 [RegisterCard(typeof(GaoshouCardPool))]
 public sealed class Spark : ModCardTemplate
 {
@@ -35,9 +34,10 @@ public sealed class Spark : ModCardTemplate
         HoverTipFactory.FromKeyword(GaoshouKeyword.Temporary),
     ];
 
-    // 能量/星辉图标变量（描述用 {Energy:energyIcons()}、{Stars:starIcons()}）。
+    // 能量/星辉图标变量、触发阈值 Count（描述用 {Energy:energyIcons()}、{Stars:starIcons()}、{Count:diff()}）。
     protected override IEnumerable<DynamicVar> CanonicalVars =>
     [
+        ModCardVars.Int("Count", 5),
         ModCardVars.Energy("Energy", 1),
         ModCardVars.Stars("Stars", 1),
     ];
@@ -48,14 +48,15 @@ public sealed class Spark : ModCardTemplate
 
     protected override async Task OnPlay(PlayerChoiceContext choiceContext, CardPlay cardPlay)
     {
-        // 施加能力：计数 buff（Amount=0 起步，每 5 张临时牌结算）。
-        // 以 1 层起步（Apply 0 层不会被挂载）；计数语义见 SparkPower（每 5 张 → 1 能 1 星）。
-        await PowerCmd.Apply<SparkPower>(choiceContext, Owner.Creature, 1m, Owner.Creature, this);
+        // 施加能力：计数 buff（Amount=0 起步，每 Count 张临时牌结算）。
+        // 以 1 层起步（Apply 0 层不会被挂载）；阈值为卡牌的 Count 变量（升级 5->4）。
+        var power = await PowerCmd.Apply<SparkPower>(choiceContext, Owner.Creature, 1m, Owner.Creature, this);
+        if (power != null)
+            power.SetThreshold((int)DynamicVars.GetRequired<IntVar>("Count").BaseValue);
     }
 
     protected override void OnUpgrade()
     {
-        // 升级后获得"固有"（直接改实例词条）。
-        AddKeyword(CardKeyword.Innate);
+        DynamicVars.GetRequired<IntVar>("Count").UpgradeValueBy(-1);   // 阈值 5 -> 4（不再获得固有）
     }
 }

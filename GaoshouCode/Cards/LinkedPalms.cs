@@ -10,7 +10,7 @@ using STS2RitsuLib.Scaffolding.Content;
 
 namespace Gaoshou.Cards;
 
-// 连还手：技能。耗 1（升级后 0）能量 0 星辉。获得 1 能量、1 星辉。固有、消耗。
+// 连还手：技能。耗 1（升级后 0）能量 0 星辉。获得 1 能量、1 星辉。抽 1 张牌。固有、消耗。
 [RegisterCard(typeof(GaoshouCardPool))]
 [RegisterCharacterStarterCard(typeof(GaoshouCharacter), 1, Order = 40)]
 public sealed class LinkedPalms : ModCardTemplate
@@ -37,6 +37,7 @@ public sealed class LinkedPalms : ModCardTemplate
     [
         ModCardVars.Energy("Energy", 1),
         ModCardVars.Stars("Stars", 1),
+        ModCardVars.Int("Cards", 1),
     ];
 
     public LinkedPalms() : base(BaseEnergyCost, CardKind, CardRarityValue, CardTarget, ShowInCardLibrary)
@@ -48,6 +49,7 @@ public sealed class LinkedPalms : ModCardTemplate
     {
         await PlayerCmd.GainEnergy(DynamicVars.GetRequired<EnergyVar>("Energy").BaseValue, Owner);
         await PlayerCmd.GainStars(DynamicVars.GetRequired<StarsVar>("Stars").BaseValue, Owner);
+        await CardPileCmd.Draw(choiceContext, DynamicVars.GetRequired<IntVar>("Cards").BaseValue, Owner);
     }
 
     protected override void OnUpgrade()

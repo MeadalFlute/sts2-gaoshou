@@ -12,7 +12,7 @@ using STS2RitsuLib.Scaffolding.Content;
 
 namespace Gaoshou.Cards;
 
-// 狙击枪：技能（罕见）。耗 1 能量 1 星辉。造成当前力量 3 倍的伤害。消耗（升级后获得幻影）。
+// 狙击枪：技能（罕见）。耗 1 能量 0 星辉。造成当前力量 3 倍的伤害。消耗（升级后获得幻影）。
 [RegisterCard(typeof(GaoshouCardPool))]
 public sealed class SniperRifle : ModCardTemplate
 {
@@ -52,10 +52,8 @@ public sealed class SniperRifle : ModCardTemplate
 
     public SniperRifle() : base(BaseEnergyCost, CardKind, CardRarityValue, CardTarget, ShowInCardLibrary)
     {
+        // 0 星辉：不覆写 CanonicalStarCost，保持默认“无星辉费用”。
     }
-
-    // 1 能量 1 星辉。
-    public override int CanonicalStarCost => 1;
 
     protected override async Task OnPlay(PlayerChoiceContext choiceContext, CardPlay cardPlay)
     {

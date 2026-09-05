@@ -26,8 +26,6 @@ public sealed class SlowSword : ModCardTemplate
     private const TargetType CardTarget = TargetType.Self;
     private const bool ShowInCardLibrary = true;
 
-    private bool _enteredByTurnStartDraw;
-
     public GaoshouCardColor CardColor => GaoshouCardColor.Blue;
 
     public override bool GainsBlock => true;
@@ -40,7 +38,7 @@ public sealed class SlowSword : ModCardTemplate
 public override CardAssetProfile AssetProfile => new(
         PortraitPath: $"{Entry.ResPath}/images/cards/{GetType().Name}.png");
 
-    protected override bool ShouldGlowGoldInternal => !_enteredByTurnStartDraw;
+    protected override bool ShouldGlowGoldInternal => MiracleCounter.IsMiracleReady(this);
 
     // 悬浮释义：奇迹（自定义词条）。
     protected override IEnumerable<IHoverTip> AdditionalHoverTips =>
@@ -60,20 +58,12 @@ public override CardAssetProfile AssetProfile => new(
 
     public override int CanonicalStarCost => 2;
 
-    // 记录进入手牌的方式：奇迹仅在"非回合开始时抽牌"的情况下触发。
-    public override Task AfterCardDrawn(PlayerChoiceContext choiceContext, CardModel card, bool fromHandDraw)
-    {
-        if (card == this)
-            _enteredByTurnStartDraw = fromHandDraw;
-        return Task.CompletedTask;
-    }
-
     protected override async Task OnPlay(PlayerChoiceContext choiceContext, CardPlay cardPlay)
     {
         await CreatureCmd.GainBlock(Owner.Creature, DynamicVars.Block, cardPlay);
 
         // 奇迹：非回合开始时抽牌进入手牌 → 对随机敌人造成 10(15) 点伤害。
-        if (!_enteredByTurnStartDraw)
+        if (MiracleCounter.IsMiracleReady(this))
         {
             var enemies = (this.CombatState?.HittableEnemies ?? []).ToList();
             var random = enemies.Count > 0 ? Owner.RunState.Rng.CombatTargets.NextItem(enemies) : null;

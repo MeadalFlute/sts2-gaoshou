@@ -29,10 +29,7 @@ public sealed class Reconsider : ModCardTemplate
         PortraitPath: $"{Entry.ResPath}/images/cards/Reconsider.png");
 
     // 奇迹就绪（进入手牌的方式非"回合开始时抽牌"）时泛橙光。
-    protected override bool ShouldGlowGoldInternal => !_enteredByTurnStartDraw;
-
-    // 本张卡是否由"回合开始时抽牌"进入手牌（奇迹的触发条件）。
-    private bool _enteredByTurnStartDraw;
+    protected override bool ShouldGlowGoldInternal => MiracleCounter.IsMiracleReady(this);
 
     // 悬浮释义：奇迹（自定义词条）。
     protected override IEnumerable<IHoverTip> AdditionalHoverTips =>
@@ -59,14 +56,6 @@ public sealed class Reconsider : ModCardTemplate
         // 0 能量 0 星辉：不覆写 CanonicalStarCost。
     }
 
-    // 记录进入手牌的方式：奇迹仅在"非回合开始时抽牌"的情况下触发。
-    public override Task AfterCardDrawn(PlayerChoiceContext choiceContext, CardModel card, bool fromHandDraw)
-    {
-        if (card == this)
-            _enteredByTurnStartDraw = fromHandDraw;
-        return Task.CompletedTask;
-    }
-
     protected override async Task OnPlay(PlayerChoiceContext choiceContext, CardPlay cardPlay)
     {
         // 弃掉所有手牌。
@@ -76,7 +65,7 @@ public sealed class Reconsider : ModCardTemplate
         await CardPileCmd.Draw(choiceContext, DynamicVars.GetRequired<IntVar>("Cards").BaseValue, Owner);
 
         // 奇迹：非回合开始时抽牌进入手牌才触发 → 获得 1 能量、1 星辉。
-        if (!_enteredByTurnStartDraw)
+        if (MiracleCounter.IsMiracleReady(this))
         {
             await PlayerCmd.GainEnergy(DynamicVars.GetRequired<EnergyVar>("Energy").BaseValue, Owner);
             await PlayerCmd.GainStars(DynamicVars.GetRequired<StarsVar>("Stars").BaseValue, Owner);

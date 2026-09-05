@@ -1,7 +1,9 @@
+using System.Collections.Generic;
 using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Entities.Powers;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
+using MegaCrit.Sts2.Core.Localization.DynamicVars;
 using STS2RitsuLib.Interop.AutoRegistration;
 using STS2RitsuLib.Scaffolding.Content;
 
@@ -16,17 +18,41 @@ public sealed class SparkPower : ModPowerTemplate
     public class Data
     {
         public int tempPlayed;
+        public int threshold = 5;   // 每 threshold 张临时牌结算（由火花卡的 Count 变量设置，升级 5->4）。
     }
 
     public override PowerType Type => PowerType.Buff;
     public override PowerStackType StackType => PowerStackType.Counter;
+    // 每张火花生成独立实例：多个火花 buff 各自独立计数/阈值/倒计时，不合并堆叠（参照 TheBombPower）。
+    public override PowerInstanceType InstanceType => PowerInstanceType.Instanced;
 
     public override PowerAssetProfile AssetProfile => new(
         IconPath: $"{Entry.ResPath}/images/powers/spark.png",
         BigIconPath: $"{Entry.ResPath}/images/powers/spark.png");
 
-    // 倒计时显示：5 → 4 → … → 1 → 结算后回到 5（环绕轨道同款 4 - n%4）。
-    public override int DisplayAmount => 5 - GetInternalData<Data>().tempPlayed % 5;
+    // 必须初始化 internal Data（参照 OrbitPower.InitInternalData）；否则 GetInternalData 返回共享/未初始化的 Data，threshold 异常。
+    protected override object InitInternalData() => new Data();
+
+    public void SetThreshold(int value)
+    {
+        var data = GetInternalData<Data>();
+        data.threshold = Math.Max(1, value);
+        ((IntVar)DynamicVars["Count"]).BaseValue = data.threshold;   // 供能力描述 {Count} 显示（升级后 4）
+        InvokeDisplayAmountChanged();
+    }
+
+    // 倒计时显示：threshold → … → 1 → 结算后回到 threshold。
+    public override int DisplayAmount => GetInternalData<Data>().tempPlayed % GetInternalData<Data>().threshold == 0
+        ? GetInternalData<Data>().threshold
+        : GetInternalData<Data>().threshold - (GetInternalData<Data>().tempPlayed % GetInternalData<Data>().threshold);
+
+    // 能量/星辉图标、触发阈值 Count（能力描述用 {Energy:energyIcons()}{Stars:starIcons()}、{Count}）。
+    protected override IEnumerable<DynamicVar> CanonicalVars =>
+    [
+        new IntVar("Count", 5),
+        new EnergyVar(1),
+        new StarsVar(1),
+    ];
 
     public override async Task AfterCardPlayed(PlayerChoiceContext choiceContext, CardPlay cardPlay)
     {
@@ -39,12 +65,13 @@ public sealed class SparkPower : ModPowerTemplate
             return;
 
         var data = GetInternalData<Data>();
+        var threshold = Math.Max(1, data.threshold);
         data.tempPlayed++;
         InvokeDisplayAmountChanged();
-        if (data.tempPlayed % 5 != 0)
+        if (data.tempPlayed % threshold != 0)
             return;
 
-        // 每累计 5 张：奖励 火花数量×1 能量与星辉（多个火花 buff 独立叠加）。
+        // 每累计 threshold 张：奖励 火花数量×1 能量与星辉（多个火花 buff 独立叠加）。
         await PlayerCmd.GainEnergy(Amount, player);
         await PlayerCmd.GainStars(Amount, player);
     }

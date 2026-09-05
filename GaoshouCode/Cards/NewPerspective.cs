@@ -3,7 +3,6 @@ using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
 using MegaCrit.Sts2.Core.Localization.DynamicVars;
-using MegaCrit.Sts2.Core.Models;
 using Gaoshou.Characters;
 using Gaoshou.Keywords;
 using STS2RitsuLib.Cards.DynamicVars;
@@ -23,8 +22,6 @@ public sealed class NewPerspective : ModCardTemplate
     private const TargetType CardTarget = TargetType.Self;
     private const bool ShowInCardLibrary = true;
 
-    private bool _enteredByTurnStartDraw;
-
     public GaoshouCardColor CardColor => GaoshouCardColor.Blue;
 
     public override CardAssetProfile AssetProfile => new(
@@ -37,7 +34,7 @@ public sealed class NewPerspective : ModCardTemplate
     ];
 
     // 奇迹就绪（非回合开始抽牌进入手牌）时泛橙光。
-    protected override bool ShouldGlowGoldInternal => !_enteredByTurnStartDraw;
+    protected override bool ShouldGlowGoldInternal => MiracleCounter.IsMiracleReady(this);
 
     protected override IEnumerable<DynamicVar> CanonicalVars =>
     [
@@ -46,14 +43,6 @@ public sealed class NewPerspective : ModCardTemplate
 
     public NewPerspective() : base(BaseEnergyCost, CardKind, CardRarityValue, CardTarget, ShowInCardLibrary)
     {
-    }
-
-    // 记录进入手牌的方式（奇迹判定）。
-    public override Task AfterCardDrawn(PlayerChoiceContext choiceContext, CardModel card, bool fromHandDraw)
-    {
-        if (card == this)
-            _enteredByTurnStartDraw = fromHandDraw;
-        return Task.CompletedTask;
     }
 
     protected override async Task OnPlay(PlayerChoiceContext choiceContext, CardPlay cardPlay)
@@ -68,7 +57,7 @@ public sealed class NewPerspective : ModCardTemplate
             await CardPileCmd.Add(c, PileType.Discard);
 
         // 奇迹：非回合开始抽牌进入手牌 → 抽 3 张牌。
-        if (!_enteredByTurnStartDraw)
+        if (MiracleCounter.IsMiracleReady(this))
             await CardPileCmd.Draw(choiceContext, DynamicVars.GetRequired<IntVar>("Cards").BaseValue, Owner);
     }
 

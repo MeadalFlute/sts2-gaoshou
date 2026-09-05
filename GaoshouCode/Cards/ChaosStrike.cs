@@ -12,8 +12,8 @@ using STS2RitsuLib.Scaffolding.Content;
 
 namespace Gaoshou.Cards;
 
-// 混乱打击：攻击（普通）。耗 2 能量 0 星辉（升级后伤害 3->4、次数 4->5）。
-// 对随机敌人造成 4(5) 次 3(4) 点伤害。词条：幻影。
+// 混乱打击：攻击（普通）。耗 2 能量 0 星辉（升级后次数 4->5，伤害不变）。
+// 对随机敌人造成 4(5) 次 3 点伤害。词条：幻影。
 [RegisterCard(typeof(GaoshouCardPool))]
 public sealed class ChaosStrike : ModCardTemplate
 {
@@ -58,7 +58,6 @@ public sealed class ChaosStrike : ModCardTemplate
 
     protected override void OnUpgrade()
     {
-        DynamicVars.Damage.UpgradeValueBy(1);                       // 3 -> 4
-        DynamicVars.GetRequired<IntVar>("Times").UpgradeValueBy(1); // 4 -> 5
+        DynamicVars.GetRequired<IntVar>("Times").UpgradeValueBy(1); // 4 -> 5（伤害不变）
     }
 }

@@ -24,8 +24,6 @@ public sealed class Parrys : ModCardTemplate
     private const TargetType CardTarget = TargetType.Self;
     private const bool ShowInCardLibrary = true;
 
-    private bool _enteredByTurnStartDraw;
-
     public GaoshouCardColor CardColor => GaoshouCardColor.Blue;
 
     public override CardAssetProfile AssetProfile => new(
@@ -40,7 +38,7 @@ public sealed class Parrys : ModCardTemplate
         {
             var attackers = (this.CombatState?.HittableEnemies ?? [])
                 .Where(e => e.Monster?.NextMove?.Intents.Any(i => i.IntentType == IntentType.Attack) ?? false).ToList();
-            var miracle = !_enteredByTurnStartDraw;
+            var miracle = MiracleCounter.IsMiracleReady(this);
             return miracle && attackers.Count > 0;
         }
     }
@@ -67,22 +65,13 @@ public sealed class Parrys : ModCardTemplate
 
     public override int CanonicalStarCost => 2;
 
-    // 记录进入手牌的方式：奇迹仅在"非回合开始时抽牌"的情况下触发。
-    public override Task AfterCardDrawn(PlayerChoiceContext choiceContext, CardModel card, bool fromHandDraw)
-    {
-        if (card == this)
-            _enteredByTurnStartDraw = fromHandDraw;
-        return Task.CompletedTask;
-    }
-
     protected override async Task OnPlay(PlayerChoiceContext choiceContext, CardPlay cardPlay)
     {
-        Godot.GD.Print($"GAOSHOU-PARRYS-PLAY miracle={!_enteredByTurnStartDraw} enteredByTurnStartDraw={_enteredByTurnStartDraw}");
         // 获得 2 层临时敏捷。
         await GaoshouTemporaryDexterityPower.GrantAsync(choiceContext, Owner.Creature, 2m, Owner.Creature, this);
 
         // 奇迹（非回合开始抽牌进入手牌）：击晕一名意图为攻击的敌人。
-        if (!_enteredByTurnStartDraw)
+        if (MiracleCounter.IsMiracleReady(this))
         {
             var attackers = (this.CombatState?.HittableEnemies ?? [])
                 .Where(e => e.Monster?.NextMove?.Intents.Any(i => i.IntentType == IntentType.Attack) ?? false)
@@ -100,6 +89,5 @@ public sealed class Parrys : ModCardTemplate
     {
         // 升级后移除"消耗"（临时敏捷固定 2）。
         RemoveKeyword(CardKeyword.Exhaust);
-        Godot.GD.Print($"GAOSHOU-PARRYS-UP hasexhaust={Keywords.Contains(CardKeyword.Exhaust)}");
     }
 }

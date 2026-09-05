@@ -26,8 +26,7 @@ public sealed class Impatient : ModCardTemplate
     public override CardAssetProfile AssetProfile => new(
         PortraitPath: $"{Entry.ResPath}/images/cards/{GetType().Name}.png");
 
-    // 泛光：风暴条件可触发（扣除本卡费用后）。风暴泛光：需扣除护符互抵的 +1 星辉信用
-    // （打出后护符补星会抬高当前星辉，风暴条件按"真实星辉"算）。
+    // 泛光：风暴条件可触发（模拟打出后资源：扣除自身费用 + 护符互抵补回）。
     protected override bool ShouldGlowGoldInternal =>
         StormGlow.Ready(this, 0, (int)DynamicVars.GetRequired<StarsVar>("StarsStorm").BaseValue);
 
@@ -52,7 +51,7 @@ public sealed class Impatient : ModCardTemplate
     protected override async Task OnPlay(PlayerChoiceContext choiceContext, CardPlay cardPlay)
     {
         await CardPileCmd.Draw(choiceContext, DynamicVars.GetRequired<IntVar>("Cards").BaseValue, Owner);
-        // 风暴（星星星(星)）：当前星辉>=StarsStorm 才重复抽 2 张。
+        // 风暴（3（2）星）：当前星辉>=StarsStorm 才重复抽 2 张。
         if (Owner.PlayerCombatState!.Stars >= (int)DynamicVars.GetRequired<StarsVar>("StarsStorm").BaseValue)
             await CardPileCmd.Draw(choiceContext, DynamicVars.GetRequired<IntVar>("Cards").BaseValue, Owner);
     }

@@ -1,7 +1,9 @@
+using System.Collections.Generic;
 using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Entities.Powers;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
+using MegaCrit.Sts2.Core.Localization.DynamicVars;
 using Gaoshou.Keywords;
 using STS2RitsuLib.Interop.AutoRegistration;
 using STS2RitsuLib.Scaffolding.Content;
@@ -15,6 +17,12 @@ public sealed class SwordDancePower : ModPowerTemplate
 {
     public override PowerType Type => PowerType.Buff;
     public override PowerStackType StackType => PowerStackType.Counter;
+
+    // 能量图标变量（能力描述用 {Energy:energyIcons()}）。
+    protected override IEnumerable<DynamicVar> CanonicalVars =>
+    [
+        new EnergyVar(1),
+    ];
 
     public override PowerAssetProfile AssetProfile => new(
         IconPath: $"{Entry.ResPath}/images/powers/sworddance.png",

@@ -25,8 +25,6 @@ public sealed class Deflection : ModCardTemplate
 
     public GaoshouCardColor CardColor => GaoshouCardColor.Blue;
 
-    private bool _enteredByTurnStartDraw;
-
     public override CardAssetProfile AssetProfile => new(
         PortraitPath: $"{Entry.ResPath}/images/cards/Deflection.png");
 
@@ -48,18 +46,10 @@ public sealed class Deflection : ModCardTemplate
     {
     }
 
-    // 记录进入手牌方式（奇迹判定）。
-    public override Task AfterCardDrawn(PlayerChoiceContext choiceContext, CardModel card, bool fromHandDraw)
-    {
-        if (card == this)
-            _enteredByTurnStartDraw = fromHandDraw;
-        return Task.CompletedTask;
-    }
-
     protected override async Task OnPlay(PlayerChoiceContext choiceContext, CardPlay cardPlay)
     {
         // 本体 1 层；奇迹（非回合开始抽牌进手）额外打出 1(2) 次。
-        var repeats = 1 + (_enteredByTurnStartDraw ? 0 : (IsUpgraded ? 2 : 1));
+        var repeats = 1 + (MiracleCounter.IsMiracleReady(this) ? (IsUpgraded ? 2 : 1) : 0);
 
         for (var i = 0; i < repeats; i++)
         {

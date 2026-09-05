@@ -9,16 +9,20 @@ using STS2RitsuLib.Interop.AutoRegistration;
 
 namespace Gaoshou.Keywords;
 
-// 奇迹计数器：本场战斗中"奇迹牌（带奇迹词条）以非回合开始时抽牌的方式进入手牌、随后被打出"的次数。
-// 计数挂在 STATIC 表（_counts 静态）：无论钩子实例与读取方是否同一对象，数据同源。
-// 按玩家分键（字典 key = Player），多人各计各的，绝不混加。
+// 奇迹计数器：统一奇迹就绪判定 + 本场奇迹触发计数。
+// 奇迹就绪 = 奇迹牌（带奇迹词条）不是"本回合开始时抽牌"进入手牌。
+// 用一个"回合初抽牌池子"(_turnStartDrawn) 记录本回合初抽进手的奇迹牌；
+// 任何不在池子里的奇迹卡（借用之牌/幻影复制品、手牌复制、丢弃后进手、上一回合保留/囤积遗留等）
+// 都视为"非回合初进手" → 奇迹就绪。clone 是独立引用实例，天然不在池子里，无需特殊处理。
+// 回合结束清空池子：保留/囤积带至下一轮的卡，下一轮重新成为"非回合初"。
+// 本场奇迹触发次数(_counts)按玩家分键，供速子长矛等读取。
 [RegisterSingleton]
 public sealed class MiracleCounter : SingletonModel
 {
     public override bool ShouldReceiveCombatHooks => true;
 
     private static readonly Dictionary<Player, int> _counts = new();
-    private static readonly HashSet<CardModel> _enteredNonTurnStart = new();
+    private static readonly HashSet<CardModel> _turnStartDrawn = new();
 
     public MiracleCounter()
     {
@@ -33,53 +37,30 @@ public sealed class MiracleCounter : SingletonModel
     public override Task BeforeCombatStart()
     {
         _counts.Clear();
-        _enteredNonTurnStart.Clear();
+        _turnStartDrawn.Clear();
         return Task.CompletedTask;
     }
 
-    // 回合结束时仍留在手牌的奇迹牌（保留/囤积带至下一轮）：登记为"非回合开始时抽牌"进入。
+    // 抽牌路径：回合开始时抽到的奇迹牌 → 加入"回合初抽牌池子"。
+    // fromHandDraw=true 表示这是回合初从抽牌堆抽到手的（奇迹判定用）。
+    public override Task AfterCardDrawn(PlayerChoiceContext choiceContext, CardModel card, bool fromHandDraw)
+    {
+        if (fromHandDraw && card.Owner != null && card.Keywords.Contains(GaoshouKeyword.Miracle))
+        {
+            _turnStartDrawn.Add(card);
+        }
+        return Task.CompletedTask;
+    }
+
+    // 回合结束时清空"回合初抽牌池子"：保留/囤积带至下一轮的奇迹牌，下一轮重新视为"非回合初"。
     public override Task AfterSideTurnEnd(PlayerChoiceContext choiceContext, CombatSide side,
         IEnumerable<MegaCrit.Sts2.Core.Entities.Creatures.Creature> participants)
     {
-        foreach (var creature in participants)
-        {
-            if (creature.Player == null)
-                continue;
-            var hand = PileType.Hand.GetPile(creature.Player)?.Cards;
-            if (hand == null)
-                continue;
-            foreach (var card in hand)
-            {
-                if (card.Owner == creature.Player && card.Keywords.Contains(GaoshouKeyword.Miracle))
-                {
-                    _enteredNonTurnStart.Add(card);
-                }
-            }
-        }
+        _turnStartDrawn.Clear();
         return Task.CompletedTask;
     }
 
-    // 抽牌路径：非回合开始抽牌进入手牌 → 登记。
-    public override Task AfterCardDrawn(PlayerChoiceContext choiceContext, CardModel card, bool fromHandDraw)
-    {
-        if (!fromHandDraw && card.Owner != null)
-        {
-            _enteredNonTurnStart.Add(card);
-        }
-        return Task.CompletedTask;
-    }
-
-    // 加入路径：非来自抽牌堆进入手牌 → 登记。
-    public override Task AfterCardChangedPiles(CardModel card, PileType oldPileType, AbstractModel? clonedBy)
-    {
-        if (card.Pile?.Type == PileType.Hand && oldPileType != PileType.Hand && oldPileType != PileType.Draw && card.Owner != null)
-        {
-            _enteredNonTurnStart.Add(card);
-        }
-        return Task.CompletedTask;
-    }
-
-    // 奇迹牌被打出且此前以非回合抽牌方式进手 → 计一次奇迹（按玩家分键）。
+    // 奇迹牌被打出且奇迹就绪（非回合初抽牌进手）→ 计一次奇迹（按玩家分键）。
     public override Task AfterCardPlayed(PlayerChoiceContext choiceContext, CardPlay cardPlay)
     {
         var card = cardPlay.Card;
@@ -87,20 +68,26 @@ public sealed class MiracleCounter : SingletonModel
             return Task.CompletedTask;
         if (!card.Keywords.Contains(GaoshouKeyword.Miracle))
             return Task.CompletedTask;
-        if (!_enteredNonTurnStart.Contains(card))
+        if (IsMiracleReady(card))
         {
-            return Task.CompletedTask;
+            _counts[card.Owner] = _counts.GetValueOrDefault(card.Owner) + 1;
         }
-
-        var player = card.Owner;
-        _counts[player] = _counts.GetValueOrDefault(player) + 1;
         return Task.CompletedTask;
     }
 
     // 静态读取（与钩子实例解耦；按玩家）。
     public static int GetMiracleCount(Player player)
     {
-        var n = _counts.GetValueOrDefault(player);
-        return n;
+        return _counts.GetValueOrDefault(player);
+    }
+
+    // 奇迹就绪（统一来源）：奇迹牌且本回合初抽牌池子里没有它。
+    public static bool IsMiracleReady(CardModel? card)
+    {
+        if (card == null)
+            return false;
+        if (!card.Keywords.Contains(GaoshouKeyword.Miracle))
+            return false;
+        return !_turnStartDrawn.Contains(card);
     }
 }

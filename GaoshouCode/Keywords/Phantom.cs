@@ -90,6 +90,7 @@ public sealed class PhantomSingleton : SingletonModel
             cardModel.RemoveKeyword(GaoshouKeyword.Phantom);
             // 幻影复制品移除"回响"：否则打出后会从消耗牌堆反复回手（三尖两刃枪实测问题）。
             cardModel.RemoveKeyword(GaoshouKeyword.Echo);
+            // 保留"流转"：复制品正常承载流转伤害效果（描述仅剩"流转：造成伤害"一行）；无回响故不回手。
             // 幻影复制品不再携带"幻影次数"：否则该复制品再次被打出时会再次生成幻影（闪电打击实测问题）。
             if (cardModel.DynamicVars.TryGetValue("PhantomCount", out var phantomCountVar))
                 phantomCountVar.BaseValue = 0;
