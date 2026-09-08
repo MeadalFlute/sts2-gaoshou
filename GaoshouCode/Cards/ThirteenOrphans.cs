@@ -3,7 +3,6 @@ using MegaCrit.Sts2.Core.CardSelection;
 using MegaCrit.Sts2.Core.Combat;
 using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.Entities.Cards;
-using MegaCrit.Sts2.Core.Entities.Creatures;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Models.Relics;
@@ -30,8 +29,16 @@ public sealed class ThirteenOrphans : ModCardTemplate
     public GaoshouCardColor CardColor => GaoshouCardColor.BluePurple;
 
     // 泛光：手牌中含有 >= 9 种不同卡牌时亮起（触发条件就绪）。
-    protected override bool ShouldGlowGoldInternal =>
-        (Owner?.PlayerCombatState?.Hand.Cards.Select(c => c.GetType()).Distinct().Count() ?? 0) >= 9;
+    protected override bool ShouldGlowGoldInternal => GetDistinctHandTypeCount() >= 9;
+
+    // 手牌中（排除十三幺自身 this）不同卡牌类型的种数，供高亮与触发判定共用。
+    // 排除 this：十三幺在手牌时若算上自己会让高亮偏高；打出后它会离开手牌，两处需保持一致。
+    private int GetDistinctHandTypeCount()
+    {
+        return Owner?.PlayerCombatState?.Hand.Cards
+            .Where(c => !ReferenceEquals(c, this))
+            .Select(c => c.GetType()).Distinct().Count() ?? 0;
+    }
 
     public override CardAssetProfile AssetProfile => new(
         PortraitPath: $"{Entry.ResPath}/images/cards/{GetType().Name}.png");
@@ -43,46 +50,39 @@ public sealed class ThirteenOrphans : ModCardTemplate
 
     protected override async Task OnPlay(PlayerChoiceContext choiceContext, CardPlay cardPlay)
     {
-        // 条件：手牌中含有 >= 9 种不同卡牌。
-        var distinctCount = Owner.PlayerCombatState!.Hand.Cards.Select(c => c.GetType()).Distinct().Count();
-        if (distinctCount < 9)
+        // 条件：手牌中（排除十三幺自身）含有 >= 9 种不同卡牌。
+        if (GetDistinctHandTypeCount() < 9)
             return;
 
+        // 打出十三幺后，手牌只剩 9 张（手牌上限 10，十三幺自身已出发）。
         var hand = PileType.Hand.GetPile(Owner);
-        var cards = hand.Cards.ToList();   // 从左到右 = 手牌顺序
-        var combat = Owner.Creature.CombatState;
-        if (cards.Count == 0 || combat == null)
+        var cards = hand.Cards.ToList();   // 快照：只处理打出十三幺时的这批手牌，不处理之后抽上来的新牌。
+        if (cards.Count == 0)
             return;
 
-        // 低语耳环式自动打出：PushSelector 保证自动索敌、阻断玩家输入。
+        // 先依次把这批手牌移入结算区（Play 区），锁定它们、脱离手牌变动；
+        // 再逐张 AutoPlay 结算。这样上一张结算时，其它牌已在 Play 区，
+        // 不会被手牌变化/弃置/消耗/变化影响（快照引用保持有效）。
         using (CardSelectCmd.PushSelector(new VakuuCardSelector()))
         {
             foreach (var card in cards)
             {
                 if (CombatManager.Instance.IsOverOrEnding)
                     break;
-                if (!card.CanPlay())
-                    continue;
 
-                card.SetToFreeThisTurn();                  // 子弹时间：手牌免费
-                var target = GetAutoTarget(card, combat);
-                await card.SpendResources();
-                await CardCmd.AutoPlay(choiceContext, card, target, AutoPlayType.Default, skipXCapture: true);
+                if (card.Pile?.Type != PileType.Play)
+                    await CardPileCmd.Add(card, PileType.Play);
+            }
+
+            // 全部移入结算区后再逐张结算。
+            foreach (var card in cards)
+            {
+                if (CombatManager.Instance.IsOverOrEnding)
+                    break;
+
+                await CardCmd.AutoPlay(choiceContext, card, null);
             }
         }
-    }
-
-    /// <summary>
-    /// 自动索敌（对齐低语耳环）：敌人取最左存活敌人；友方/玩家取自己；其余为 null。
-    /// </summary>
-    private static Creature? GetAutoTarget(CardModel card, ICombatState combatState)
-    {
-        return card.TargetType switch
-        {
-            TargetType.AnyEnemy => combatState.HittableEnemies.FirstOrDefault(),
-            TargetType.AnyAlly or TargetType.AnyPlayer => card.Owner?.Creature,
-            _ => null,
-        };
     }
 
     protected override void OnUpgrade()

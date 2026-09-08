@@ -23,11 +23,20 @@ public sealed class GaoshouRetainBlockPower : ModPowerTemplate
     // 持有者不清除格挡。
     public override bool ShouldClearBlock(Creature creature) => creature != Owner;
 
-    // 清除被阻止后：若格挡超出上限，直接截断到上限（属性级，无需命令上下文）。
+    // 清除被阻止后：若格挡超出上限，截断到上限。
+    // 但若场上还有其它"全保留格挡"的能力（残影/壁垒等，ShouldClearBlock=false），则让全保留优先，
+    // 不再截断——否则会错误地把本该全保留的格挡砍到上限（例如残影+全副武装时格挡被重置到 15）。
     public override Task AfterPreventingBlockClear(AbstractModel preventer, Creature creature)
     {
         if (this != preventer || creature != Owner)
             return Task.CompletedTask;
+
+        foreach (var power in Owner.Powers)
+        {
+            if (power != this && !power.ShouldClearBlock(Owner))
+                return Task.CompletedTask;
+        }
+
         if (Owner.Block > Amount)
             Owner.Block = Amount;
         return Task.CompletedTask;

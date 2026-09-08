@@ -31,8 +31,9 @@ public sealed class BurnOutPower : ModPowerTemplate
         if (!participants.Contains(Owner))
             return;
 
-        // 每回合结束时，失去 1 层力量（最少扣到 0）。
-        if (Owner.Powers.OfType<StrengthPower>().FirstOrDefault()?.Amount > 0)
-            await PowerCmd.Apply<StrengthPower>(choiceContext, Owner, -1m, Owner, null);
+        // 每回合结束时，失去与层数等量的力量（多个燃尽 buff 叠加：Amount 累加 → 扣 Amount 层；最少扣到 0）。
+        var strength = Owner.Powers.OfType<StrengthPower>().FirstOrDefault();
+        if (strength?.Amount > 0)
+            await PowerCmd.Apply<StrengthPower>(choiceContext, Owner, -Amount, Owner, null);
     }
 }

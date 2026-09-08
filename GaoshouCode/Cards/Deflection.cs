@@ -40,6 +40,9 @@ public sealed class Deflection : ModCardTemplate
         GaoshouKeyword.Miracle,
     ];
 
+    // 奇迹就绪（进入手牌的方式非"回合开始时抽牌"）时泛橙光。
+    protected override bool ShouldGlowGoldInternal => MiracleCounter.IsMiracleReady(this);
+
     public override int CanonicalStarCost => 2;
 
     public Deflection() : base(BaseEnergyCost, CardKind, CardRarityValue, CardTarget, ShowInCardLibrary)

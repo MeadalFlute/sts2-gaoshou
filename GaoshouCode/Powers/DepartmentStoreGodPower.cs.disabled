@@ -24,14 +24,17 @@ public sealed class DepartmentStoreGodPower : ModPowerTemplate
     public override async Task AfterCardPlayed(PlayerChoiceContext choiceContext, CardPlay cardPlay)
     {
         var player = cardPlay.Player;
+        if (player == null || Amount <= 0)
+            return;
+        // 用 NetId（稳定玩家标识）而非引用相等判断"打牌者是否为百货战神持有者"：
+        // 多人中 player == Owner.Player 可能因 Player 对象副本导致两端判定不同，NetId 保证确定性。
         if (Owner.Player == null || player.NetId != Owner.Player.NetId)
             return;
-           
         if (cardPlay.Card.DeckVersion != null)
             return;
 
         // 随机：临时力量 或 临时敏捷（+1）。
-        if (player.RunState.Rng.Niche.NextBool())
+        if (player.RunState.Rng.CombatCardGeneration.NextBool())
             await GaoshouTemporaryStrengthPower.GrantAsync(choiceContext, player.Creature, 1m, player.Creature, cardPlay.Card);
         else
             await GaoshouTemporaryDexterityPower.GrantAsync(choiceContext, player.Creature, 1m, player.Creature, cardPlay.Card);

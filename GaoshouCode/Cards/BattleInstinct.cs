@@ -50,8 +50,8 @@ public sealed class BattleInstinct : ModCardTemplate
 
     protected override IEnumerable<DynamicVar> CanonicalVars =>
     [
-        ModCardVars.Int("StrengthGain", 3),
-        ModCardVars.Int("DexterityGain", 3),
+        ModCardVars.Power<StrengthPower>(3),
+        ModCardVars.Power<DexterityPower>(3),
     ];
 
     public BattleInstinct() : base(BaseEnergyCost, CardKind, CardRarityValue, CardTarget, ShowInCardLibrary)
@@ -62,9 +62,9 @@ public sealed class BattleInstinct : ModCardTemplate
     {
         // 3(5) 力量 + 3(5) 敏捷。
         await PowerCmd.Apply<StrengthPower>(choiceContext, Owner.Creature,
-            DynamicVars.GetRequired<IntVar>("StrengthGain").BaseValue, Owner.Creature, this);
+            DynamicVars["StrengthPower"].BaseValue, Owner.Creature, this);
         await PowerCmd.Apply<DexterityPower>(choiceContext, Owner.Creature,
-            DynamicVars.GetRequired<IntVar>("DexterityGain").BaseValue, Owner.Creature, this);
+            DynamicVars["DexterityPower"].BaseValue, Owner.Creature, this);
 
         // 隐藏敌人血条与意图（能力在敌方回合开始持续重隐）。
         await PowerCmd.Apply<BattleInstinctPower>(choiceContext, Owner.Creature, 1m, Owner.Creature, this);
@@ -73,7 +73,7 @@ public sealed class BattleInstinct : ModCardTemplate
 
     protected override void OnUpgrade()
     {
-        DynamicVars.GetRequired<IntVar>("StrengthGain").UpgradeValueBy(1);   // 3 -> 4
-        DynamicVars.GetRequired<IntVar>("DexterityGain").UpgradeValueBy(1);  // 3 -> 4
+        DynamicVars["StrengthPower"].UpgradeValueBy(1);   // 3 -> 4
+        DynamicVars["DexterityPower"].UpgradeValueBy(1);  // 3 -> 4
     }
 }

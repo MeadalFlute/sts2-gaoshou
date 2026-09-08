@@ -42,6 +42,7 @@ public sealed class Burst : ModCardTemplate
     public override IEnumerable<CardKeyword> CanonicalKeywords =>
     [
         GaoshouKeyword.Flow,
+        GaoshouKeyword.Miracle,
     ];
 
     protected override IEnumerable<DynamicVar> CanonicalVars =>

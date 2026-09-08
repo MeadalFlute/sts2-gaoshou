@@ -4,6 +4,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using MegaCrit.Sts2.Core.CardSelection;
 using MegaCrit.Sts2.Core.Commands;
+using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Entities.Players;
 using MegaCrit.Sts2.Core.Entities.Relics;
 using MegaCrit.Sts2.Core.Entities.RestSite;
@@ -47,11 +48,19 @@ public sealed class ShredRestSiteOption : RestSiteOption
     {
     }
 
+    // 至少有一张可移除的卡才可用（参考 CookRestSiteOption）。
+    public override bool IsEnabled => PileType.Deck.GetPile(Owner).Cards.Any(c => c.IsRemovable);
+
     public override async Task<bool> OnSelect()
     {
-        // 从牌组中选择 1 张卡牌移除（空笼同款选择）。
-        var chosen = (await CardSelectCmd.FromDeckForRemoval(
-            Owner, new CardSelectorPrefs(CardSelectorPrefs.RemoveSelectionPrompt, 1, 1))).ToList();
+        // 从牌组中选择 1 张卡牌移除（空笼同款选择）。Cancelable=true 显示返回键；取消(空选择)时返回 false，不消耗火堆行动。
+        var prefs = new CardSelectorPrefs(CardSelectorPrefs.RemoveSelectionPrompt, 1, 1)
+        {
+            Cancelable = true,
+        };
+        var chosen = (await CardSelectCmd.FromDeckForRemoval(Owner, prefs)).ToList();
+        if (chosen.Count == 0)
+            return false;   // 返回键取消 → 不消耗本次火堆行动（可换选其它行动）
         foreach (var c in chosen)
             await CardPileCmd.RemoveFromDeck(c);
         return true;

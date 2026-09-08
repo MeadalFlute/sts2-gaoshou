@@ -6,6 +6,8 @@ using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
 using MegaCrit.Sts2.Core.Modding;
 using MegaCrit.Sts2.Core.Models;
+using MegaCrit.Sts2.Core.Random;
+using MegaCrit.Sts2.Core.Runs;
 using STS2RitsuLib.Interop.AutoRegistration;
 
 namespace Gaoshou.Keywords;
@@ -79,11 +81,13 @@ public sealed class PhantomSingleton : SingletonModel
                 cardModel.EnchantInternal((EnchantmentModel)prePlayEnchant.ClonePreservingMutability(),
                     prePlayEnchant.Amount);
             // 双色卡的幻影复制品：随机抽取一个主色（实例级登记，mana 颜色释义按此显示单色）。
+            // 用多人同步的 RNG（RunState.Rng.CombatCardGeneration）——Random.Shared 是每机独立的本地 RNG，
+            // 主机/客机执行同一动作时会抽到不同颜色 → 流转/颜色判定分歧。改用同步 RNG 保证两端一致。
             if (card.GetType().GetProperty("CardColor")?.GetValue(card) is GaoshouCardColor srcColor)
             {
                 var primaries = PhantomColorRegistry.GetPrimaries(srcColor);
                 PhantomColorRegistry.Assign(cardModel,
-                    primaries.Count > 1 ? primaries[Random.Shared.Next(primaries.Count)] : srcColor);
+                    primaries.Count > 1 ? card.Owner.RunState.Rng.CombatCardGeneration.NextItem(primaries) : srcColor);
             }
             cardModel.EnergyCost.AddThisCombat(-1);
             cardModel.AddKeyword(CardKeyword.Exhaust);

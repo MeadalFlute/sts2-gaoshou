@@ -13,7 +13,7 @@ using STS2RitsuLib.Scaffolding.Content;
 
 namespace Gaoshou.Cards;
 
-// 燃尽：能力（罕见）。耗 0 能量。获得 4(6) 层临时力量；每回合结束时失去 3 点生命。
+// 燃尽：能力（罕见）。耗 0 能量。获得 3(4) 层力量；每回合结束时，失去 BurnAmount(1) 层力量（多个燃尽叠加 → 扣叠加层数）。
 [RegisterCard(typeof(GaoshouCardPool))]
 public sealed class BurnOut : ModCardTemplate
 {
@@ -36,7 +36,8 @@ public sealed class BurnOut : ModCardTemplate
 
     protected override IEnumerable<DynamicVar> CanonicalVars =>
     [
-        ModCardVars.Int("Strength", 3),
+        ModCardVars.Power<StrengthPower>(3),
+        ModCardVars.Int("BurnAmount", 1),
     ];
 
     public BurnOut() : base(BaseEnergyCost, CardKind, CardRarityValue, CardTarget, ShowInCardLibrary)
@@ -48,14 +49,15 @@ public sealed class BurnOut : ModCardTemplate
     {
         // 获得 3(4) 层力量。
         await PowerCmd.Apply<StrengthPower>(choiceContext, Owner.Creature,
-            DynamicVars.GetRequired<IntVar>("Strength").BaseValue, Owner.Creature, this);
+            DynamicVars["StrengthPower"].BaseValue, Owner.Creature, this);
 
-        // 燃尽：每回合结束时失去 1 层力量。
-        await PowerCmd.Apply<BurnOutPower>(choiceContext, Owner.Creature, 1m, Owner.Creature, this);
+        // 燃尽：每回合结束时失去 BurnAmount 层力量（多个燃尽 buff 叠加 → Amount 累加）。
+        await PowerCmd.Apply<BurnOutPower>(choiceContext, Owner.Creature,
+            DynamicVars.GetRequired<IntVar>("BurnAmount").BaseValue, Owner.Creature, this);
     }
 
     protected override void OnUpgrade()
     {
-        DynamicVars.GetRequired<IntVar>("Strength").UpgradeValueBy(1);   // 3 -> 4
+        DynamicVars["StrengthPower"].UpgradeValueBy(1);   // 3 -> 4
     }
 }

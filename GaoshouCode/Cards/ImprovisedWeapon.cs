@@ -33,6 +33,7 @@ public sealed class ImprovisedWeapon : ModCardTemplate
     protected override IEnumerable<DynamicVar> CanonicalVars =>
     [
         new DamageVar(4m, ValueProp.Move),
+        ModCardVars.Int("WasteGain", 2),
     ];
 
     public ImprovisedWeapon() : base(BaseEnergyCost, CardKind, CardRarityValue, CardTarget, ShowInCardLibrary)
@@ -66,7 +67,7 @@ public sealed class ImprovisedWeapon : ModCardTemplate
         var generated = CardFactory.GetDistinctForCombat(
                 Owner,
                 candidates,
-                2,
+                (int)DynamicVars.GetRequired<IntVar>("WasteGain").BaseValue,
                 Owner.RunState.Rng.CombatCardGeneration)
             .ToList();
         foreach (var c in generated)

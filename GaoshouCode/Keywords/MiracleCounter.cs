@@ -52,6 +52,21 @@ public sealed class MiracleCounter : SingletonModel
         return Task.CompletedTask;
     }
 
+    // 奇迹牌离开手牌（被打出/弃置/放回抽牌堆顶等）→ 从"回合初抽牌池子"移除：
+    // 之后它若再次进手（非回合初抽牌）即视为"非回合初"→ 可重新触发奇迹。
+    // （若下回合初抽回，AfterCardDrawn(fromHandDraw=true) 会重新加入池子 → 正确地不触发。）
+    // 方案3：用 card.Pile 区分"打出"vs"腾挪/弃置/消耗"。
+    //  - 打出时 card.Pile==Play：不移除池子（保持 OnPlay 判定所需状态，打出后由 AfterCardPlayed 清理）。
+    //  - 腾挪(Draw)/弃置(Discard)/消耗(Exhaust)等：立即移除池子（之后非回合初抽回应触发奇迹）。
+    public override Task AfterCardChangedPiles(CardModel card, PileType oldPileType, AbstractModel? clonedBy)
+    {
+        if (oldPileType == PileType.Hand && card.Pile?.Type != PileType.Play)
+        {
+            _turnStartDrawn.Remove(card);
+        }
+        return Task.CompletedTask;
+    }
+
     // 回合结束时清空"回合初抽牌池子"：保留/囤积带至下一轮的奇迹牌，下一轮重新视为"非回合初"。
     public override Task AfterSideTurnEnd(PlayerChoiceContext choiceContext, CombatSide side,
         IEnumerable<MegaCrit.Sts2.Core.Entities.Creatures.Creature> participants)
@@ -72,6 +87,8 @@ public sealed class MiracleCounter : SingletonModel
         {
             _counts[card.Owner] = _counts.GetValueOrDefault(card.Owner) + 1;
         }
+        // 打好后清池子引用（打出时 AfterCardChangedPiles(new=Play) 未清）；此时 OnPlay 已判定完毕。
+        _turnStartDrawn.Remove(card);
         return Task.CompletedTask;
     }
 

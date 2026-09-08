@@ -36,19 +36,27 @@ public sealed class WasteNot : ModCardTemplate
 
     public override int CanonicalStarCost => 2;
 
+    // 每回合开始时获得 Amount 张废品牌（能力层数）；升级后打出时立即获得 WasteGain 张。
+    protected override IEnumerable<DynamicVar> CanonicalVars =>
+    [
+        ModCardVars.Int("Amount", 1),
+        ModCardVars.Int("WasteGain", 2),
+    ];
+
     protected override async Task OnPlay(PlayerChoiceContext choiceContext, CardPlay cardPlay)
     {
-        // 施加能力：回合开始时获得 1 张随机废品牌。
-        await PowerCmd.Apply<DontWastePower>(choiceContext, Owner.Creature, 1m, Owner.Creature, this);
+        // 施加能力：回合开始时获得 Amount 张随机废品牌。
+        await PowerCmd.Apply<DontWastePower>(choiceContext, Owner.Creature,
+            DynamicVars.GetRequired<IntVar>("Amount").BaseValue, Owner.Creature, this);
 
-        // 升级后：打出时立即获得 2 张随机废品牌。
+        // 升级后：打出时立即获得 WasteGain 张随机废品牌。
         if (IsUpgraded)
-            await GenerateWasteAsync(choiceContext, 2);
+            await GenerateWasteAsync(choiceContext, (int)DynamicVars.GetRequired<IntVar>("WasteGain").BaseValue);
     }
 
     protected override void OnUpgrade()
     {
-        // 无费用/数值升级；升级效果 = 打出时立即获得 2 张废品牌（见 OnPlay）。
+        // 无费用/数值升级；升级效果 = 打出时立即获得 WasteGain 张废品牌（见 OnPlay）。
     }
 
     // 从废品牌池生成 N 张随机废品牌加入手牌（按废品属性过滤，不按池）。

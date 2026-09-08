@@ -47,11 +47,12 @@ public sealed class VeryVeryAnger : ModCardTemplate
         CardKeyword.Exhaust,
     ];
 
-    // 风暴条件图标变量（能量≥2：两个能量图标）。
+    // 风暴条件图标变量（能量≥2：两个能量图标）、换取的力量层数（原生 StrengthPower 变量）。
     protected override IEnumerable<DynamicVar> CanonicalVars =>
     [
         ModCardVars.Int("HealGain", 3),
         ModCardVars.Energy("EnergyStorm", 2),
+        ModCardVars.Power<StrengthPower>(1),
     ];
 
     public VeryVeryAnger() : base(BaseEnergyCost, CardKind, CardRarityValue, CardTarget, ShowInCardLibrary)
@@ -66,14 +67,16 @@ public sealed class VeryVeryAnger : ModCardTemplate
         // 回复 3(5) 点生命。
         await CreatureCmd.Heal(Owner.Creature, DynamicVars.GetRequired<IntVar>("HealGain").BaseValue);
 
-        // 获得 1 层力量（普通力量，非临时）。
-        await PowerCmd.Apply<StrengthPower>(choiceContext, Owner.Creature, 1m, Owner.Creature, this);
+        // 获得 1 层力量（普通力量，非临时；层数由 StrengthPower 变量驱动）。
+        await PowerCmd.Apply<StrengthPower>(choiceContext, Owner.Creature,
+            DynamicVars["StrengthPower"].BaseValue, Owner.Creature, this);
 
         // 风暴（红红）：当前能量>=EnergyStorm 才重放。
         if (Owner.PlayerCombatState!.Energy >= (int)DynamicVars.GetRequired<EnergyVar>("EnergyStorm").BaseValue)
         {
             await CreatureCmd.Heal(Owner.Creature, DynamicVars.GetRequired<IntVar>("HealGain").BaseValue);
-            await PowerCmd.Apply<StrengthPower>(choiceContext, Owner.Creature, 1m, Owner.Creature, this);
+            await PowerCmd.Apply<StrengthPower>(choiceContext, Owner.Creature,
+                DynamicVars["StrengthPower"].BaseValue, Owner.Creature, this);
         }
     }
 
