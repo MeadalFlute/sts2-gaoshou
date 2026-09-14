@@ -1,0 +1,17 @@
+{
+  "gaoshou.intro.page1.title": "Star: Your Second Resource",
+  "gaoshou.intro.page1.body": "Gaoshou plays differently from the other characters, so here is a quick crash course.\n\nUnlike everyone else, many Gaoshou cards cost [color=#B03A1E]Star[/color] to play. Run out of Star and all the Energy in the world will not help — those cards simply will not come out!",
+  "gaoshou.intro.page2.title": "Where Stars Come From",
+  "gaoshou.intro.page2.body": "Do not worry: plenty of Gaoshou cards hand you Star, like [color=#B03A1E]Linked Palms[/color] in your starting deck.\n\nStar matters a lot, so keep an eye out for cards that make it!\n\nA tip: keep the Star your deck makes roughly equal to the Star it spends.",
+  "gaoshou.intro.page3.title": "Meet Your Amulet",
+  "gaoshou.intro.page3.body": "Early on, few cards make Star — that is what your starter relic, the [color=#B03A1E]Gaoshou Amulet[/color], is for.\n\nIt sits in the top-left corner; click it to read the details.\n\nYour uses are limited, so plan your play order!",
+  "gaoshou.intro.page3.left": "The number in the relic's bottom-right corner is how many uses are left this turn.",
+  "gaoshou.intro.page4.title": "Do Not Burn Your Stars",
+  "gaoshou.intro.page4.body": "Star is scarce early on, so here is some strong advice: try to end each turn with 1 Star banked.\n\nIf you have to, spending health to block an attack can be worth it to save Star.\n\nDo not let that go in one ear and out the other — this comes from experience!",
+  "gaoshou.intro.page4.left": "Star does not refill on its own, but whatever is left at the end of a turn carries over.",
+  "gaoshou.firstwin.title": "After Your First Fight",
+  "gaoshou.firstwin.body": "Your starting deck is wildly inconsistent, so grab [color=#B03A1E]Star generation[/color], [color=#B03A1E]card draw[/color] and [color=#B03A1E]cheap cards[/color] fast.\n\nGood news, though: the starting deck is tiny, so building a fresh deck is surprisingly easy.\n\nWhen you loot, think hard about whether the card really fits your deck!",
+  "gaoshou.button.prev": "Back",
+  "gaoshou.button.next": "Next",
+  "gaoshou.button.confirm": "Got it!"
+}

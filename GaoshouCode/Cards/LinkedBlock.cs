@@ -11,7 +11,7 @@ using STS2RitsuLib.Scaffolding.Content;
 
 namespace Gaoshou.Cards;
 
-// 连环防御：技能。耗 0 能量 2 星辉。获得 3 格挡、获得 4 格挡。升级后：5、6。
+// 连环防御：技能。耗 0 能量 2 辉星。获得 3 格挡、获得 4 格挡。升级后：5、6。
 [RegisterCard(typeof(GaoshouCardPool))]
 [RegisterCharacterStarterCard(typeof(GaoshouCharacter), 4, Order = 20)]
 public sealed class LinkedBlock : ModCardTemplate
@@ -41,7 +41,7 @@ public sealed class LinkedBlock : ModCardTemplate
     {
     }
 
-    // 0 能量 2 星辉：星辉费用通过覆写 CanonicalStarCost 设置。
+    // 0 能量 2 辉星：辉星费用通过覆写 CanonicalStarCost 设置。
     public override int CanonicalStarCost => 2;
 
     protected override async Task OnPlay(PlayerChoiceContext choiceContext, CardPlay cardPlay)

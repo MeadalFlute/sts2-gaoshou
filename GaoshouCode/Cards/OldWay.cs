@@ -14,7 +14,7 @@ using STS2RitsuLib.Scaffolding.Content;
 namespace Gaoshou.Cards;
 
 // 遵循古道：能力（罕见）。耗 2 能量。固有。
-// 每当你将要获得临时力量、临时敏捷时：消耗 1 星辉，改为获得 1 层力量、敏捷。
+// 每当你将要获得临时力量、临时敏捷时：消耗 1 辉星，改为获得 1 层力量、敏捷。
 [RegisterCard(typeof(GaoshouCardPool))]
 public sealed class OldWay : ModCardTemplate
 {

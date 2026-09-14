@@ -5,7 +5,7 @@ using STS2RitsuLib.Scaffolding.Content;
 
 namespace Gaoshou.Powers;
 
-// 轮椅·星辉代付（能力）：能量不足时，允许用星辉支付卡牌的能量。
+// 轮椅·辉星代付（能力）：能量不足时，允许用辉星支付卡牌的能量。
 // ShouldPayExcessEnergyCostWithStars 仅由战斗内模型（能力等）响应，遗物本体不在查询列，故经此能力实现。
 [RegisterPower]
 public sealed class WheelchairStarPayPower : ModPowerTemplate

@@ -45,7 +45,7 @@ public sealed class SwordDance : ModCardTemplate
 
     public SwordDance() : base(BaseEnergyCost, CardKind, CardRarityValue, CardTarget, ShowInCardLibrary)
     {
-        // 0 星辉。
+        // 0 辉星。
     }
 
     protected override async Task OnPlay(PlayerChoiceContext choiceContext, CardPlay cardPlay)

@@ -20,6 +20,8 @@ namespace Gaoshou.Keywords;
 [RegisterOwnedCardKeyword(nameof(Echo), CardDescriptionPlacement = ModKeywordCardDescriptionPlacement.AfterCardDescription, IncludeInCardHoverTip = true)]
 [RegisterOwnedCardKeyword(nameof(Temporary), CardDescriptionPlacement = ModKeywordCardDescriptionPlacement.AfterCardDescription, IncludeInCardHoverTip = true)]
 [RegisterOwnedCardKeyword(nameof(Hoard), CardDescriptionPlacement = ModKeywordCardDescriptionPlacement.None, IncludeInCardHoverTip = true)]
+[RegisterOwnedCardKeyword(nameof(Bonus), CardDescriptionPlacement = ModKeywordCardDescriptionPlacement.None, IncludeInCardHoverTip = true)]
+[RegisterOwnedCardKeyword(nameof(Virtue), CardDescriptionPlacement = ModKeywordCardDescriptionPlacement.None, IncludeInCardHoverTip = true)]
 public class GaoshouKeyword
 {
     public static readonly CardKeyword Flow = ModContentRegistry
@@ -45,4 +47,12 @@ public class GaoshouKeyword
 
     public static readonly CardKeyword Hoard = ModContentRegistry
         .GetQualifiedKeywordId(Entry.ModId, nameof(Hoard)).GetModCardKeyword();
+
+    /// <summary>附赠 n：抽到这张牌时，额外抽 n 张牌。</summary>
+    public static readonly CardKeyword Bonus = ModContentRegistry
+        .GetQualifiedKeywordId(Entry.ModId, nameof(Bonus)).GetModCardKeyword();
+
+    /// <summary>美德：打出后获得 1 能量，抽 1 张牌。</summary>
+    public static readonly CardKeyword Virtue = ModContentRegistry
+        .GetQualifiedKeywordId(Entry.ModId, nameof(Virtue)).GetModCardKeyword();
 }

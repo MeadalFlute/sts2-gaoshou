@@ -11,7 +11,7 @@ using STS2RitsuLib.Scaffolding.Content;
 
 namespace Gaoshou.Cards;
 
-// 矿泉水瓶：技能（无色衍生）。耗 0 能量 0 星辉。抽 1(3) 张牌。消耗。
+// 矿泉水瓶：技能（无色衍生）。耗 0 能量 0 辉星。抽 1(3) 张牌。消耗。
 [RegisterCard(typeof(TokenCardPool))]
 public sealed class WaterBottle : ModCardTemplate, Gaoshou.Keywords.IWasteCard
 {
@@ -38,7 +38,7 @@ public sealed class WaterBottle : ModCardTemplate, Gaoshou.Keywords.IWasteCard
 
     public WaterBottle() : base(BaseEnergyCost, CardKind, CardRarityValue, CardTarget, ShowInCardLibrary)
     {
-        // 0 星辉：不覆写 CanonicalStarCost。
+        // 0 辉星：不覆写 CanonicalStarCost。
     }
 
     protected override async Task OnPlay(PlayerChoiceContext choiceContext, CardPlay cardPlay)

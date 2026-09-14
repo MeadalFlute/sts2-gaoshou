@@ -10,7 +10,7 @@ using STS2RitsuLib.Scaffolding.Content;
 
 namespace Gaoshou.Cards;
 
-// 太极：技能（稀有）。耗 1 能量 1 星辉（升级 0/0）。每有 1 能量获得 1 星辉，每有 1 星辉获得 1 能量（对称互换）。
+// 太极：技能（稀有）。耗 1 能量 1 辉星（升级 0/0）。每有 1 能量获得 1 辉星，每有 1 辉星获得 1 能量（对称互换）。
 // 消耗（升级后保留）。打出与结算参考原版「故障机器人-双倍能量」的资源翻倍模式。
 [RegisterCard(typeof(GaoshouCardPool))]
 public sealed class TaiChi : ModCardTemplate
@@ -32,18 +32,19 @@ public sealed class TaiChi : ModCardTemplate
         CardKeyword.Exhaust,
     ];
 
-    // 用于描述中的能量/星辉图标（单图标）。
+    // 用于描述中的能量/辉星图标（单图标）。
     protected override IEnumerable<DynamicVar> CanonicalVars =>
     [
         ModCardVars.Energy("Energy", 1),
         ModCardVars.Stars("Stars", 1),
+        ModCardVars.Int("Rate", 1),
     ];
 
     public TaiChi() : base(BaseEnergyCost, CardKind, CardRarityValue, CardTarget, ShowInCardLibrary)
     {
     }
 
-    // 1 能量 1 星辉（升级 0/0）。
+    // 1 能量 1 辉星（升级 0/0）。
     public override int CanonicalStarCost => 1;
 
     protected override async Task OnPlay(PlayerChoiceContext choiceContext, CardPlay cardPlay)
@@ -51,13 +52,14 @@ public sealed class TaiChi : ModCardTemplate
         // 无护符实测确认：打出前游戏已扣费（SpendResources），OnPlay 时状态为"扣费后"。
         // （此前 3/2→2/2 是因为又减了一次自身费用——费用只扣一次。）
         // 参考「故障机器人-双倍能量」：基于结算时（扣费后）的资源做对称互换——
-        //   例 3/2 打 1/1 太极 → 状态 2/1 → +2 星辉 +1 能量 → 3/3。
+        //   例 3/2 打 1/1 太极 → 状态 2/1 → +2 辉星 +1 能量 → 3/3。
         var energy = Owner.PlayerCombatState!.Energy;
         var stars = Owner.PlayerCombatState!.Stars;
+        var rate = DynamicVars.GetRequired<IntVar>("Rate").IntValue;
 
-        // 每点能量获得 1 点星辉；每点星辉获得 1 点能量（对称互换）。
-        await PlayerCmd.GainStars(energy, Owner);
-        await PlayerCmd.GainEnergy(stars, Owner);
+        // 每点能量获得 1 点辉星；每点辉星获得 1 点能量（对称互换）。
+        await PlayerCmd.GainStars(energy * rate, Owner);
+        await PlayerCmd.GainEnergy(stars * rate, Owner);
     }
 
     protected override void OnUpgrade()

@@ -12,7 +12,7 @@ using STS2RitsuLib.Scaffolding.Content;
 
 namespace Gaoshou.Cards;
 
-// 玻璃刀：攻击（无色衍生）。耗 0 能量 0 星辉。使敌人失去 6(12) 点生命（不可格挡、不受力量加成）。消耗。
+// 玻璃刀：攻击（无色衍生）。耗 0 能量 0 辉星。使敌人失去 6(12) 点生命（不可格挡、不受力量加成）。消耗。
 [RegisterCard(typeof(TokenCardPool))]
 public sealed class GlassKnife : ModCardTemplate, Gaoshou.Keywords.IWasteCard
 {
@@ -40,7 +40,7 @@ public sealed class GlassKnife : ModCardTemplate, Gaoshou.Keywords.IWasteCard
 
     public GlassKnife() : base(BaseEnergyCost, CardKind, CardRarityValue, CardTarget, ShowInCardLibrary)
     {
-        // 0 星辉：不覆写 CanonicalStarCost。
+        // 0 辉星：不覆写 CanonicalStarCost。
     }
 
     protected override async Task OnPlay(PlayerChoiceContext choiceContext, CardPlay cardPlay)

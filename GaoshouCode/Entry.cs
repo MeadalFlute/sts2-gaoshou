@@ -5,15 +5,21 @@ using MegaCrit.Sts2.Core.Entities.RestSite;
 using MegaCrit.Sts2.Core.Logging;
 using MegaCrit.Sts2.Core.Modding;
 using MegaCrit.Sts2.Core.Models;
+using MegaCrit.Sts2.Core.Models.Powers;
 using MegaCrit.Sts2.Core.Nodes.Combat;
 using STS2RitsuLib;
 using STS2RitsuLib.Content;
 using STS2RitsuLib.Interop;
+using STS2RitsuLib.Patching.Core;
 using STS2RitsuLib.Patching.Models;
+using STS2RitsuLib.Scaffolding.Content.Patches;
 using Gaoshou.Cards;
 using Gaoshou.Characters;
+using Gaoshou.Events;
+using Gaoshou.Patches;
 using Gaoshou.Powers;
 using Gaoshou.Relics;
+using Gaoshou.Tutorial;
 using Logger = MegaCrit.Sts2.Core.Logging.Logger;
 
 namespace Gaoshou;
@@ -27,6 +33,16 @@ public partial class Entry
     public const string ResPath = $"res://{ModId}";
 
     public static Logger Logger { get; } = new(ModId, LogType.Generic);
+
+    // 心流(DoubleDamagePower) 用的原版「双倍伤害」buff 图标：改用高手自定义图。
+    private const string DoubleDamagePowerIconPath = $"{ResPath}/images/powers/doubledamage.png";
+
+    private static Godot.Texture2D? _doubleDamagePowerIcon;
+
+    private static Godot.Texture2D? DoubleDamagePowerIcon =>
+        _doubleDamagePowerIcon ??=
+            Godot.ResourceLoader.Load<Godot.Texture2D>(DoubleDamagePowerIconPath, null,
+                Godot.ResourceLoader.CacheMode.Reuse);
 
     public static void Initialize()
     {
@@ -102,8 +118,35 @@ public partial class Entry
             null,
             true,
             HarmonyLib.MethodType.Normal));
+        // 事件「色彩哲学家」：把高手卡池并入备选颜色池，让「红蓝双色」与原版颜色等权随机（RitsuLib IPatchMethod 写法）。
+        patcher.RegisterPatch<ColorfulPhilosophersPatch>();
+        // 设置项「禁用原版事件」：给 RoomSet.EnsureNextEventIsValid 挂前缀，把玩家禁用的原版事件从本局抽取池里移除
+        //（**不能**改 EventModel.IsAllowed：13 个目标里 8 个自己重写了该方法且不调 base，基类补丁拦不到）。
+        patcher.RegisterPatch<VanillaEventDisablePatch>();
         if (!patcher.PatchAll())
             Logger.Error("Patch application failed!");
+
+        // 心流：把原版「双倍伤害」buff 的图标换成高手自定义图（其余原版 buff 图标不动）。
+        // 原版能力走的是模型自带图标，这里用 RitsuLib 的外部资源覆盖注册表按模型类型过滤替换；
+        // IconPath/PackedIconPath、Icon(小图标)、BigIcon(悬浮释义大图) 三条读取路径都要覆盖。
+        ExternalAssetOverrideRegistry.RegisterPowerIconPathProvider(
+            ModId + ".power_icon.double_damage.path",
+            power => power is DoubleDamagePower ? DoubleDamagePowerIconPath : null);
+        ExternalAssetOverrideRegistry.RegisterPowerIconTextureProvider(
+            ModId + ".power_icon.double_damage.texture",
+            power => power is DoubleDamagePower ? DoubleDamagePowerIcon : null);
+        ExternalAssetOverrideRegistry.RegisterPowerBigIconTextureProvider(
+            ModId + ".power_icon.double_damage.big_texture",
+            power => power is DoubleDamagePower ? DoubleDamagePowerIcon : null);
+
+        // 新手教程：首次游玩高手时在第一场战斗开场 / 首战胜利后各弹一次指引（RitsuLib 生命周期事件驱动）。
+        GaoshouTutorial.Initialize(Logger);
+
+        // 事件运行期标记（事件之间共享，例如「打击大师」→「格挡达人」的隐藏分支解锁）：
+        // 开局 / 读档 / 本局结束时清零，避免跨局残留。
+        RitsuLibFramework.SubscribeLifecycle<RunStartedEvent>(_ => GaoshouEventFlags.Reset());
+        RitsuLibFramework.SubscribeLifecycle<RunLoadedEvent>(_ => GaoshouEventFlags.Reset());
+        RitsuLibFramework.SubscribeLifecycle<RunEndedEvent>(_ => GaoshouEventFlags.Reset());
 
         Logger.Info("Gaoshou initialized.");
     }

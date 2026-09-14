@@ -11,7 +11,7 @@ using STS2RitsuLib.Scaffolding.Content;
 
 namespace Gaoshou.Cards;
 
-// 黑虎掏心：攻击（普通）。耗 1 能量 0 星辉。造成 6(8) 伤害。\n[流转]（默认直接触发）：造成 5(8) 伤害。
+// 黑虎掏心：攻击（普通）。耗 1 能量 0 辉星。造成 6(8) 伤害。\n[流转]（默认直接触发）：造成 5(8) 伤害。
 [RegisterCard(typeof(GaoshouCardPool))]
 public sealed class TigerClaw : ModCardTemplate
 {

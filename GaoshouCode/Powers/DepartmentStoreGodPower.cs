@@ -9,8 +9,8 @@ using STS2RitsuLib.Scaffolding.Content;
 
 namespace Gaoshou.Powers;
 
-// 百货战神（能力）：每当你打出一张【临时】牌后，随机获得 1 层临时力量或 1 层临时敏捷
-// （回合结束减半的临时增益，直接与力量/敏捷同步授予）。
+// 百货战神（能力）：每当你打出一张【临时】牌后，随机获得等同于本能力层数的临时力量或临时敏捷
+// （层数由施加它的卡牌变量决定；回合结束减半的临时增益，直接与力量/敏捷同步授予）。
 [RegisterPower]
 public sealed class DepartmentStoreGodPower : ModPowerTemplate
 {
@@ -30,10 +30,10 @@ public sealed class DepartmentStoreGodPower : ModPowerTemplate
         if (cardPlay.Card.DeckVersion != null)
             return;
 
-        // 随机：临时力量 或 临时敏捷（+1）。
+        // 随机：临时力量 或 临时敏捷（层数 = 本能力层数，即施加它的卡牌变量值）。
         if (player.RunState.Rng.Niche.NextBool())
-            await GaoshouTemporaryStrengthPower.GrantAsync(choiceContext, player.Creature, 1m, player.Creature, cardPlay.Card);
+            await GaoshouTemporaryStrengthPower.GrantAsync(choiceContext, player.Creature, Amount, player.Creature, cardPlay.Card);
         else
-            await GaoshouTemporaryDexterityPower.GrantAsync(choiceContext, player.Creature, 1m, player.Creature, cardPlay.Card);
+            await GaoshouTemporaryDexterityPower.GrantAsync(choiceContext, player.Creature, Amount, player.Creature, cardPlay.Card);
     }
 }

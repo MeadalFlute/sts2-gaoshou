@@ -12,7 +12,7 @@ using STS2RitsuLib.Scaffolding.Content;
 
 namespace Gaoshou.Cards;
 
-// 飞刀：攻击（普通）。耗 0 能量 0 星辉。造成 4(6) 伤害。\n[流转]（默认直接触发）：抽一张牌。
+// 飞刀：攻击（普通）。耗 0 能量 0 辉星。造成 4(6) 伤害。\n[流转]（默认直接触发）：抽一张牌。
 [RegisterCard(typeof(GaoshouCardPool))]
 public sealed class ThrowingKnife : ModCardTemplate
 {

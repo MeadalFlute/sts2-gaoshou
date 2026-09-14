@@ -15,8 +15,8 @@ using STS2RitsuLib.Scaffolding.Content;
 
 namespace Gaoshou.Cards;
 
-// 龙卷风摧毁停车场：攻击（稀有）。耗 1 能量 1 星辉（升级 0/1）。对所有敌人造成 3 点伤害，获得 2 点临时力量。
-// 风暴（能量、星辉）：打出后，若能量≥1 且 星辉≥1，则额外打出一次。
+// 龙卷风摧毁停车场：攻击（稀有）。耗 1 能量 1 辉星（升级 0/1）。对所有敌人造成 3 点伤害，获得 2 点临时力量。
+// 风暴（能量、辉星）：打出后，若能量≥1 且 辉星≥1，则额外打出一次。
 // 增幅2 额外打出的每一击也判定风暴（可再额外打出一次）；风暴重放本身不触发增幅、不再判定风暴。
 [RegisterCard(typeof(GaoshouCardPool))]
 public sealed class TornadoDicimatesTrailerPark : ModCardTemplate
@@ -79,7 +79,7 @@ public sealed class TornadoDicimatesTrailerPark : ModCardTemplate
             DynamicVars.GetRequired<IntVar>("TemporaryStrength").BaseValue, Owner.Creature, this);
     }
 
-    // 风暴条件：当前能量>=EnergyStorm 且 星辉>=StarsStorm。
+    // 风暴条件：当前能量>=EnergyStorm 且 辉星>=StarsStorm。
     private bool StormActive()
         => Owner.PlayerCombatState!.Energy >= (int)DynamicVars.GetRequired<EnergyVar>("EnergyStorm").BaseValue
            && Owner.PlayerCombatState.Stars >= (int)DynamicVars.GetRequired<StarsVar>("StarsStorm").BaseValue;
@@ -95,7 +95,7 @@ public sealed class TornadoDicimatesTrailerPark : ModCardTemplate
             await MainOnceAsync(choiceContext, cardPlay);
     }
 
-    // 1 能量 1 星辉（无升级费用变化）。
+    // 1 能量 1 辉星（无升级费用变化）。
     public override int CanonicalStarCost => 1;
 
     protected override async Task OnPlay(PlayerChoiceContext choiceContext, CardPlay cardPlay)

@@ -40,8 +40,9 @@ public sealed class MountainLean : ModCardTemplate
     [
         new CalculationBaseVar(0m),
         new ExtraDamageVar(4m),
+        ModCardVars.Int("BlockPerHit", 3),
         new CalculatedDamageVar(ValueProp.Move).WithMultiplier(
-            static (card, target) => (int)(card.Owner!.Creature.Block / 3m)),
+            static (card, target) => (int)(card.Owner!.Creature.Block / (decimal)card.DynamicVars.GetRequired<IntVar>("BlockPerHit").IntValue)),
     ];
 
     public override int CanonicalStarCost => 2;
@@ -55,7 +56,7 @@ public sealed class MountainLean : ModCardTemplate
         ArgumentNullException.ThrowIfNull(cardPlay.Target);
 
         var block = Owner.Creature.Block;
-        int times = (int)(block / 3m);
+        int times = (int)(block / (decimal)DynamicVars.GetRequired<IntVar>("BlockPerHit").IntValue);
         if (times <= 0) return;
 
         await DamageCmd.Attack(times * DynamicVars.ExtraDamage.BaseValue)

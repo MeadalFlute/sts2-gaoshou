@@ -13,7 +13,7 @@ using STS2RitsuLib.Scaffolding.Content;
 
 namespace Gaoshou.Relics;
 
-// 走马灯（罕见）：每回合你打出第 3 张临时牌时，获得 1 能量、1 星辉（每回合仅触发一次）。
+// 走马灯（罕见）：每回合你打出第 3 张临时牌时，获得 1 能量、1 辉星（每回合仅触发一次）。
 [RegisterRelic(typeof(GaoshouRelicPool))]
 public sealed class Carousel : ModRelicTemplate
 {
@@ -65,7 +65,7 @@ public override RelicAssetProfile AssetProfile => new(
 
         _triggeredThisTurn = true;
         InvokeDisplayAmountChanged();
-        // 先给星辉（受 ShouldGainStars 门控，打点其被判否的情况）再给能量。
+        // 先给辉星（受 ShouldGainStars 门控，打点其被判否的情况）再给能量。
         await PlayerCmd.GainStars(1, player);
         await PlayerCmd.GainEnergy(1, player);
     }

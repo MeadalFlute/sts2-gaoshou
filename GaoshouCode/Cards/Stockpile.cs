@@ -52,6 +52,7 @@ public override CardAssetProfile AssetProfile => new(
     protected override IEnumerable<DynamicVar> CanonicalVars =>
     [
         new BlockVar(3m, ValueProp.Move),
+        ModCardVars.Int("Hoard", 3),
     ];
 
     public Stockpile() : base(BaseEnergyCost, CardKind, CardRarityValue, CardTarget, ShowInCardLibrary)
@@ -61,7 +62,8 @@ public override CardAssetProfile AssetProfile => new(
     protected override async Task OnPlay(PlayerChoiceContext choiceContext, CardPlay cardPlay)
     {
         // 获得 3 层囤积（回合结束时保留最多 3 张牌，层数按实际保留数减少）。
-        await PowerCmd.Apply<GaoshouHoardPower>(choiceContext, Owner.Creature, 3m, Owner.Creature, this);
+        await PowerCmd.Apply<GaoshouHoardPower>(choiceContext, Owner.Creature,
+            DynamicVars.GetRequired<IntVar>("Hoard").BaseValue, Owner.Creature, this);
 
         // 奇迹：非回合开始时抽牌进入手牌才触发 → 获得 3 点格挡。
         if (MiracleCounter.IsMiracleReady(this))

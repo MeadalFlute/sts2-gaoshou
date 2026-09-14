@@ -3,17 +3,19 @@ using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
 using MegaCrit.Sts2.Core.HoverTips;
+using MegaCrit.Sts2.Core.Localization.DynamicVars;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.MonsterMoves.Intents;
 using Gaoshou.Characters;
 using Gaoshou.Keywords;
 using Gaoshou.Powers;
+using STS2RitsuLib.Cards.DynamicVars;
 using STS2RitsuLib.Interop.AutoRegistration;
 using STS2RitsuLib.Scaffolding.Content;
 
 namespace Gaoshou.Cards;
 
-// 招架（Parrys，避免与原版 Parry 重名）：技能（罕见）。耗 0 能量 2 星辉。
+// 招架（Parrys，避免与原版 Parry 重名）：技能（罕见）。耗 0 能量 2 辉星。
 // 获得 2(3) 层临时敏捷。奇迹（非回合开始抽牌进入手牌）：击晕一名意图为攻击的敌人。消耗（升级后移除）。
 [RegisterCard(typeof(GaoshouCardPool))]
 public sealed class Parrys : ModCardTemplate
@@ -65,10 +67,17 @@ public sealed class Parrys : ModCardTemplate
 
     public override int CanonicalStarCost => 2;
 
+    // 临时敏捷 2(3) 层。
+    protected override IEnumerable<DynamicVar> CanonicalVars =>
+    [
+        ModCardVars.Power<GaoshouTemporaryDexterityPower>(2m),
+    ];
+
     protected override async Task OnPlay(PlayerChoiceContext choiceContext, CardPlay cardPlay)
     {
-        // 获得 2 层临时敏捷。
-        await GaoshouTemporaryDexterityPower.GrantAsync(choiceContext, Owner.Creature, 2m, Owner.Creature, this);
+        // 获得 2(3) 层临时敏捷。
+        await GaoshouTemporaryDexterityPower.GrantAsync(choiceContext, Owner.Creature,
+            DynamicVars["GaoshouTemporaryDexterityPower"].BaseValue, Owner.Creature, this);
 
         // 奇迹（非回合开始抽牌进入手牌）：击晕一名意图为攻击的敌人。
         if (MiracleCounter.IsMiracleReady(this))
@@ -87,7 +96,8 @@ public sealed class Parrys : ModCardTemplate
 
     protected override void OnUpgrade()
     {
-        // 升级后移除"消耗"（临时敏捷固定 2）。
+        // 升级后移除"消耗"，临时敏捷 2 -> 3。
         RemoveKeyword(CardKeyword.Exhaust);
+        DynamicVars["GaoshouTemporaryDexterityPower"].UpgradeValueBy(1);
     }
 }

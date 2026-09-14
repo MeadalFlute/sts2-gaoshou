@@ -14,7 +14,7 @@ using STS2RitsuLib.Scaffolding.Content;
 
 namespace Gaoshou.Cards;
 
-// 可别浪费：能力（罕见）。耗 0 能量 2 星辉。
+// 可别浪费：能力（罕见）。耗 0 能量 2 辉星。
 // 回合开始时，获得 1 张随机「废品牌」；升级后：打出时立即获得 2 张随机废品牌。
 [RegisterCard(typeof(GaoshouCardPool))]
 public sealed class WasteNot : ModCardTemplate

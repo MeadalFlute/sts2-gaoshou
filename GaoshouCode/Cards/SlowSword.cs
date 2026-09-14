@@ -15,7 +15,7 @@ using STS2RitsuLib.Scaffolding.Content;
 
 namespace Gaoshou.Cards;
 
-// 缓慢剑：技能（罕见）。耗 0 能量 2 星辉。获得 10(15) 层格挡。
+// 缓慢剑：技能（罕见）。耗 0 能量 2 辉星。获得 10(15) 层格挡。
 // 奇迹（非"回合开始时抽牌"进入手牌）：对随机敌人造成 10(15) 点伤害。
 [RegisterCard(typeof(GaoshouCardPool))]
 public sealed class SlowSword : ModCardTemplate

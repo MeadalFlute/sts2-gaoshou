@@ -42,7 +42,7 @@ public sealed class PerfectStickSword : ModCardTemplate, Gaoshou.Keywords.IWaste
 
     public PerfectStickSword() : base(BaseEnergyCost, CardKind, CardRarityValue, CardTarget, ShowInCardLibrary)
     {
-        // 0 星辉：不覆写 CanonicalStarCost。
+        // 0 辉星：不覆写 CanonicalStarCost。
     }
 
     protected override async Task OnPlay(PlayerChoiceContext choiceContext, CardPlay cardPlay)

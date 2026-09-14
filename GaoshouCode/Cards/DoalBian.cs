@@ -11,7 +11,7 @@ using STS2RitsuLib.Scaffolding.Content;
 
 namespace Gaoshou.Cards;
 
-// 双鞭：攻击（罕见）。耗 1 能量 1 星辉。造成 6(8) 点伤害；对随机敌人造成 6(8) 点伤害。流转：获得 1 能量、1 星辉。
+// 双鞭：攻击（罕见）。耗 1 能量 1 辉星。造成 6(8) 点伤害；对随机敌人造成 6(8) 点伤害。流转：获得 1 能量、1 辉星。
 [RegisterCard(typeof(GaoshouCardPool))]
 public sealed class DoalBian : ModCardTemplate
 {
@@ -61,7 +61,7 @@ public sealed class DoalBian : ModCardTemplate
             await DamageCmd.Attack(DynamicVars.GetRequired<DamageVar>("secondHit").BaseValue)
                 .FromCard(this, cardPlay).Targeting(random).Execute(choiceContext);
 
-        // 流转（颜色与上一张牌完全不同时触发）：获得 1 能量、1 星辉。
+        // 流转（颜色与上一张牌完全不同时触发）：获得 1 能量、1 辉星。
         if (GaoshouFlowTracker.IsFlowReady(this))
         {
             await PlayerCmd.GainEnergy(DynamicVars.GetRequired<EnergyVar>("Energy").BaseValue, Owner);

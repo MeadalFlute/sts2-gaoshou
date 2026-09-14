@@ -11,7 +11,7 @@ using STS2RitsuLib.Scaffolding.Content;
 
 namespace Gaoshou.Cards;
 
-// 枪盾：攻击。耗 1 能量 1 星辉。获得 6 格挡、造成 8 伤害。升级后：9 格挡、11 伤害。
+// 枪盾：攻击。耗 1 能量 1 辉星。获得 6 格挡、造成 8 伤害。升级后：9 格挡、11 伤害。
 [RegisterCard(typeof(GaoshouCardPool))]
 [RegisterCharacterStarterCard(typeof(GaoshouCharacter), 1, Order = 30)]
 [RegisterArchaicToothTranscendence(typeof(ChargeBlade))]   // 古老牙齿：把枪盾古化为盾斧
@@ -46,7 +46,7 @@ public sealed class SpearAndShield : ModCardTemplate
     {
     }
 
-    // 1 能量 1 星辉：星辉费用通过覆写 CanonicalStarCost 设置。
+    // 1 能量 1 辉星：辉星费用通过覆写 CanonicalStarCost 设置。
     public override int CanonicalStarCost => 1;
 
     protected override async Task OnPlay(PlayerChoiceContext choiceContext, CardPlay cardPlay)

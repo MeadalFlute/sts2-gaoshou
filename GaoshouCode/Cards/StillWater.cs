@@ -14,7 +14,7 @@ using Gaoshou.Powers;
 
 namespace Gaoshou.Cards;
 
-// 止水：技能（普通）。耗 0 能量 1 星辉（升级 0/0）。获得 2 点临时力量（简化为 2 点力量）；增幅1（暂不实装）。
+// 止水：技能（普通）。耗 0 能量 1 辉星（升级 0/0）。获得 2 点临时力量（简化为 2 点力量）；增幅1（暂不实装）。
 [RegisterCard(typeof(GaoshouCardPool))]
 public sealed class StillWater : ModCardTemplate
 {
@@ -46,13 +46,14 @@ public sealed class StillWater : ModCardTemplate
     {
     }
 
-    // 0 能量 1 星辉（升级 0 能量 0 星辉）。
+    // 0 能量 1 辉星（升级 0 能量 0 辉星）。
     public override int CanonicalStarCost => 1;
 
     // 主效果：获得 2 层临时力量（同步等量力量）。
     private async Task MainOnceAsync(PlayerChoiceContext choiceContext)
     {
-        await GaoshouTemporaryStrengthPower.GrantAsync(choiceContext, Owner.Creature, 2m, Owner.Creature, this);
+        await GaoshouTemporaryStrengthPower.GrantAsync(choiceContext, Owner.Creature,
+            DynamicVars.GetRequired<IntVar>("Strength").BaseValue, Owner.Creature, this);
     }
 
     protected override async Task OnPlay(PlayerChoiceContext choiceContext, CardPlay cardPlay)
@@ -66,7 +67,7 @@ public sealed class StillWater : ModCardTemplate
 
     protected override void OnUpgrade()
     {
-        // 升级：增幅 1 -> 3（费用保持 0/1，不再减星辉）。
+        // 升级：增幅 1 -> 3（费用保持 0/1，不再减辉星）。
         DynamicVars.GetRequired<IntVar>("AmplifyCount").UpgradeValueBy(1);   // 1 -> 3
     }
 }

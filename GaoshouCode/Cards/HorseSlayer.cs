@@ -15,7 +15,7 @@ using STS2RitsuLib.Scaffolding.Content;
 
 namespace Gaoshou.Cards;
 
-// 斩马长刀：攻击（普通）。耗 2 能量 0 星辉（升级后伤害 9->12、临时力量 2->4）。
+// 斩马长刀：攻击（普通）。耗 2 能量 0 辉星（升级后伤害 9->12、临时力量 2->4）。
 // 对所有敌人造成 9(12) 点伤害。流转（默认直接触发）：获得 2(4) 层临时力量。
 [RegisterCard(typeof(GaoshouCardPool))]
 public sealed class HorseSlayer : ModCardTemplate
@@ -54,7 +54,7 @@ public sealed class HorseSlayer : ModCardTemplate
 
     public HorseSlayer() : base(BaseEnergyCost, CardKind, CardRarityValue, CardTarget, ShowInCardLibrary)
     {
-        // 0 星辉：不覆写 CanonicalStarCost，保持默认“无星辉费用”。
+        // 0 辉星：不覆写 CanonicalStarCost，保持默认“无辉星费用”。
     }
 
     protected override async Task OnPlay(PlayerChoiceContext choiceContext, CardPlay cardPlay)

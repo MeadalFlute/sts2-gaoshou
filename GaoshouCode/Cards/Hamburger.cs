@@ -13,7 +13,7 @@ using STS2RitsuLib.Scaffolding.Content;
 
 namespace Gaoshou.Cards;
 
-// 汉堡包：技能（无色衍生）。耗 0 能量 1 星辉。恢复 2 点生命，获得 2(4) 层覆甲。消耗。
+// 汉堡包：技能（无色衍生）。耗 0 能量 1 辉星。恢复 2 点生命，获得 2(4) 层覆甲。消耗。
 [RegisterCard(typeof(TokenCardPool))]
 public sealed class Hamburger : ModCardTemplate, Gaoshou.Keywords.IWasteCard
 {
@@ -49,7 +49,7 @@ public sealed class Hamburger : ModCardTemplate, Gaoshou.Keywords.IWasteCard
     {
     }
 
-    // 0 能量 1 星辉。
+    // 0 能量 1 辉星。
     public override int CanonicalStarCost => 1;
 
     protected override async Task OnPlay(PlayerChoiceContext choiceContext, CardPlay cardPlay)

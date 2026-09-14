@@ -11,7 +11,7 @@ using STS2RitsuLib.Scaffolding.Content;
 
 namespace Gaoshou.Cards;
 
-// 迷踪步：技能（普通）。耗 0 能量 1 星辉。获得 6(9) 格挡。\n[流转]（默认直接触发）：抽牌直到你有 3 张牌。
+// 迷踪步：技能（普通）。耗 0 能量 1 辉星。获得 6(9) 格挡。\n[流转]（默认直接触发）：抽牌直到你有 3 张牌。
 [RegisterCard(typeof(GaoshouCardPool))]
 public sealed class MistStep : ModCardTemplate
 {
@@ -47,7 +47,7 @@ public sealed class MistStep : ModCardTemplate
     {
     }
 
-    // 0 能量 1 星辉。
+    // 0 能量 1 辉星。
     public override int CanonicalStarCost => 1;
 
     protected override async Task OnPlay(PlayerChoiceContext choiceContext, CardPlay cardPlay)

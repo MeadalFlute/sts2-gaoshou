@@ -1,0 +1,17 @@
+{
+  "gaoshou.intro.page1.title": "辉星，你的第二资源",
+  "gaoshou.intro.page1.body": "高手跟别的角色不太一样，先花一分钟做个简单教学吧！\n\n不同于其他角色，高手的许多卡牌需要消耗[color=#B03A1E]辉星[/color]才能打出。辉星不够的时候，能量再多也没用——那些牌根本就打不出去！",
+  "gaoshou.intro.page2.title": "辉星从哪儿来？",
+  "gaoshou.intro.page2.body": "别担心，高手有很多卡牌能给你辉星，比如初始牌里的[color=#B03A1E]连还手[/color]。\n\n辉星实在太重要了，看到能产辉星的牌记得留意一下喔！\n\n小建议：卡组里「产辉星」的总量，最好和「耗辉星」的总量大致相当。",
+  "gaoshou.intro.page3.title": "认识你的护符",
+  "gaoshou.intro.page3.body": "开局能产辉星的牌很少，这时候就得靠你的初始遗物——[color=#B03A1E]高手护符[/color]了。\n\n它在屏幕最左上角，点一下就能看到详细描述。\n\n次数有限，出牌顺序要好好规划喔！",
+  "gaoshou.intro.page3.left": "遗物右下角的数字，就是它本回合的剩余使用次数。",
+  "gaoshou.intro.page4.title": "辉星要省着花",
+  "gaoshou.intro.page4.body": "由于前期辉星来源匮乏，强烈建议回合结束时尽量保证留有1辉星。\n\n必要时，你可能需要考虑消耗生命值来抵挡攻击，以节约辉星。\n\n不要把我的话当耳边风喔，这可是经验之谈！",
+  "gaoshou.intro.page4.left": "辉星不会自动回复，但回合结束后剩余的辉星可以保留。",
+  "gaoshou.firstwin.title": "首战之后",
+  "gaoshou.firstwin.body": "高手的初始牌组稳定性很差，急需补充[color=#B03A1E]辉星回复[/color]、[color=#B03A1E]过牌[/color]和[color=#B03A1E]低费[/color]卡牌。\n\n不过有个好消息：初始牌组非常精简，想组出新流派其实相当轻松。\n\n搜刮战利品的时候，仔细想想它适不适合你的卡组喔！",
+  "gaoshou.button.prev": "上一页",
+  "gaoshou.button.next": "下一页",
+  "gaoshou.button.confirm": "知道了"
+}

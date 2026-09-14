@@ -11,8 +11,8 @@ using STS2RitsuLib.Scaffolding.Content;
 
 namespace Gaoshou.Cards;
 
-// 急！：技能（稀有）。耗 0 能量 0 星辉。
-// 抽到时：额外抽 1 张牌；打出时：将所有星辉变为能量。
+// 急！：技能（稀有）。耗 0 能量 0 辉星。
+// 抽到时：额外抽 1 张牌；打出时：将所有辉星变为能量。
 // 升级后：第一次打出时，获得 3 点能量。
 [RegisterCard(typeof(GaoshouCardPool))]
 public sealed class PureAnger : ModCardTemplate
@@ -34,7 +34,13 @@ public sealed class PureAnger : ModCardTemplate
     // 「第一次打出」奖励尚未使用（升级后）时泛橙光。
     protected override bool ShouldGlowGoldInternal => IsUpgraded && !_firstPlayBonusUsed;
 
-    // 星辉/能量图标变量（描述中转换为图标）。
+    // 词条：附赠（抽到这张牌时额外抽 n 张，n 见描述里的 {Cards}）。机制由 AfterCardDrawn 实现。
+    public override IEnumerable<CardKeyword> CanonicalKeywords =>
+    [
+        GaoshouKeyword.Bonus,
+    ];
+
+    // 辉星/能量图标变量（描述中转换为图标）。
     protected override IEnumerable<DynamicVar> CanonicalVars =>
     [
         ModCardVars.Int("Cards", 1),
@@ -46,7 +52,7 @@ public sealed class PureAnger : ModCardTemplate
 
     public PureAnger() : base(BaseEnergyCost, CardKind, CardRarityValue, CardTarget, ShowInCardLibrary)
     {
-        // 0 星辉：不覆写 CanonicalStarCost，保持默认"无星辉费用"。
+        // 0 辉星：不覆写 CanonicalStarCost，保持默认"无辉星费用"。
     }
 
     // 抽到时：额外抽 1 张牌（仅当本牌自身被抽到时触发——必须 card==this 守卫，否则每次任意抽牌都+1造成级联抽满手牌）。
@@ -59,7 +65,7 @@ public sealed class PureAnger : ModCardTemplate
 
     protected override async Task OnPlay(PlayerChoiceContext choiceContext, CardPlay cardPlay)
     {
-        // 将所有星辉变为能量：实际给予能量 = 当前星辉 / Stars（每 Stars 点星辉折算 1 点能量）。
+        // 将所有辉星变为能量：实际给予能量 = 当前辉星 / Stars（每 Stars 点辉星折算 1 点能量）。
         var stars = Owner.PlayerCombatState!.Stars;
         if (stars > 0)
         {

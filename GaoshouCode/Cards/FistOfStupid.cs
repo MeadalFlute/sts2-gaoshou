@@ -51,6 +51,7 @@ public sealed class FistOfStupid : ModCardTemplate
         new DamageVar(2m, ValueProp.Move),
         ModCardVars.Int("Times", 3),
         ModCardVars.Energy("EnergyStorm", 2),
+        ModCardVars.Int("DazedCount", 1),
     ];
 
     public FistOfStupid() : base(BaseEnergyCost, CardKind, CardRarityValue, CardTarget, ShowInCardLibrary)
@@ -76,9 +77,12 @@ public sealed class FistOfStupid : ModCardTemplate
             .Execute(choiceContext);
 
         // 将 1 张眩晕加入你的弃牌堆（突破极限「凋萎」同款模式）。
-        var dazed = Owner.Creature.CombatState?.CreateCard(ModelDb.Card<Dazed>(), Owner);
+        for (var i = 0; i < DynamicVars.GetRequired<IntVar>("DazedCount").IntValue; i++)
+        {
+            var dazed = Owner.Creature.CombatState?.CreateCard(ModelDb.Card<Dazed>(), Owner);
         if (dazed != null)
             CardCmd.PreviewCardPileAdd(await CardPileCmd.AddGeneratedCardToCombat(dazed, PileType.Discard, Owner));
+        }
     }
 
     protected override void OnUpgrade()

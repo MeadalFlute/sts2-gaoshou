@@ -13,7 +13,7 @@ using STS2RitsuLib.Scaffolding.Content;
 
 namespace Gaoshou.Cards;
 
-// 折凳：攻击（无色衍生）。耗 1 能量 0 星辉。造成 4(6) 点伤害。幻影、消耗。
+// 折凳：攻击（无色衍生）。耗 1 能量 0 辉星。造成 4(6) 点伤害。幻影、消耗。
 [RegisterCard(typeof(TokenCardPool))]
 public sealed class FoldingStool : ModCardTemplate, Gaoshou.Keywords.IWasteCard
 {
@@ -41,7 +41,7 @@ public sealed class FoldingStool : ModCardTemplate, Gaoshou.Keywords.IWasteCard
 
     public FoldingStool() : base(BaseEnergyCost, CardKind, CardRarityValue, CardTarget, ShowInCardLibrary)
     {
-        // 0 星辉：不覆写 CanonicalStarCost。
+        // 0 辉星：不覆写 CanonicalStarCost。
     }
 
     protected override async Task OnPlay(PlayerChoiceContext choiceContext, CardPlay cardPlay)

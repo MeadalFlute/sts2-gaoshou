@@ -1,4 +1,5 @@
 using MegaCrit.Sts2.Core.Commands;
+using STS2RitsuLib.Cards.DynamicVars;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
 using MegaCrit.Sts2.Core.HoverTips;
@@ -12,7 +13,7 @@ using STS2RitsuLib.Scaffolding.Content;
 
 namespace Gaoshou.Cards;
 
-// 狙击枪：技能（罕见）。耗 1 能量 0 星辉。造成当前力量 3 倍的伤害。消耗（升级后获得幻影）。
+// 狙击枪：技能（罕见）。耗 1 能量 0 辉星。造成当前力量 3 倍的伤害。消耗（升级后获得幻影）。
 [RegisterCard(typeof(GaoshouCardPool))]
 public sealed class SniperRifle : ModCardTemplate
 {
@@ -46,13 +47,14 @@ public sealed class SniperRifle : ModCardTemplate
     [
         new CalculationBaseVar(0m),
         new ExtraDamageVar(2m),
+        ModCardVars.Int("Multiplier", 3),
         new CalculatedDamageVar(ValueProp.Move).WithMultiplier(
             static (card, target) => card.Owner!.Creature.GetPowerAmount<StrengthPower>()),
     ];
 
     public SniperRifle() : base(BaseEnergyCost, CardKind, CardRarityValue, CardTarget, ShowInCardLibrary)
     {
-        // 0 星辉：不覆写 CanonicalStarCost，保持默认“无星辉费用”。
+        // 0 辉星：不覆写 CanonicalStarCost，保持默认“无辉星费用”。
     }
 
     protected override async Task OnPlay(PlayerChoiceContext choiceContext, CardPlay cardPlay)
@@ -61,7 +63,7 @@ public sealed class SniperRifle : ModCardTemplate
 
         // 造成当前力量 3 倍的伤害。
         var strength = Owner.Creature.GetPowerAmount<StrengthPower>();
-        var damage = strength * 3m;
+        var damage = strength * DynamicVars.GetRequired<IntVar>("Multiplier").BaseValue;
         if (damage <= 0)
             return;
 

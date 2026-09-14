@@ -13,7 +13,7 @@ using STS2RitsuLib.Scaffolding.Content;
 
 namespace Gaoshou.Cards;
 
-// 十三幺：技能（稀有）。耗 1 能量 0 星辉。
+// 十三幺：技能（稀有）。耗 1 能量 0 辉星。
 // 若手牌中至少有 9 张牌且名称各不相同：将所有手牌设为免费，并从左到右依次打出。
 // 参考：静默猎手-子弹时间（手牌免费）+ 低语耳环（从左到右依次自动打出）。
 // 升级后获得"保留"。
@@ -45,9 +45,10 @@ public sealed class ThirteenOrphans : ModCardTemplate
 
     public ThirteenOrphans() : base(BaseEnergyCost, CardKind, CardRarityValue, CardTarget, ShowInCardLibrary)
     {
-        // 0 星辉：不覆写 CanonicalStarCost，保持默认"无星辉费用"。
+        // 0 辉星：不覆写 CanonicalStarCost，保持默认"无辉星费用"。
     }
 
+    // 触发门槛：手牌中至少 9 种不同卡牌。
     protected override async Task OnPlay(PlayerChoiceContext choiceContext, CardPlay cardPlay)
     {
         // 条件：手牌中（排除十三幺自身）含有 >= 9 种不同卡牌。

@@ -14,7 +14,7 @@ using STS2RitsuLib.Scaffolding.Content;
 
 namespace Gaoshou.Cards;
 
-// 旋风斧：攻击（普通）。耗 1 能量 1 星辉。获得 6(9) 层临时力量，对随机敌人造成 8(12) 点伤害。
+// 旋风斧：攻击（普通）。耗 1 能量 1 辉星。获得 6(9) 层临时力量，对随机敌人造成 8(12) 点伤害。
 [RegisterCard(typeof(GaoshouCardPool))]
 public sealed class FlyingAxe : ModCardTemplate
 {

@@ -35,7 +35,7 @@ public sealed class Impatient : ModCardTemplate
         GaoshouKeyword.Storm,
     ];
 
-    // 风暴条件图标变量（星辉≥3：三个星辉图标；升级后 3->2：两个图标）。
+    // 风暴条件图标变量（辉星≥3：三个辉星图标；升级后 3->2：两个图标）。
     protected override IEnumerable<DynamicVar> CanonicalVars =>
     [
         ModCardVars.Int("Cards", 2),
@@ -51,7 +51,7 @@ public sealed class Impatient : ModCardTemplate
     protected override async Task OnPlay(PlayerChoiceContext choiceContext, CardPlay cardPlay)
     {
         await CardPileCmd.Draw(choiceContext, DynamicVars.GetRequired<IntVar>("Cards").BaseValue, Owner);
-        // 风暴（3（2）星）：当前星辉>=StarsStorm 才重复抽 2 张。
+        // 风暴（3（2）星）：当前辉星>=StarsStorm 才重复抽 2 张。
         if (Owner.PlayerCombatState!.Stars >= (int)DynamicVars.GetRequired<StarsVar>("StarsStorm").BaseValue)
             await CardPileCmd.Draw(choiceContext, DynamicVars.GetRequired<IntVar>("Cards").BaseValue, Owner);
     }

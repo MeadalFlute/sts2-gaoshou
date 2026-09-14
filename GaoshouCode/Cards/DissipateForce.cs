@@ -13,7 +13,7 @@ using STS2RitsuLib.Scaffolding.Content;
 
 namespace Gaoshou.Cards;
 
-// 卸力：技能（普通）。耗 0 能量 2 星辉。获得 8(12) 格挡。对所有敌人施加 1(2) 层虚弱。
+// 卸力：技能（普通）。耗 0 能量 2 辉星。获得 8(12) 格挡。对所有敌人施加 1(2) 层虚弱。
 [RegisterCard(typeof(GaoshouCardPool))]
 public sealed class DissipateForce : ModCardTemplate
 {

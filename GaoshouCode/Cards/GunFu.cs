@@ -12,7 +12,7 @@ using STS2RitsuLib.Scaffolding.Content;
 
 namespace Gaoshou.Cards;
 
-// 枪斗术：能力（稀有）。耗 1 能量 1 星辉。每当你触发【流转】后，获得 4 点格挡。虚无（升级后移除）。
+// 枪斗术：能力（稀有）。耗 1 能量 1 辉星。每当你触发【流转】后，获得 4 点格挡。虚无（升级后移除）。
 // 流转机制暂未实装，简化为"每当你打出带流转词条的牌后"触发。
 [RegisterCard(typeof(GaoshouCardPool))]
 public sealed class GunFu : ModCardTemplate
@@ -48,7 +48,7 @@ public override CardAssetProfile AssetProfile => new(
     {
     }
 
-    // 1 能量 1 星辉。
+    // 1 能量 1 辉星。
     public override int CanonicalStarCost => 1;
 
     protected override async Task OnPlay(PlayerChoiceContext choiceContext, CardPlay cardPlay)

@@ -1,11 +1,15 @@
+using System.Linq;
 using MegaCrit.Sts2.Core.Commands;
+using MegaCrit.Sts2.Core.Combat;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Entities.Players;
 using MegaCrit.Sts2.Core.Entities.Relics;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
 using MegaCrit.Sts2.Core.Localization.DynamicVars;
 using MegaCrit.Sts2.Core.Models;
+using Gaoshou.Cards;
 using Gaoshou.Characters;
+using Gaoshou.Tutorial;
 using STS2RitsuLib.Cards.DynamicVars;
 using STS2RitsuLib.Combat.Ui.ExtraCornerAmountLabels;
 using STS2RitsuLib.Interop.AutoRegistration;
@@ -13,7 +17,7 @@ using STS2RitsuLib.Scaffolding.Content;
 
 namespace Gaoshou.Relics;
 
-// 高手护符：初始遗物。每回合最多 3 次，消耗能量获得 1 星辉，消耗星辉获得 1 能量。
+// 高手护符：初始遗物。每回合最多 3 次，消耗能量获得 1 辉星，消耗辉星获得 1 能量。
 // 右下角显示本回合剩余可用次数（0~3）。
 // 必须保留池注册才能被正确加载为初始遗物；若因此进入奖励池（RitsuLib 未自动排除起始遗物），
 // 再通过奖励过滤排除——先恢复加载，以实测为准。
@@ -35,7 +39,7 @@ public sealed class GaoshouAmulet : ModRelicTemplate, IRelicExtraIconAmountLabel
     public bool HasUsesRemainingForBoth(int energyCost, int starsCost)
         => _usesRemaining >= System.Math.Max(energyCost, starsCost);
 
-    // 描述中的能量/星辉图标变量。
+    // 描述中的能量/辉星图标变量。
     protected override IEnumerable<DynamicVar> CanonicalVars =>
     [
         ModCardVars.Energy("Energy", 1),
@@ -64,7 +68,7 @@ public sealed class GaoshouAmulet : ModRelicTemplate, IRelicExtraIconAmountLabel
         return Task.CompletedTask;
     }
 
-    // 消耗能量 → 获得 1 星辉。仅对装备者自己的能量消耗生效（多人防串触发）。
+    // 消耗能量 → 获得 1 辉星。仅对装备者自己的能量消耗生效（多人防串触发）。
     public override async Task AfterEnergySpent(CardModel card, int amount)
     {
         if (amount <= 0 || _usesRemaining <= 0)
@@ -78,7 +82,7 @@ public sealed class GaoshouAmulet : ModRelicTemplate, IRelicExtraIconAmountLabel
         NotifyCounterChanged();
     }
 
-    // 消耗星辉 → 获得 1 能量。仅对装备者自己的星辉消耗生效（多人防串触发）。
+    // 消耗辉星 → 获得 1 能量。仅对装备者自己的辉星消耗生效（多人防串触发）。
     public override async Task AfterStarsSpent(int amount, Player spender)
     {
         if (amount <= 0 || _usesRemaining <= 0)
@@ -89,5 +93,27 @@ public sealed class GaoshouAmulet : ModRelicTemplate, IRelicExtraIconAmountLabel
         await PlayerCmd.GainEnergy(1, spender);
         _usesRemaining--;
         NotifyCounterChanged();
+    }
+
+    // 新手教程：本局第一场战斗的回合 1，把起始牌组里的「枪盾」置顶，保证教学示范牌在手
+    // （连还手本身就是固有牌，必定在手，无需处理）。
+    // 只用运行态条件（回合数 + 本局战斗数）判断，**不掺入本地 FTUE 标记 / LocalContext**，
+    // 保证各端（含远端高手玩家）执行完全一致，避免手牌与校验和分歧。
+    public override Task BeforeHandDraw(Player player, PlayerChoiceContext choiceContext, ICombatState combatState)
+    {
+        if (player != Owner
+            || player.Character is not GaoshouCharacter
+            || player.PlayerCombatState?.TurnNumber != 1
+            || !GaoshouTutorial.IsFirstCombatOfRun(player.RunState))
+        {
+            return Task.CompletedTask;
+        }
+
+        var pile = PileType.Draw.GetPile(player);
+        var spear = pile?.Cards.FirstOrDefault(c => c is SpearAndShield);
+        if (pile != null && spear != null)
+            pile.MoveToTopInternal(spear);
+
+        return Task.CompletedTask;
     }
 }

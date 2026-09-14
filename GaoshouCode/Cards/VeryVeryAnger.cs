@@ -14,7 +14,7 @@ using STS2RitsuLib.Scaffolding.Content;
 
 namespace Gaoshou.Cards;
 
-// 生气气：技能（普通）。耗 1 能量 0 星辉（升级后能量 1->0）。
+// 生气气：技能（普通）。耗 1 能量 0 辉星（升级后能量 1->0）。
 // 恢复 2 点生命，获得 2 层临时力量。词条：风暴。消耗。
 [RegisterCard(typeof(GaoshouCardPool))]
 public sealed class VeryVeryAnger : ModCardTemplate
@@ -57,7 +57,7 @@ public sealed class VeryVeryAnger : ModCardTemplate
 
     public VeryVeryAnger() : base(BaseEnergyCost, CardKind, CardRarityValue, CardTarget, ShowInCardLibrary)
     {
-        // 0 星辉：不覆写 CanonicalStarCost，保持默认“无星辉费用”。
+        // 0 辉星：不覆写 CanonicalStarCost，保持默认“无辉星费用”。
     }
 
     // 风暴：重放 1。用 OnPlay 内部执行两次代替 BaseReplayCount——

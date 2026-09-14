@@ -1,4 +1,6 @@
 using System.Linq;
+using MegaCrit.Sts2.Core.Localization.DynamicVars;
+using STS2RitsuLib.Cards.DynamicVars;
 using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.Combat;
 using MegaCrit.Sts2.Core.Entities.Creatures;
@@ -38,13 +40,14 @@ public sealed class GaoshouTemporaryStrengthPower : ModPowerTemplate
         if (amount <= 0)
             return;
 
-        // 遵循古道：持有该能力且星辉>=1 → 消耗 1 星辉，改为 +1 基础力量（不获得临时力量）。
+        // 遵循古道：持有该能力且辉星>=1 → 消耗 1 辉星，改为 +1 基础力量（不获得临时力量）。
         if (target.Player != null
-            && target.Powers.OfType<OldWayPower>().Any()
-            && target.Player.PlayerCombatState!.Stars >= 1)
+            && target.Powers.OfType<OldWayPower>().FirstOrDefault() is { } oldWay
+            && target.Player.PlayerCombatState!.Stars >= oldWay.DynamicVars.GetRequired<IntVar>("StarCost").IntValue)
         {
-            await PlayerCmd.LoseStars(1, target.Player);
-            await PowerCmd.Apply<StrengthPower>(new ThrowingPlayerChoiceContext(), target, 1m, applier, cardSource, true);
+            await PlayerCmd.LoseStars(oldWay.DynamicVars.GetRequired<IntVar>("StarCost").IntValue, target.Player);
+            await PowerCmd.Apply<StrengthPower>(new ThrowingPlayerChoiceContext(), target,
+                oldWay.DynamicVars.GetRequired<IntVar>("GainAmount").BaseValue, applier, cardSource, true);
             return;
         }
 
@@ -61,10 +64,12 @@ public sealed class GaoshouTemporaryStrengthPower : ModPowerTemplate
         // 多人：只在自己回合结束时结算（participants 为正在结束回合的 Creature）。
         if (!participants.Contains(Owner)) return;
 
-        // 神经超频器：持有且 >3 层 → 仅失去 1 层 + 失去 1 点生命（不再减半）。
+        // 神经超频器：持有且 >3 层 → 本回合授予的力量照常全额移除（回合开始会按剩余层数补回），
+        // 只是层数只减 1（不再减半），代价是失去 1 点生命。
+        // 注意这里必须用 -Amount：若只扣 1 点，下回合 AfterSideTurnStart 又会补回 Amount 点，力量会无限膨胀。
         if (Owner.Player?.Relics.Any(r => r is Sandevistan) == true && Amount > 3)
         {
-            await PowerCmd.Apply<StrengthPower>(choiceContext, Owner, -1m, Owner, null);
+            await PowerCmd.Apply<StrengthPower>(choiceContext, Owner, -Amount, Owner, null);
             Amount -= 1;
             InvokeDisplayAmountChanged();
             await CreatureCmd.Damage(choiceContext, Owner, 1m,

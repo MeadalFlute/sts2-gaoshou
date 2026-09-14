@@ -3,9 +3,11 @@ using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
 using MegaCrit.Sts2.Core.Hooks;
+using MegaCrit.Sts2.Core.Localization.DynamicVars;
 using MegaCrit.Sts2.Core.Models;
 using Gaoshou.Characters;
 using Gaoshou.Keywords;
+using STS2RitsuLib.Cards.DynamicVars;
 using STS2RitsuLib.Interop.AutoRegistration;
 using STS2RitsuLib.Scaffolding.Content;
 
@@ -35,29 +37,39 @@ public sealed class TensionAndRelaxation : ModCardTemplate
     {
     }
 
+    // 红牌 1 张、蓝牌 1 张。
+    protected override IEnumerable<DynamicVar> CanonicalVars =>
+    [
+        ModCardVars.Cards("RedCards", 1),
+        ModCardVars.Cards("BlueCards", 1),
+    ];
+
         protected override async Task OnPlay(PlayerChoiceContext choiceContext, CardPlay cardPlay)
     {
-        await DrawByColorAsync(choiceContext, GaoshouCardColor.Red);
-        await DrawByColorAsync(choiceContext, GaoshouCardColor.Blue);
-
-
+        await DrawByColorAsync(choiceContext, GaoshouCardColor.Red,
+            DynamicVars.GetRequired<CardsVar>("RedCards").IntValue);
+        await DrawByColorAsync(choiceContext, GaoshouCardColor.Blue,
+            DynamicVars.GetRequired<CardsVar>("BlueCards").IntValue);
     }
 
-    private async Task DrawByColorAsync(PlayerChoiceContext choiceContext, GaoshouCardColor want)
+    private async Task DrawByColorAsync(PlayerChoiceContext choiceContext, GaoshouCardColor want, int count)
     {
-        // 尊重“不可抽牌”debuff（如 NoDrawPower）：与游戏 CardPileCmd.Draw 一致，先判定是否可抽。
-        if (!Hook.ShouldDraw(Owner.Creature.CombatState, Owner, false, out var modifier))
+        for (var i = 0; i < count; i++)
         {
-            if (modifier != null)
-                await Hook.AfterPreventingDraw(Owner.Creature.CombatState, modifier);
-            return;
-        }
+            // 尊重“不可抽牌”debuff（如 NoDrawPower）：与游戏 CardPileCmd.Draw 一致，先判定是否可抽。
+            if (!Hook.ShouldDraw(Owner.Creature.CombatState, Owner, false, out var modifier))
+            {
+                if (modifier != null)
+                    await Hook.AfterPreventingDraw(Owner.Creature.CombatState, modifier);
+                return;
+            }
 
-        var draw = PileType.Draw.GetPile(Owner)?.Cards.ToList() ?? [];
-        var candidates = draw.Where(c => MatchesColor(c, want)).ToList();
-        if (candidates.Count == 0)
-            return;
-        await CardPileCmd.Add(candidates[0], PileType.Hand);
+            var draw = PileType.Draw.GetPile(Owner)?.Cards.ToList() ?? [];
+            var candidates = draw.Where(c => MatchesColor(c, want)).ToList();
+            if (candidates.Count == 0)
+                return;
+            await CardPileCmd.Add(candidates[0], PileType.Hand);
+        }
     }
 
     private static bool MatchesColor(CardModel c, GaoshouCardColor want)

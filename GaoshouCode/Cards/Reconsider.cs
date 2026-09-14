@@ -12,8 +12,8 @@ using STS2RitsuLib.Scaffolding.Content;
 
 namespace Gaoshou.Cards;
 
-// 重整思路：技能（罕见）。耗 0 能量 0 星辉。
-// 弃掉所有手牌，抽 4 张牌；奇迹（默认直接触发）：获得 1 能量、1 星辉。消耗（升级后移除）。
+// 重整思路：技能（罕见）。耗 0 能量 0 辉星。
+// 弃掉所有手牌，抽 4 张牌；奇迹（默认直接触发）：获得 1 能量、1 辉星。消耗（升级后移除）。
 [RegisterCard(typeof(GaoshouCardPool))]
 public sealed class Reconsider : ModCardTemplate
 {
@@ -53,7 +53,7 @@ public sealed class Reconsider : ModCardTemplate
 
     public Reconsider() : base(BaseEnergyCost, CardKind, CardRarityValue, CardTarget, ShowInCardLibrary)
     {
-        // 0 能量 0 星辉：不覆写 CanonicalStarCost。
+        // 0 能量 0 辉星：不覆写 CanonicalStarCost。
     }
 
     protected override async Task OnPlay(PlayerChoiceContext choiceContext, CardPlay cardPlay)
@@ -64,7 +64,7 @@ public sealed class Reconsider : ModCardTemplate
         // 抽 4 张牌。
         await CardPileCmd.Draw(choiceContext, DynamicVars.GetRequired<IntVar>("Cards").BaseValue, Owner);
 
-        // 奇迹：非回合开始时抽牌进入手牌才触发 → 获得 1 能量、1 星辉。
+        // 奇迹：非回合开始时抽牌进入手牌才触发 → 获得 1 能量、1 辉星。
         if (MiracleCounter.IsMiracleReady(this))
         {
             await PlayerCmd.GainEnergy(DynamicVars.GetRequired<EnergyVar>("Energy").BaseValue, Owner);

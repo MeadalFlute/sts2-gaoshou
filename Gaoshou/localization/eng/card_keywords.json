@@ -26,5 +26,9 @@
   "UNPLAYABLE.title": "Unplayable",
   "SLY.title": "Sly",
   "PERIOD": ".",
-  "UNPLAYABLE.description": "This card cannot be played."
+  "UNPLAYABLE.description": "This card cannot be played.",
+  "GAOSHOU_KEYWORD_BONUS.title": "Bonus",
+  "GAOSHOU_KEYWORD_BONUS.description": "When drawn, draw n extra cards.",
+  "GAOSHOU_KEYWORD_VIRTUE.title": "Virtue",
+  "GAOSHOU_KEYWORD_VIRTUE.description": "When played, gain 1 Energy and draw 1 card."
 }

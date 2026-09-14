@@ -13,7 +13,7 @@ using STS2RitsuLib.Scaffolding.Content;
 
 namespace Gaoshou.Cards;
 
-// 全副武装（交换后）：技能（稀有）。耗 0 能量 2 星辉。
+// 全副武装（交换后）：技能（稀有）。耗 0 能量 2 辉星。
 // 你可以保留最多 10(15) 点格挡至下一回合（给予"全副武装"至多保留能力）。
 [RegisterCard(typeof(GaoshouCardPool))]
 public sealed class FullyArmed : ModCardTemplate

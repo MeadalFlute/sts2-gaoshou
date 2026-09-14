@@ -13,7 +13,7 @@ using STS2RitsuLib.Scaffolding.Content;
 
 namespace Gaoshou.Cards;
 
-// 架势：技能（罕见）。耗 1 能量 0 星辉。获得 2 层临时敏捷；下回合开始时获得 2(3) 星辉。
+// 架势：技能（罕见）。耗 1 能量 0 辉星。获得 2 层临时敏捷；下回合开始时获得 2(3) 辉星。
 [RegisterCard(typeof(GaoshouCardPool))]
 public sealed class Stance : ModCardTemplate
 {
@@ -37,6 +37,7 @@ public sealed class Stance : ModCardTemplate
     protected override IEnumerable<DynamicVar> CanonicalVars =>
     [
         ModCardVars.Stars("Stars", 2),
+        ModCardVars.Int("TempDexterity", 2),
     ];
 
     public Stance() : base(BaseEnergyCost, CardKind, CardRarityValue, CardTarget, ShowInCardLibrary)
@@ -46,15 +47,16 @@ public sealed class Stance : ModCardTemplate
     protected override async Task OnPlay(PlayerChoiceContext choiceContext, CardPlay cardPlay)
     {
         // 获得 2 层临时敏捷（同步敏捷）。
-        await GaoshouTemporaryDexterityPower.GrantAsync(choiceContext, Owner.Creature, 2m, Owner.Creature, this);
+        await GaoshouTemporaryDexterityPower.GrantAsync(choiceContext, Owner.Creature,
+            DynamicVars.GetRequired<IntVar>("TempDexterity").BaseValue, Owner.Creature, this);
 
-        // 下回合开始时获得 2(3) 星辉（原生"下回合星辉"buff；数量由 Stars 变量驱动）。
+        // 下回合开始时获得 2(3) 辉星（原生"下回合辉星"buff；数量由 Stars 变量驱动）。
         var next = (int)DynamicVars.GetRequired<StarsVar>("Stars").BaseValue;
         await PowerCmd.Apply<StarNextTurnPower>(choiceContext, Owner.Creature, next, Owner.Creature, this);
     }
 
     protected override void OnUpgrade()
     {
-        DynamicVars.GetRequired<StarsVar>("Stars").UpgradeValueBy(1);   // 下回合星辉 2 -> 3
+        DynamicVars.GetRequired<StarsVar>("Stars").UpgradeValueBy(1);   // 下回合辉星 2 -> 3
     }
 }

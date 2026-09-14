@@ -14,7 +14,7 @@ using STS2RitsuLib.Scaffolding.Content;
 
 namespace Gaoshou.Cards;
 
-// 双持冲锋枪：攻击（稀有）。耗 1 能量 1 星辉。对随机敌人造成 2(3) 点伤害，重复 4(6) 次。消耗。风暴（红&蓝）。
+// 双持冲锋枪：攻击（稀有）。耗 1 能量 1 辉星。对随机敌人造成 2(3) 点伤害，重复 4(6) 次。消耗。风暴（红&蓝）。
 [RegisterCard(typeof(GaoshouCardPool))]
 public sealed class DualSMG : ModCardTemplate
 {
@@ -77,7 +77,7 @@ public sealed class DualSMG : ModCardTemplate
         }
     }
 
-    // 1 能量 1 星辉。
+    // 1 能量 1 辉星。
     public override int CanonicalStarCost => 1;
 
     protected override async Task OnPlay(PlayerChoiceContext choiceContext, CardPlay cardPlay)
@@ -85,7 +85,7 @@ public sealed class DualSMG : ModCardTemplate
         // 依次攻击每个敌人（保留的演出：逐敌、逐次命中）。
         await PlayOnce(choiceContext, cardPlay);
 
-        // 风暴（能量、星辉）：当前能量>=EnergyStorm 且 星辉>=StarsStorm 才重复打出一次。
+        // 风暴（能量、辉星）：当前能量>=EnergyStorm 且 辉星>=StarsStorm 才重复打出一次。
         if (Owner.PlayerCombatState!.Energy >= (int)DynamicVars.GetRequired<EnergyVar>("EnergyStorm").BaseValue
             && Owner.PlayerCombatState.Stars >= (int)DynamicVars.GetRequired<StarsVar>("StarsStorm").BaseValue)
             await PlayOnce(choiceContext, cardPlay);

@@ -11,7 +11,9 @@
         <RootNamespace>Gaoshou</RootNamespace>
         <AppOutputBase>$(MSBuildProjectDirectory)\</AppOutputBase>
         <PathMap>$(AppOutputBase)=.\</PathMap>
-        <NoWarn>$(NoWarn);MSB3270;CS0436</NoWarn>
+        <!-- NU1900：离线/被墙时 NuGet 取不到漏洞库的告警（不影响还原与构建），静音掉。
+             若想连漏洞审计一起关掉，可再设 <NuGetAudit>false</NuGetAudit>。 -->
+        <NoWarn>$(NoWarn);MSB3270;CS0436;NU1900</NoWarn>
 
         <GodotExportPreset>Windows Desktop</GodotExportPreset>
         <Sts2Dir Condition="'$(Sts2Dir)' == ''">$(MSBuildProgramFiles32)\Steam\steamapps\common\Slay the Spire 2</Sts2Dir>

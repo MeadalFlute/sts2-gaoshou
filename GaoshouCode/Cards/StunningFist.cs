@@ -13,7 +13,7 @@ using STS2RitsuLib.Scaffolding.Content;
 
 namespace Gaoshou.Cards;
 
-// 震撼拳：攻击（稀有）。耗 1 能量 1 星辉。造成 12(20) 点伤害；流转（默认直接触发）：击晕目标。消耗。
+// 震撼拳：攻击（稀有）。耗 1 能量 1 辉星。造成 12(20) 点伤害；流转（默认直接触发）：击晕目标。消耗。
 [RegisterCard(typeof(GaoshouCardPool))]
 public sealed class StunningFist : ModCardTemplate
 {
@@ -53,7 +53,7 @@ public sealed class StunningFist : ModCardTemplate
     {
     }
 
-    // 1 能量 1 星辉。
+    // 1 能量 1 辉星。
     public override int CanonicalStarCost => 1;
 
     protected override async Task OnPlay(PlayerChoiceContext choiceContext, CardPlay cardPlay)

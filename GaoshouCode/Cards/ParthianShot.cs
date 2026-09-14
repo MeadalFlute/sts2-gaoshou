@@ -12,7 +12,7 @@ using STS2RitsuLib.Scaffolding.Content;
 
 namespace Gaoshou.Cards;
 
-// 回马箭：攻击（普通）。耗 0 能量 1 星辉（升级后伤害 6->10）。
+// 回马箭：攻击（普通）。耗 0 能量 1 辉星（升级后伤害 6->10）。
 // 造成 6(10) 点伤害。流转（默认直接触发）：获得 3 点格挡。
 [RegisterCard(typeof(GaoshouCardPool))]
 public sealed class ParthianShot : ModCardTemplate
@@ -49,7 +49,7 @@ public sealed class ParthianShot : ModCardTemplate
     {
     }
 
-    // 0 能量 1 星辉。
+    // 0 能量 1 辉星。
     public override int CanonicalStarCost => 1;
 
     protected override async Task OnPlay(PlayerChoiceContext choiceContext, CardPlay cardPlay)

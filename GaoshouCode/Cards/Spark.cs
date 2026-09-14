@@ -13,7 +13,7 @@ using STS2RitsuLib.Scaffolding.Content;
 namespace Gaoshou.Cards;
 
 // 火花：能力（罕见）。耗 1 能量。
-// 你每打出 5（升级 4）张【临时】牌，获得 1 能量、1 星辉。
+// 你每打出 5（升级 4）张【临时】牌，获得 1 能量、1 辉星。
 [RegisterCard(typeof(GaoshouCardPool))]
 public sealed class Spark : ModCardTemplate
 {
@@ -34,7 +34,7 @@ public sealed class Spark : ModCardTemplate
         HoverTipFactory.FromKeyword(GaoshouKeyword.Temporary),
     ];
 
-    // 能量/星辉图标变量、触发阈值 Count（描述用 {Energy:energyIcons()}、{Stars:starIcons()}、{Count:diff()}）。
+    // 能量/辉星图标变量、触发阈值 Count（描述用 {Energy:energyIcons()}、{Stars:starIcons()}、{Count:diff()}）。
     protected override IEnumerable<DynamicVar> CanonicalVars =>
     [
         ModCardVars.Int("Count", 5),

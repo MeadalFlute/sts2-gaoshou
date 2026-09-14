@@ -19,7 +19,7 @@ using STS2RitsuLib.Scaffolding.Content;
 
 namespace Gaoshou.Cards;
 
-// 搏命：技能（稀有）。耗 0 能量。获得 3 能量、3 星辉、抽 3 张牌；本回合你造成的伤害翻倍；下回合开始时你直接死亡。消耗（升级后追加保留）。
+// 搏命：技能（稀有）。耗 0 能量。获得 3 能量、3 辉星、抽 3 张牌；本回合你造成的伤害翻倍；下回合开始时你直接死亡。消耗（升级后追加保留）。
 [RegisterCard(typeof(GaoshouCardPool))]
 public sealed class DyingSurge : ModCardTemplate
 {

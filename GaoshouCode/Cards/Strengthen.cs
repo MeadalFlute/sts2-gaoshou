@@ -15,7 +15,7 @@ using STS2RitsuLib.Scaffolding.Content;
 
 namespace Gaoshou.Cards;
 
-// 变强：技能（罕见）。耗 0 能量 2 星辉。
+// 变强：技能（罕见）。耗 0 能量 2 辉星。
 // 获得 2(3) 层临时力量和临时敏捷。每次打出一次，这张牌在本场战斗中获得的增益加 2(3)。参考铁甲战士-暴走。
 [RegisterCard(typeof(GaoshouCardPool))]
 public sealed class Strengthen : ModCardTemplate

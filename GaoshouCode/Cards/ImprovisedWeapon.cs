@@ -14,7 +14,7 @@ using STS2RitsuLib.Scaffolding.Content;
 
 namespace Gaoshou.Cards;
 
-// 临时武器：攻击（普通）。耗 0 能量 1 星辉（升级后伤害 4->8）。
+// 临时武器：攻击（普通）。耗 0 能量 1 辉星（升级后伤害 4->8）。
 // 造成 4(8) 点伤害。向手牌加入 2 张「废品牌」（无色卡，后续单独创建）。
 [RegisterCard(typeof(GaoshouCardPool))]
 public sealed class ImprovisedWeapon : ModCardTemplate
@@ -40,7 +40,7 @@ public sealed class ImprovisedWeapon : ModCardTemplate
     {
     }
 
-    // 0 能量 1 星辉。
+    // 0 能量 1 辉星。
     public override int CanonicalStarCost => 1;
 
     protected override async Task OnPlay(PlayerChoiceContext choiceContext, CardPlay cardPlay)

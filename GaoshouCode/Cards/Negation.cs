@@ -9,7 +9,7 @@ using STS2RitsuLib.Scaffolding.Content;
 
 namespace Gaoshou.Cards;
 
-// 逸散：技能（稀有）。耗 1 能量 1 星辉（升级 0/1）。击晕一名敌人。消耗。
+// 逸散：技能（稀有）。耗 1 能量 1 辉星（升级 0/1）。击晕一名敌人。消耗。
 [RegisterCard(typeof(GaoshouCardPool))]
 public sealed class Negation : ModCardTemplate
 {
@@ -40,7 +40,7 @@ public sealed class Negation : ModCardTemplate
     {
     }
 
-    // 1 能量 1 星辉（升级 0 能量 1 星辉）。
+    // 1 能量 1 辉星（升级 0 能量 1 辉星）。
     public override int CanonicalStarCost => 1;
 
     protected override async Task OnPlay(PlayerChoiceContext choiceContext, CardPlay cardPlay)

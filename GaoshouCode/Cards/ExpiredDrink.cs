@@ -14,7 +14,7 @@ using STS2RitsuLib.Scaffolding.Content;
 
 namespace Gaoshou.Cards;
 
-// 过期饮料：技能（无色衍生）。耗 0 能量 1 星辉。
+// 过期饮料：技能（无色衍生）。耗 0 能量 1 辉星。
 // 查看抽牌堆顶 4 张牌，选择 1 张加入手牌，弃置剩余牌。消耗。
 [RegisterCard(typeof(TokenCardPool))]
 public sealed class ExpiredDrink : ModCardTemplate, Gaoshou.Keywords.IWasteCard
@@ -39,13 +39,14 @@ public sealed class ExpiredDrink : ModCardTemplate, Gaoshou.Keywords.IWasteCard
     protected override IEnumerable<DynamicVar> CanonicalVars =>
     [
         ModCardVars.Cards(4),
+        ModCardVars.Int("PickCount", 1),
     ];
 
     public ExpiredDrink() : base(BaseEnergyCost, CardKind, CardRarityValue, CardTarget, ShowInCardLibrary)
     {
     }
 
-    // 0 能量 1 星辉。
+    // 0 能量 1 辉星。
     public override int CanonicalStarCost => 1;
 
     protected override async Task OnPlay(PlayerChoiceContext choiceContext, CardPlay cardPlay)
@@ -60,7 +61,8 @@ public sealed class ExpiredDrink : ModCardTemplate, Gaoshou.Keywords.IWasteCard
             return;
         }
 
-        var prefs = new CardSelectorPrefs(new LocString("cards", "GAOSHOU_EXPIRED_DRINK_PROMPT"), 1, 1);
+        var pickCount = DynamicVars.GetRequired<IntVar>("PickCount").IntValue;
+        var prefs = new CardSelectorPrefs(new LocString("cards", "GAOSHOU_EXPIRED_DRINK_PROMPT"), pickCount, pickCount);
         var selected = (await CardSelectCmd.FromCombatPile(choiceContext, pile, Owner, prefs, topCards.Contains)).ToList();
         foreach (var c in selected)
         {

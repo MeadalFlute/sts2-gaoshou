@@ -54,7 +54,8 @@ public sealed class LoomingPresence : ModCardTemplate
     protected override async Task OnPlay(PlayerChoiceContext choiceContext, CardPlay cardPlay)
     {
         // 获得 1 层浮光掠影。
-        await PowerCmd.Apply<LoomingPresencePower>(choiceContext, Owner.Creature, 1m, Owner.Creature, this);
+        await PowerCmd.Apply<LoomingPresencePower>(choiceContext, Owner.Creature,
+            DynamicVars.GetRequired<IntVar>("FlowGain").BaseValue, Owner.Creature, this);
 
         // 流转（颜色与上一张牌完全不同）：额外获得 1 层。
         if (GaoshouFlowTracker.IsFlowReady(this))

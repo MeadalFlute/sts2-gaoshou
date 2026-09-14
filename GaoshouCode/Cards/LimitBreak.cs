@@ -37,6 +37,7 @@ public sealed class LimitBreak : ModCardTemplate
     protected override IEnumerable<DynamicVar> CanonicalVars =>
     [
         ModCardVars.Int("Draw", 3),
+        ModCardVars.Int("WitherCount", 1),
     ];
 
     public LimitBreak() : base(BaseEnergyCost, CardKind, CardRarityValue, CardTarget, ShowInCardLibrary)
@@ -47,10 +48,13 @@ public sealed class LimitBreak : ModCardTemplate
     {
         await CardPileCmd.Draw(choiceContext, (int)DynamicVars.GetRequired<IntVar>("Draw").BaseValue, Owner);
 
-        // 往弃牌堆加入一张「凋萎」状态牌（生成牌动画/预览：参考没脑子拳）。
-        var wither = Owner.Creature.CombatState?.CreateCard(ModelDb.Card<Wither>(), Owner);
-        if (wither != null)
-            CardCmd.PreviewCardPileAdd(await CardPileCmd.AddGeneratedCardToCombat(wither, PileType.Discard, Owner));
+        // 往弃牌堆加入「凋萎」状态牌（数量由 WitherCount 变量驱动；动画/预览：参考没脑子拳）。
+        for (var i = 0; i < DynamicVars.GetRequired<IntVar>("WitherCount").IntValue; i++)
+        {
+            var wither = Owner.Creature.CombatState?.CreateCard(ModelDb.Card<Wither>(), Owner);
+            if (wither != null)
+                CardCmd.PreviewCardPileAdd(await CardPileCmd.AddGeneratedCardToCombat(wither, PileType.Discard, Owner));
+        }
     }
 
     protected override void OnUpgrade()

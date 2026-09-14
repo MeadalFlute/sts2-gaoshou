@@ -14,7 +14,7 @@ using STS2RitsuLib.Scaffolding.Content;
 
 namespace Gaoshou.Relics;
 
-// 武林秘籍（稀有）：每当你消耗能量时，获得 1 层临时敏捷；每当你消耗星辉时，获得 1 层临时力量。
+// 武林秘籍（稀有）：每当你消耗能量时，获得 1 层临时敏捷；每当你消耗辉星时，获得 1 层临时力量。
 [RegisterRelic(typeof(GaoshouRelicPool))]
 public sealed class MartialArtsManual : ModRelicTemplate
 {
@@ -42,7 +42,7 @@ public override RelicAssetProfile AssetProfile => new(
             await GaoshouTemporaryDexterityPower.GrantAsync(new ThrowingPlayerChoiceContext(), Owner.Creature, n, Owner.Creature, card);
     }
 
-    // 消耗星辉 → 临时力量。
+    // 消耗辉星 → 临时力量。
     public override async Task AfterStarsSpent(int amount, Player spender)
     {
         if (amount <= 0 || spender != Owner)

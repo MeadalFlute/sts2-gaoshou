@@ -13,7 +13,7 @@ using STS2RitsuLib.Scaffolding.Content;
 
 namespace Gaoshou.Cards;
 
-// 腾挪：技能（罕见）。耗 0 能量 0 星辉。抽 4 张牌，将最少 2 张牌放回抽牌堆顶。消耗（升级后移除）。
+// 腾挪：技能（罕见）。耗 0 能量 0 辉星。抽 4 张牌，将最少 2 张牌放回抽牌堆顶。消耗（升级后移除）。
 [RegisterCard(typeof(GaoshouCardPool))]
 public sealed class Maneuver : ModCardTemplate
 {
@@ -42,7 +42,7 @@ public sealed class Maneuver : ModCardTemplate
 
     public Maneuver() : base(BaseEnergyCost, CardKind, CardRarityValue, CardTarget, ShowInCardLibrary)
     {
-        // 0 星辉：不覆写 CanonicalStarCost。
+        // 0 辉星：不覆写 CanonicalStarCost。
     }
 
     protected override async Task OnPlay(PlayerChoiceContext choiceContext, CardPlay cardPlay)

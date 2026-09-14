@@ -11,8 +11,8 @@ using STS2RitsuLib.Scaffolding.Content;
 
 namespace Gaoshou.Cards;
 
-// 跌宕起伏：技能（普通）。真 X 能量费用（EnergyCost.CostsX = true；自动消耗全部能量），0 星辉。
-// 打出时：获得 X 点星辉（升级后 X+1）。保留。
+// 跌宕起伏：技能（普通）。真 X 能量费用（EnergyCost.CostsX = true；自动消耗全部能量），0 辉星。
+// 打出时：获得 X 点辉星（升级后 X+1）。保留。
 [RegisterCard(typeof(GaoshouCardPool))]
 public sealed class TwistAndTurn : ModCardTemplate
 {
@@ -35,6 +35,7 @@ public sealed class TwistAndTurn : ModCardTemplate
     protected override IEnumerable<DynamicVar> CanonicalVars =>
     [
         ModCardVars.Stars("Stars", 1),
+        ModCardVars.Int("DoubleThreshold", 2),
     ];
 
     public TwistAndTurn() : base(BaseEnergyCost, CardKind, CardRarityValue, CardTarget, ShowInCardLibrary)
@@ -50,10 +51,10 @@ public sealed class TwistAndTurn : ModCardTemplate
 
     protected override async Task OnPlay(PlayerChoiceContext choiceContext, CardPlay cardPlay)
     {
-        // X = 本次为 X 费用实际消耗的能量（含 ChemicalX 类修正）；获得 X（升级后 X+1）点星辉。
+        // X = 本次为 X 费用实际消耗的能量（含 ChemicalX 类修正）；获得 X（升级后 X+1）点辉星。
         var x = ResolveEnergyXValue();
-        // 当 X>=2 时，X 本身翻倍（能量消耗翻倍计星辉）；升级 +1 在翻倍后追加。
-        if (x >= 2)
+        // 当 X>=2 时，X 本身翻倍（能量消耗翻倍计辉星）；升级 +1 在翻倍后追加。
+        if (x >= DynamicVars.GetRequired<IntVar>("DoubleThreshold").IntValue)
             x *= 2;
         var gain = x + (IsUpgraded ? 1 : 0);
         await PlayerCmd.GainStars(gain, Owner);

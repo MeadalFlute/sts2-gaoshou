@@ -17,7 +17,7 @@ using STS2RitsuLib.Scaffolding.Content;
 
 namespace Gaoshou.Cards;
 
-// 飞沙：技能（罕见）。耗 0 能量 1 星辉。给予所有敌人 1 层虚弱。
+// 飞沙：技能（罕见）。耗 0 能量 1 辉星。给予所有敌人 1 层虚弱。
 // 流转：所有敌人本回合失去 6(9) 点力量（回合结束后恢复，由 SandThrowStrDropPower 实现）。
 [RegisterCard(typeof(GaoshouCardPool))]
 public sealed class SandThrow : ModCardTemplate

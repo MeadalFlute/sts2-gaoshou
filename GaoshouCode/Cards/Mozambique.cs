@@ -48,6 +48,7 @@ public sealed class Mozambique : ModCardTemplate
     protected override IEnumerable<DynamicVar> CanonicalVars =>
     [
         new DamageVar(3m, ValueProp.Move),
+        ModCardVars.Int("Times", 3),
         ModCardVars.Int("PhantomCount", 1),
     ];
 
@@ -65,7 +66,7 @@ public sealed class Mozambique : ModCardTemplate
         if (hasVulnerable)
         {
             await DamageCmd.Attack(DynamicVars.Damage.BaseValue)
-                .WithHitCount(3)
+            .WithHitCount(DynamicVars.GetRequired<IntVar>("Times").IntValue)
                 .FromCard(this, cardPlay)
                 .Targeting(enemy)
                 .Execute(choiceContext);

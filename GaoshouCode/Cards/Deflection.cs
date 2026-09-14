@@ -2,16 +2,18 @@ using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
 using MegaCrit.Sts2.Core.HoverTips;
+using MegaCrit.Sts2.Core.Localization.DynamicVars;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Models.Powers;
 using Gaoshou.Characters;
 using Gaoshou.Keywords;
+using STS2RitsuLib.Cards.DynamicVars;
 using STS2RitsuLib.Interop.AutoRegistration;
 using STS2RitsuLib.Scaffolding.Content;
 
 namespace Gaoshou.Cards;
 
-// 偏斜（交换后）：技能（罕见）。耗 0 能量 2 星辉。
+// 偏斜（交换后）：技能（罕见）。耗 0 能量 2 辉星。
 // 本回合结束时，你的格挡不会被移除（给予 1 层残影）。
 // 奇迹（非回合开始抽牌进入手牌）：重复打出这张牌 1(2) 次。
 [RegisterCard(typeof(GaoshouCardPool))]
@@ -45,6 +47,13 @@ public sealed class Deflection : ModCardTemplate
 
     public override int CanonicalStarCost => 2;
 
+    // 残影 1 层；奇迹重复次数 1(2)。
+    protected override IEnumerable<DynamicVar> CanonicalVars =>
+    [
+        ModCardVars.Power<BlurPower>(1m),
+        ModCardVars.Int("Times", 1),
+    ];
+
     public Deflection() : base(BaseEnergyCost, CardKind, CardRarityValue, CardTarget, ShowInCardLibrary)
     {
     }
@@ -52,17 +61,21 @@ public sealed class Deflection : ModCardTemplate
     protected override async Task OnPlay(PlayerChoiceContext choiceContext, CardPlay cardPlay)
     {
         // 本体 1 层；奇迹（非回合开始抽牌进手）额外打出 1(2) 次。
-        var repeats = 1 + (MiracleCounter.IsMiracleReady(this) ? (IsUpgraded ? 2 : 1) : 0);
+        var repeats = 1 + (MiracleCounter.IsMiracleReady(this)
+            ? DynamicVars.GetRequired<IntVar>("Times").IntValue
+            : 0);
 
         for (var i = 0; i < repeats; i++)
         {
             // 给予 1 层残影（下回合开始格挡不消失）。
-            await PowerCmd.Apply<BlurPower>(choiceContext, Owner.Creature, 1m, Owner.Creature, this);
+            await PowerCmd.Apply<BlurPower>(choiceContext, Owner.Creature,
+                DynamicVars["BlurPower"].BaseValue, Owner.Creature, this);
         }
     }
 
     protected override void OnUpgrade()
     {
         // 升级：奇迹重复 1 -> 2 次。
+        DynamicVars.GetRequired<IntVar>("Times").UpgradeValueBy(1);
     }
 }

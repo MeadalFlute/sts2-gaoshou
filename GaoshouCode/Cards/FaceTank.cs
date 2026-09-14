@@ -3,11 +3,13 @@ using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
 using MegaCrit.Sts2.Core.HoverTips;
+using MegaCrit.Sts2.Core.Localization.DynamicVars;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Models.Cards;
 using MegaCrit.Sts2.Core.Models.Powers;
 using Gaoshou.Characters;
 using Gaoshou.Keywords;
+using STS2RitsuLib.Cards.DynamicVars;
 using STS2RitsuLib.Interop.AutoRegistration;
 using STS2RitsuLib.Scaffolding.Content;
 
@@ -39,13 +41,21 @@ public sealed class FaceTank : ModCardTemplate
     {
     }
 
+    // 缓冲 1(2) 层、眩晕 3 张。
+    protected override IEnumerable<DynamicVar> CanonicalVars =>
+    [
+        ModCardVars.Power<BufferPower>(1m),
+        ModCardVars.Cards(3),
+    ];
+
     protected override async Task OnPlay(PlayerChoiceContext choiceContext, CardPlay cardPlay)
     {
         // 获得 1(2) 层缓冲（受到伤害时本回合免疫）。
-        await PowerCmd.Apply<BufferPower>(choiceContext, Owner.Creature, IsUpgraded ? 2 : 1, Owner.Creature, this);
+        await PowerCmd.Apply<BufferPower>(choiceContext, Owner.Creature,
+            DynamicVars["BufferPower"].BaseValue, Owner.Creature, this);
 
         // 将 3 张眩晕加入你的抽牌堆。
-        for (var i = 0; i < 3; i++)
+        for (var i = 0; i < DynamicVars.Cards.IntValue; i++)
         {
             var dazed = Owner.Creature.CombatState?.CreateCard(ModelDb.Card<Dazed>(), Owner);
             if (dazed != null)
@@ -56,5 +66,6 @@ public sealed class FaceTank : ModCardTemplate
     protected override void OnUpgrade()
     {
         // 升级：缓冲 1 -> 2。
+        DynamicVars["BufferPower"].UpgradeValueBy(1);
     }
 }

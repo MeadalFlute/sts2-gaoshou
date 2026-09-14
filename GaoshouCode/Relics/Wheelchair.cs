@@ -12,7 +12,7 @@ using STS2RitsuLib.Scaffolding.Content;
 
 namespace Gaoshou.Relics;
 
-// 轮椅（先古）：每回合开始时，获得 3 星辉；能量不足时，你可以使用星辉支付卡牌的能量。
+// 轮椅（先古）：每回合开始时，获得 3 辉星；能量不足时，你可以使用辉星支付卡牌的能量。
 // 获取方式：欧罗巴斯之触把高手护符升级为轮椅（GaoshouAmulet 上的 RegisterTouchOfOrobasRefinement）。
 // 注册回角色遗物池以便百科-遗物大全正确显示与查看描述。
 [RegisterRelic(typeof(GaoshouRelicPool))]
@@ -31,7 +31,7 @@ public sealed class Wheelchair : ModRelicTemplate
         IconOutlinePath: $"{Entry.ResPath}/images/relics/{GetType().Name}.png",
         BigIconPath: $"{Entry.ResPath}/images/relics/{GetType().Name}.png");
 
-    // 每场战斗开始：给装备者挂"星辉代付"能力（ShouldPayExcessEnergyCostWithStars 只查询战斗内模型，遗物本体不在其列）。
+    // 每场战斗开始：给装备者挂"辉星代付"能力（ShouldPayExcessEnergyCostWithStars 只查询战斗内模型，遗物本体不在其列）。
     public override async Task BeforeCombatStart()
     {
         await PowerCmd.Apply<WheelchairStarPayPower>(new ThrowingPlayerChoiceContext(), Owner.Creature, 1m, Owner.Creature, null);

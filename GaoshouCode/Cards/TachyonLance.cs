@@ -17,7 +17,7 @@ using STS2RitsuLib.Scaffolding.Content;
 
 namespace Gaoshou.Cards;
 
-// 速子长矛：攻击（稀有）。X 星辉费用（0 能量）。
+// 速子长矛：攻击（稀有）。X 辉星费用（0 能量）。
 // 对随机敌人造成 2 点伤害，获得 1(2) 层临时力量，重复 X 次；本场每触发一次奇迹效果，重复次数再乘 X
 // （本场奇迹次数为 0 时本卡不产生效果；参考铁甲战士-扯碎）。
 [RegisterCard(typeof(GaoshouCardPool))]
@@ -47,7 +47,7 @@ public override CardAssetProfile AssetProfile => new(
         ModCardVars.Int("TemporaryStrength", 1),
         new CalculationBaseVar(0m),
         new CalculationExtraVar(1m),
-        // 额外命中数 = X × 本场奇迹次数（预览时 X 用当前星辉近似，打出时用实付 LastStarsSpent）。
+        // 额外命中数 = X × 本场奇迹次数（预览时 X 用当前辉星近似，打出时用实付 LastStarsSpent）。
         new CalculatedVar("CalculatedHits").WithMultiplier(static (card, _) =>
         {
             var x = card.LastStarsSpent > 0 ? card.LastStarsSpent : (card.Owner?.PlayerCombatState?.Stars ?? 0);
@@ -64,7 +64,7 @@ public override CardAssetProfile AssetProfile => new(
         CardKeyword.Ethereal,
     ];
 
-    // X 星辉费用（RitsuLib 原生 X）。
+    // X 辉星费用（RitsuLib 原生 X）。
     public override bool HasStarCostX => true;
 
     public TachyonLance() : base(BaseEnergyCost, CardKind, CardRarityValue, CardTarget, ShowInCardLibrary)

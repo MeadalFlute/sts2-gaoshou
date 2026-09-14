@@ -13,7 +13,7 @@ using STS2RitsuLib.Scaffolding.Content;
 
 namespace Gaoshou.Cards;
 
-// 损失规避：技能（罕见）。耗 2 能量（0 星辉）。
+// 损失规避：技能（罕见）。耗 2 能量（0 辉星）。
 // 选择任意张手牌，变化为硬纸板（升级后为硬纸板+）。消耗。
 [RegisterCard(typeof(GaoshouCardPool))]
 public sealed class LossAversion : ModCardTemplate

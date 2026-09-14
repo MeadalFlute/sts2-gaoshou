@@ -10,7 +10,7 @@ using STS2RitsuLib.Scaffolding.Content;
 
 namespace Gaoshou.Cards;
 
-// 万全准备：技能（罕见）。耗 1 能量 0 星辉。抽 3(4) 张牌。
+// 万全准备：技能（罕见）。耗 1 能量 0 辉星。抽 3(4) 张牌。
 [RegisterCard(typeof(GaoshouCardPool))]
 public sealed class WellPrepared : ModCardTemplate
 {

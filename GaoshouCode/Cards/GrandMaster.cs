@@ -12,7 +12,7 @@ using STS2RitsuLib.Scaffolding.Content;
 
 namespace Gaoshou.Cards;
 
-// 武学宗师：能力（稀有）。耗 1 能量 1 星辉。
+// 武学宗师：能力（稀有）。耗 1 能量 1 辉星。
 // 每当你触发【流转】后，获得 1（2）层「临时力量」。升级后获得"固有"。
 [RegisterCard(typeof(GaoshouCardPool))]
 public sealed class GrandMaster : ModCardTemplate
@@ -28,10 +28,11 @@ public sealed class GrandMaster : ModCardTemplate
     public override CardAssetProfile AssetProfile => new(
         PortraitPath: $"{Entry.ResPath}/images/cards/{GetType().Name}.png");
 
-    // 悬浮释义：流转（词条）、临时力量（能力）。
+    // 悬浮释义：流转（词条）、武学宗师（本卡施加的能力）、临时力量（能力）。
     protected override IEnumerable<IHoverTip> AdditionalHoverTips =>
     [
         HoverTipFactory.FromKeyword(GaoshouKeyword.Flow),
+        HoverTipFactory.FromPower<GrandMasterPower>(),
         HoverTipFactory.FromPower<GaoshouTemporaryStrengthPower>(),
     ];
 
@@ -39,7 +40,7 @@ public sealed class GrandMaster : ModCardTemplate
     {
     }
 
-    // 1 能量 1 星辉。
+    // 1 能量 1 辉星。
     public override int CanonicalStarCost => 1;
 
     // 临时力量层数 1（升级 2）。

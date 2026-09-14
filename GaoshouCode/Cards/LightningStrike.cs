@@ -12,7 +12,7 @@ using STS2RitsuLib.Scaffolding.Content;
 
 namespace Gaoshou.Cards;
 
-// 闪电打击：攻击（罕见）。耗 1 能量 1 星辉。造成 7 点伤害。
+// 闪电打击：攻击（罕见）。耗 1 能量 1 辉星。造成 7 点伤害。
 // 虚无；幻影 2 次（升级后 3 次）。
 [RegisterCard(typeof(GaoshouCardPool))]
 public sealed class LightningStrike : ModCardTemplate
@@ -48,7 +48,7 @@ public sealed class LightningStrike : ModCardTemplate
 
     public LightningStrike() : base(BaseEnergyCost, CardKind, CardRarityValue, CardTarget, ShowInCardLibrary)
     {
-        // 1 能量 0 星辉：不覆写 CanonicalStarCost。
+        // 1 能量 0 辉星：不覆写 CanonicalStarCost。
     }
 
     protected override async Task OnPlay(PlayerChoiceContext choiceContext, CardPlay cardPlay)

@@ -1,4 +1,6 @@
 using System.Collections.Generic;
+using MegaCrit.Sts2.Core.Localization.DynamicVars;
+using STS2RitsuLib.Cards.DynamicVars;
 using System.Linq;
 using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.Combat;
@@ -37,13 +39,14 @@ public sealed class GaoshouTemporaryDexterityPower : ModPowerTemplate
         if (amount <= 0)
             return;
 
-        // 遵循古道：持有该能力且星辉>=1 → 消耗 1 星辉，改为 +1 基础敏捷。
+        // 遵循古道：持有该能力且辉星>=1 → 消耗 1 辉星，改为 +1 基础敏捷。
         if (target.Player != null
-            && target.Powers.OfType<OldWayPower>().Any()
-            && target.Player.PlayerCombatState!.Stars >= 1)
+            && target.Powers.OfType<OldWayPower>().FirstOrDefault() is { } oldWay
+            && target.Player.PlayerCombatState!.Stars >= oldWay.DynamicVars.GetRequired<IntVar>("StarCost").IntValue)
         {
-            await PlayerCmd.LoseStars(1, target.Player);
-            await PowerCmd.Apply<DexterityPower>(new ThrowingPlayerChoiceContext(), target, 1m, applier, cardSource, true);
+            await PlayerCmd.LoseStars(oldWay.DynamicVars.GetRequired<IntVar>("StarCost").IntValue, target.Player);
+            await PowerCmd.Apply<DexterityPower>(new ThrowingPlayerChoiceContext(), target,
+                oldWay.DynamicVars.GetRequired<IntVar>("GainAmount").BaseValue, applier, cardSource, true);
             return;
         }
 
@@ -58,10 +61,12 @@ public sealed class GaoshouTemporaryDexterityPower : ModPowerTemplate
         if (side != Owner.Side || !participants.Contains(Owner))
             return;
 
-        // 神经超频器：持有且 >3 层 → 仅失去 1 层 + 失去 1 点生命（不再减半）。
+        // 神经超频器：持有且 >3 层 → 本回合授予的敏捷照常全额移除（回合开始会按剩余层数补回），
+        // 只是层数只减 1（不再减半），代价是失去 1 点生命。
+        // 注意这里必须用 -Amount：若只扣 1 点，下回合 AfterSideTurnStart 又会补回 Amount 点，敏捷会无限膨胀。
         if (Owner.Player?.Relics.Any(r => r is Sandevistan) == true && Amount > 3)
         {
-            await PowerCmd.Apply<DexterityPower>(choiceContext, Owner, -1m, Owner, null);
+            await PowerCmd.Apply<DexterityPower>(choiceContext, Owner, -Amount, Owner, null);
             Amount -= 1;
             InvokeDisplayAmountChanged();
             await CreatureCmd.Damage(choiceContext, Owner, 1m,

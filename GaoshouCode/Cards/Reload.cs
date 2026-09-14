@@ -3,16 +3,18 @@ using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.HoverTips;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
+using MegaCrit.Sts2.Core.Localization.DynamicVars;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Models.CardPools;
 using Gaoshou.Characters;
 using Gaoshou.Keywords;
+using STS2RitsuLib.Cards.DynamicVars;
 using STS2RitsuLib.Interop.AutoRegistration;
 using STS2RitsuLib.Scaffolding.Content;
 
 namespace Gaoshou.Cards;
 
-// 装弹：状态（无色衍生）。耗 1 能量 1 星辉。使消耗牌堆的 1 张双持冲锋枪（装弹+升级后为双持冲锋枪+）返回手牌。
+// 装弹：状态（无色衍生）。耗 1 能量 1 辉星。使消耗牌堆的 1 张双持冲锋枪（装弹+升级后为双持冲锋枪+）返回手牌。
 [RegisterCard(typeof(TokenCardPool))]
 public sealed class Reload : ModCardTemplate
 {
@@ -44,19 +46,29 @@ public sealed class Reload : ModCardTemplate
         CardKeyword.Exhaust,
     ];
 
+    // 返回 1 张。
+    protected override IEnumerable<DynamicVar> CanonicalVars =>
+    [
+        ModCardVars.Cards(1),
+    ];
+
     protected override async Task OnPlay(PlayerChoiceContext choiceContext, CardPlay cardPlay)
     {
-        // 从消耗牌堆随机取一张双持冲锋枪返回手牌（装弹+升级后返回 双持冲锋枪+）。
+        // 从消耗牌堆随机取 1 张双持冲锋枪返回手牌（装弹+升级后返回 双持冲锋枪+）。
         var dualSmgId = ModelDb.GetId(typeof(DualSMG));
-        var exhaust = PileType.Exhaust.GetPile(Owner)?.Cards
-            .Where(c => c.Id == dualSmgId).ToList() ?? [];
-        if (exhaust.Count == 0)
-            return;   // 消耗牌堆没有双持冲锋枪：无事发生。
 
-        var pick = Owner.RunState.Rng.CombatCardSelection.NextItem(exhaust);
-        if (IsUpgraded)
-            CardCmd.Upgrade(pick);   // 双持冲锋枪+
-        await CardPileCmd.Add(pick, PileType.Hand);
+        for (var i = 0; i < DynamicVars.Cards.IntValue; i++)
+        {
+            var exhaust = PileType.Exhaust.GetPile(Owner)?.Cards
+                .Where(c => c.Id == dualSmgId).ToList() ?? [];
+            if (exhaust.Count == 0)
+                return;   // 消耗牌堆没有双持冲锋枪：无事发生。
+
+            var pick = Owner.RunState.Rng.CombatCardSelection.NextItem(exhaust);
+            if (IsUpgraded)
+                CardCmd.Upgrade(pick);   // 双持冲锋枪+
+            await CardPileCmd.Add(pick, PileType.Hand);
+        }
     }
 
     protected override void OnUpgrade()

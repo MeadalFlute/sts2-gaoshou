@@ -12,7 +12,7 @@ using STS2RitsuLib.Scaffolding.Content;
 
 namespace Gaoshou.Cards;
 
-// 燃尽火柴：技能（无色衍生）。耗 0 能量 0 星辉。获得 1(2) 点能量；对自己造成 2 点伤害（可格挡）。消耗。
+// 燃尽火柴：技能（无色衍生）。耗 0 能量 0 辉星。获得 1(2) 点能量；对自己造成 2 点伤害（可格挡）。消耗。
 [RegisterCard(typeof(TokenCardPool))]
 public sealed class BurntMatch : ModCardTemplate, Gaoshou.Keywords.IWasteCard
 {
@@ -36,11 +36,12 @@ public sealed class BurntMatch : ModCardTemplate, Gaoshou.Keywords.IWasteCard
     protected override IEnumerable<DynamicVar> CanonicalVars =>
     [
         ModCardVars.Energy("Energy", 1),
+        ModCardVars.Int("SelfDamage", 2),
     ];
 
     public BurntMatch() : base(BaseEnergyCost, CardKind, CardRarityValue, CardTarget, ShowInCardLibrary)
     {
-        // 0 星辉：不覆写 CanonicalStarCost。
+        // 0 辉星：不覆写 CanonicalStarCost。
     }
 
     protected override async Task OnPlay(PlayerChoiceContext choiceContext, CardPlay cardPlay)
@@ -48,7 +49,8 @@ public sealed class BurntMatch : ModCardTemplate, Gaoshou.Keywords.IWasteCard
         await PlayerCmd.GainEnergy(DynamicVars.GetRequired<EnergyVar>("Energy").BaseValue, Owner);
 
         // 对自己造成 2 点伤害（可格挡：不带 Unblockable，格挡正常生效；不带力量加成）。
-        await CreatureCmd.Damage(choiceContext, Owner.Creature, 2m, ValueProp.Unpowered, Owner.Creature, this, cardPlay);
+        await CreatureCmd.Damage(choiceContext, Owner.Creature,
+            DynamicVars.GetRequired<IntVar>("SelfDamage").BaseValue, ValueProp.Unpowered, Owner.Creature, this, cardPlay);
     }
 
     protected override void OnUpgrade()

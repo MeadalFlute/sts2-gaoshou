@@ -11,7 +11,7 @@ using STS2RitsuLib.Scaffolding.Content;
 
 namespace Gaoshou.Cards;
 
-// 处决：技能（稀有）。耗 0 能量 10 星辉（升级 8 星辉）。若目标处于击晕状态：直接击杀目标。消耗（升级后追加保留）。
+// 处决：技能（稀有）。耗 0 能量 10 辉星（升级 8 辉星）。若目标处于击晕状态：直接击杀目标。消耗（升级后追加保留）。
 [RegisterCard(typeof(GaoshouCardPool))]
 public sealed class Execution : ModCardTemplate
 {
@@ -58,6 +58,6 @@ public sealed class Execution : ModCardTemplate
 
     protected override void OnUpgrade()
     {
-        UpgradeStarCostBy(-2);   // 星辉 10 -> 8（不再追加保留）
+        UpgradeStarCostBy(-2);   // 辉星 10 -> 8（不再追加保留）
     }
 }

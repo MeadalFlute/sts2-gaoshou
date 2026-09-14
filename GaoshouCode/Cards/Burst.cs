@@ -12,9 +12,9 @@ using STS2RitsuLib.Scaffolding.Content;
 
 namespace Gaoshou.Cards;
 
-// 爆发：技能（普通）。耗 0 能量 1 星辉。
+// 爆发：技能（普通）。耗 0 能量 1 辉星。
 // 流转（颜色与上一张牌完全不同）：获得 1(2) 点能量。
-// 奇迹（非回合开始抽牌进入手牌）：获得 1(2) 点星辉。
+// 奇迹（非回合开始抽牌进入手牌）：获得 1(2) 点辉星。
 [RegisterCard(typeof(GaoshouCardPool))]
 public sealed class Burst : ModCardTemplate
 {
@@ -55,7 +55,7 @@ public sealed class Burst : ModCardTemplate
     {
     }
 
-    // 0 能量 1 星辉。
+    // 0 能量 1 辉星。
     public override int CanonicalStarCost => 1;
 
     protected override async Task OnPlay(PlayerChoiceContext choiceContext, CardPlay cardPlay)
@@ -64,15 +64,15 @@ public sealed class Burst : ModCardTemplate
         if (GaoshouFlowTracker.IsFlowReady(this))
             await PlayerCmd.GainEnergy(DynamicVars.GetRequired<EnergyVar>("Energy").BaseValue, Owner);
 
-        // 奇迹：获得 1(2) 点星辉。
+        // 奇迹：获得 1(2) 点辉星。
         if (MiracleCounter.IsMiracleReady(this))
             await PlayerCmd.GainStars(DynamicVars.GetRequired<StarsVar>("Stars").BaseValue, Owner);
     }
 
     protected override void OnUpgrade()
     {
-        // 能量 1 -> 2、星辉 1 -> 2。
-        // 能量固定 1（不再升级）；星辉 1 -> 2。
+        // 能量 1 -> 2、辉星 1 -> 2。
+        // 能量固定 1（不再升级）；辉星 1 -> 2。
         DynamicVars.GetRequired<StarsVar>("Stars").UpgradeValueBy(1);
     }
 }

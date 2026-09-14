@@ -11,7 +11,7 @@ using STS2RitsuLib.Scaffolding.Content;
 
 namespace Gaoshou.Cards;
 
-// 小石头：技能（无色衍生）。耗 0 能量 0 星辉。获得 1 能量、抽 1(2) 张牌。消耗。
+// 小石头：技能（无色衍生）。耗 0 能量 0 辉星。获得 1 能量、抽 1(2) 张牌。消耗。
 [RegisterCard(typeof(TokenCardPool))]
 public sealed class LittleStone : ModCardTemplate, Gaoshou.Keywords.IWasteCard
 {
@@ -39,7 +39,7 @@ public sealed class LittleStone : ModCardTemplate, Gaoshou.Keywords.IWasteCard
 
     public LittleStone() : base(BaseEnergyCost, CardKind, CardRarityValue, CardTarget, ShowInCardLibrary)
     {
-        // 0 星辉：不覆写 CanonicalStarCost。
+        // 0 辉星：不覆写 CanonicalStarCost。
     }
 
     protected override async Task OnPlay(PlayerChoiceContext choiceContext, CardPlay cardPlay)

@@ -11,7 +11,7 @@ using STS2RitsuLib.Scaffolding.Content;
 
 namespace Gaoshou.Cards;
 
-// 连环打击：攻击。耗 2 能量 0 星辉。造成 4 伤害一次，然后造成 5 伤害一次。升级后：6、9。
+// 连环打击：攻击。耗 2 能量 0 辉星。造成 4 伤害一次，然后造成 5 伤害一次。升级后：6、9。
 [RegisterCard(typeof(GaoshouCardPool))]
 [RegisterCharacterStarterCard(typeof(GaoshouCharacter), 4, Order = 10)]
 public sealed class LinkedStrike : ModCardTemplate
@@ -39,7 +39,7 @@ public sealed class LinkedStrike : ModCardTemplate
 
     public LinkedStrike() : base(BaseEnergyCost, CardKind, CardRarityValue, CardTarget, ShowInCardLibrary)
     {
-        // 0 星辉：不覆写 CanonicalStarCost，保持默认“无星辉费用”。
+        // 0 辉星：不覆写 CanonicalStarCost，保持默认“无辉星费用”。
     }
 
     protected override async Task OnPlay(PlayerChoiceContext choiceContext, CardPlay cardPlay)

@@ -24,10 +24,14 @@ public sealed class GaoshouCharacter : ModCharacterTemplate<GaoshouCardPool, Gao
     public override string? PlaceholderCharacterId => "regent";
 
     // 只覆盖需要区分身份的 UI 图标；Scenes 留空以继承储君的模型与表盘。
+    // IconPath 是"顶部栏左上角角色头像"用的（CharacterModel.Icon → ui/character_icons/<id>_icon 场景）。
+    // 之前没给这个字段，RitsuLib 的 Icon 补丁会回退到占位角色（储君）的图标，所以单人左上角显示的是储君。
+    // 多人头像走的是 IconTexturePath，本来就是对的，不用动。这里给贴图就行（RitsuLib 会自动转成 Control 图标）。
     public override CharacterAssetProfile AssetProfile => new(
         Ui: new CharacterUiAssetSet(
             IconTexturePath: $"{Entry.ResPath}/images/characters/Gaoshou_character_icon.png",
             IconOutlineTexturePath: $"{Entry.ResPath}/images/characters/Gaoshou_character_icon_outline.png",
+            IconPath: $"{Entry.ResPath}/images/characters/Gaoshou_top_portrait.png",
             CharacterSelectIconPath: $"{Entry.ResPath}/images/characters/Gaoshou_character_select.png",
             CharacterSelectLockedIconPath: $"{Entry.ResPath}/images/characters/Gaoshou_character_select_locked.png",
             MapMarkerPath: $"{Entry.ResPath}/images/characters/Gaoshou_map_marker.png"));
