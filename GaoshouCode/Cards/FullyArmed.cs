@@ -52,7 +52,8 @@ public sealed class FullyArmed : ModCardTemplate
         await PowerCmd.Apply<GaoshouRetainBlockPower>(choiceContext, Owner.Creature,
             DynamicVars.GetRequired<IntVar>("Blur").BaseValue, Owner.Creature, this);
         var copy = CreateClone();
-        await CardPileCmd.AddGeneratedCardToCombat(copy, PileType.Discard, Owner);
+        // await CardPileCmd.AddGeneratedCardToCombat(copy, PileType.Discard, Owner);
+        CardCmd.PreviewCardPileAdd(await CardPileCmd.AddGeneratedCardToCombat(copy, PileType.Discard, Owner));
     }
 
     protected override void OnUpgrade()

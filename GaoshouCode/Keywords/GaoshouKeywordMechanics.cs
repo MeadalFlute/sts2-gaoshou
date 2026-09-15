@@ -4,6 +4,7 @@ using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
 using MegaCrit.Sts2.Core.Localization;
+using Gaoshou.Cards;
 using STS2RitsuLib.Scaffolding.Content;
 
 namespace Gaoshou.Keywords;
@@ -36,6 +37,17 @@ public static class GaoshouKeywordMechanics
         var prompt = new LocString("cards", "GAOSHOU_AMPLIFY_PROMPT");
         prompt.Add("MaxCount", maxDiscard);
         var prefs = new CardSelectorPrefs(prompt, 0, Math.Min(maxDiscard, hand.Count));
+        // 复刻原版 FromHandForDiscard 的临时高光规则：只有真正的奇巧牌可亮。
+        // 呼吸不是奇巧牌，但其弃置效果会在此处触发，因此额外显示同款提示。
+        prefs.ShouldGlowGold = candidate =>
+        {
+            if (candidate is Breath)
+                return true;
+            if (!candidate.IsSlyThisTurn)
+                return false;
+
+            return candidate.CanPlay(out var reason, out _) || reason.HasResourceCostReason();
+        };
         var discarded = (await CardSelectCmd.FromHand(choiceContext, card.Owner, prefs, null, card)).ToList();
         foreach (var c in discarded)
             await CardCmd.Discard(choiceContext, c);

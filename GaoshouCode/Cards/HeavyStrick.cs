@@ -37,7 +37,7 @@ public sealed class HeavyStrick : ModCardTemplate
 
     protected override IEnumerable<DynamicVar> CanonicalVars =>
     [
-        new DamageVar(30m, ValueProp.Move),
+        new DamageVar(26m, ValueProp.Move),
         ModCardVars.Power<VulnerablePower>(3),
     ];
 
