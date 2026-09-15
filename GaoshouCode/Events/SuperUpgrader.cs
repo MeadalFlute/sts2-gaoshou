@@ -34,7 +34,7 @@ public sealed class SuperUpgrader : ModEventTemplate
 
     // 立绘：本模组自制底图（图由美术侧生成；素材暂缺时此路径会回退到原版逻辑，不会崩）。
     public override EventAssetProfile AssetProfile => new(
-        InitialPortraitPath: $"{Entry.ResPath}/images/events/super_upgrader.png"
+        InitialPortraitPath: $"{Entry.ResPath}/images/events/_base_notebook.png"
     );
 
     protected override IEnumerable<DynamicVar> CanonicalVars =>

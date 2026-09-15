@@ -28,7 +28,7 @@ public sealed class LoomingPresence : ModCardTemplate
         PortraitPath: $"{Entry.ResPath}/images/cards/{GetType().Name}.png");
 
     // 泛光：流转就绪时（颜色与上一张牌完全不同）。
-    protected override bool ShouldGlowGoldInternal => GaoshouFlowTracker.IsFlowReady(this);
+    protected override bool ShouldGlowGoldInternal => GaoshouFlowTracker.IsFlowGlowReady(this);
 
     // 词条：流转、虚无（升级移除虚无）。
     public override IEnumerable<CardKeyword> CanonicalKeywords =>

@@ -77,6 +77,23 @@ public sealed class DualSMG : ModCardTemplate
         }
     }
 
+    // 装弹数量不应超过当前战斗中可由消耗区双持冲锋枪支持的数量。
+    // 当前这张牌在 OnPlay 结束前尚未进入消耗区，因此目标数量需要额外加 1。
+    private bool ShouldGenerateReload()
+    {
+        var exhaust = PileType.Exhaust.GetPile(Owner);
+        var reloadId = ModelDb.GetId(typeof(Reload));
+        var dualSmgId = ModelDb.GetId(typeof(DualSMG));
+
+        var reloadCount =
+            (PileType.Draw.GetPile(Owner)?.Cards.Count(c => c.Id == reloadId) ?? 0)
+            + (PileType.Hand.GetPile(Owner)?.Cards.Count(c => c.Id == reloadId) ?? 0)
+            + (PileType.Discard.GetPile(Owner)?.Cards.Count(c => c.Id == reloadId) ?? 0);
+        var dualSmgTarget = (exhaust?.Cards.Count(c => c.Id == dualSmgId) ?? 0) + 1;
+
+        return reloadCount < dualSmgTarget;
+    }
+
     // 1 能量 1 辉星。
     public override int CanonicalStarCost => 1;
 
@@ -90,13 +107,16 @@ public sealed class DualSMG : ModCardTemplate
             && Owner.PlayerCombatState.Stars >= (int)DynamicVars.GetRequired<StarsVar>("StarsStorm").BaseValue)
             await PlayOnce(choiceContext, cardPlay);
 
-        // 将一张装弹（升级后：装弹+）加入你的抽牌堆（本卡照常进消耗）。
-        var reload = Owner.Creature.CombatState?.CreateCard(ModelDb.Card<Reload>(), Owner);
-        if (reload != null)
+        // 仅在现有装弹数量不足时生成一张装弹（升级后：装弹+）。
+        if (ShouldGenerateReload())
         {
-            if (IsUpgraded)
-                CardCmd.Upgrade(reload);   // 升级效果：装弹+
-            CardCmd.PreviewCardPileAdd(await CardPileCmd.AddGeneratedCardToCombat(reload, PileType.Draw, Owner, CardPilePosition.Random));
+            var reload = Owner.Creature.CombatState?.CreateCard(ModelDb.Card<Reload>(), Owner);
+            if (reload != null)
+            {
+                if (IsUpgraded)
+                    CardCmd.Upgrade(reload);   // 升级效果：装弹+
+                CardCmd.PreviewCardPileAdd(await CardPileCmd.AddGeneratedCardToCombat(reload, PileType.Draw, Owner, CardPilePosition.Random));
+            }
         }
     }
 

@@ -13,8 +13,8 @@ using STS2RitsuLib.Scaffolding.Content;
 
 namespace Gaoshou.Cards;
 
-// 全副武装（交换后）：技能（稀有）。耗 0 能量 2 辉星。
-// 你可以保留最多 10(15) 点格挡至下一回合（给予"全副武装"至多保留能力）。
+// 全副武装：技能（稀有）。耗 0 能量 2 辉星（升级后 1 辉星）。
+// 你可以保留最多 10 点格挡至下一回合，并将一张本牌复制品加入弃牌堆。
 [RegisterCard(typeof(GaoshouCardPool))]
 public sealed class FullyArmed : ModCardTemplate
 {
@@ -48,13 +48,15 @@ public sealed class FullyArmed : ModCardTemplate
 
     protected override async Task OnPlay(PlayerChoiceContext choiceContext, CardPlay cardPlay)
     {
-        // 获得 10(15) 层"全副武装"：下次回合开始最多保留等量格挡。
+        // 获得 10 层"全副武装"：下次回合开始最多保留等量格挡。
         await PowerCmd.Apply<GaoshouRetainBlockPower>(choiceContext, Owner.Creature,
             DynamicVars.GetRequired<IntVar>("Blur").BaseValue, Owner.Creature, this);
+        var copy = CreateClone();
+        await CardPileCmd.AddGeneratedCardToCombat(copy, PileType.Discard, Owner);
     }
 
     protected override void OnUpgrade()
     {
-        DynamicVars.GetRequired<IntVar>("Blur").UpgradeValueBy(5);   // 10 -> 15
+        UpgradeStarCostBy(-1);   // 辉星 2 -> 1；保留格挡不变
     }
 }

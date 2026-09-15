@@ -13,7 +13,7 @@ using STS2RitsuLib.Scaffolding.Content;
 namespace Gaoshou.Cards;
 
 // 火花：能力（罕见）。耗 1 能量。
-// 你每打出 5（升级 4）张【临时】牌，获得 1 能量、1 辉星。
+// 你每打出 4（升级 3）张【临时】牌，获得 1 能量、1 辉星。
 [RegisterCard(typeof(GaoshouCardPool))]
 public sealed class Spark : ModCardTemplate
 {
@@ -37,7 +37,7 @@ public sealed class Spark : ModCardTemplate
     // 能量/辉星图标变量、触发阈值 Count（描述用 {Energy:energyIcons()}、{Stars:starIcons()}、{Count:diff()}）。
     protected override IEnumerable<DynamicVar> CanonicalVars =>
     [
-        ModCardVars.Int("Count", 5),
+        ModCardVars.Int("Count", 4),
         ModCardVars.Energy("Energy", 1),
         ModCardVars.Stars("Stars", 1),
     ];
@@ -49,7 +49,7 @@ public sealed class Spark : ModCardTemplate
     protected override async Task OnPlay(PlayerChoiceContext choiceContext, CardPlay cardPlay)
     {
         // 施加能力：计数 buff（Amount=0 起步，每 Count 张临时牌结算）。
-        // 以 1 层起步（Apply 0 层不会被挂载）；阈值为卡牌的 Count 变量（升级 5->4）。
+        // 以 1 层起步（Apply 0 层不会被挂载）；阈值为卡牌的 Count 变量（升级 4->3）。
         var power = await PowerCmd.Apply<SparkPower>(choiceContext, Owner.Creature, 1m, Owner.Creature, this);
         if (power != null)
             power.SetThreshold((int)DynamicVars.GetRequired<IntVar>("Count").BaseValue);
@@ -57,6 +57,6 @@ public sealed class Spark : ModCardTemplate
 
     protected override void OnUpgrade()
     {
-        DynamicVars.GetRequired<IntVar>("Count").UpgradeValueBy(-1);   // 阈值 5 -> 4（不再获得固有）
+        DynamicVars.GetRequired<IntVar>("Count").UpgradeValueBy(-1);   // 阈值 4 -> 3
     }
 }

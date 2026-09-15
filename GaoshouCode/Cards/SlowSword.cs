@@ -38,7 +38,7 @@ public sealed class SlowSword : ModCardTemplate
 public override CardAssetProfile AssetProfile => new(
         PortraitPath: $"{Entry.ResPath}/images/cards/{GetType().Name}.png");
 
-    protected override bool ShouldGlowGoldInternal => MiracleCounter.IsMiracleReady(this);
+    protected override bool ShouldGlowGoldInternal => MiracleCounter.IsMiracleGlowReady(this);
 
     // 悬浮释义：奇迹（自定义词条）。
     protected override IEnumerable<IHoverTip> AdditionalHoverTips =>

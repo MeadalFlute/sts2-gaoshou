@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://c57v70iivmy0j"
-path="res://.godot/imported/smite_master.png-bf859a371e7962253362700064c0cd1f.ctex"
+uid="uid://ev2elyjrow1g"
+path="res://.godot/imported/magic_prodigy.png-0ca1efbe5a0f58988877636d98998115.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Gaoshou/images/events/smite_master.png"
-dest_files=["res://.godot/imported/smite_master.png-bf859a371e7962253362700064c0cd1f.ctex"]
+source_file="res://Gaoshou/images/events/art/magic_prodigy.png"
+dest_files=["res://.godot/imported/magic_prodigy.png-0ca1efbe5a0f58988877636d98998115.ctex"]
 
 [params]
 

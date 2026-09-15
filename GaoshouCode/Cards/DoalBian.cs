@@ -27,7 +27,7 @@ public sealed class DoalBian : ModCardTemplate
         PortraitPath: $"{Entry.ResPath}/images/cards/DoalBian.png");
 
     // 流转就绪（颜色与上一张牌完全不同）时泛橙光。
-    protected override bool ShouldGlowGoldInternal => GaoshouFlowTracker.IsFlowReady(this);
+    protected override bool ShouldGlowGoldInternal => GaoshouFlowTracker.IsFlowGlowReady(this);
 
     // 词条：流转（供流转系能力检测）。
     public override IEnumerable<CardKeyword> CanonicalKeywords =>

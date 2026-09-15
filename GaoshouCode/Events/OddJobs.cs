@@ -29,7 +29,7 @@ public sealed class OddJobs : ModEventTemplate
     private const int TrainUpgradeCount = 2;
 
     public override EventAssetProfile AssetProfile => new(
-        InitialPortraitPath: $"{Entry.ResPath}/images/events/odd_jobs.png");
+        InitialPortraitPath: $"{Entry.ResPath}/images/events/_base_notebook.png");
 
     protected override IEnumerable<DynamicVar> CanonicalVars =>
     [

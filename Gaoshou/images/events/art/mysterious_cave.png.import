@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://b5f5u2xmymmnx"
-path="res://.godot/imported/odd_jobs.png-98dbc453304936d0ccd53b5f0fd60eec.ctex"
+uid="uid://dsj2imf8p4d2k"
+path="res://.godot/imported/mysterious_cave.png-9f81ea8e02e7fc75feb1ffb75c266ee6.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Gaoshou/images/events/odd_jobs.png"
-dest_files=["res://.godot/imported/odd_jobs.png-98dbc453304936d0ccd53b5f0fd60eec.ctex"]
+source_file="res://Gaoshou/images/events/art/mysterious_cave.png"
+dest_files=["res://.godot/imported/mysterious_cave.png-9f81ea8e02e7fc75feb1ffb75c266ee6.ctex"]
 
 [params]
 

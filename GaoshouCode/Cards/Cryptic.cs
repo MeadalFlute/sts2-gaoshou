@@ -104,9 +104,23 @@ public sealed class Cryptic : ModCardTemplate
         if (pool.Count == 0)
             return [];
 
-        return CardFactory
+        var choices = CardFactory
             .GetDistinctForCombat(Owner, pool, count, Owner.RunState.Rng.CombatCardGeneration)
             .ToList();
+
+        // 本牌升级后：三张候选本身就是升级过的技能牌（卡面写的“{IfUpgraded:show:升级过的}”）。
+        // 不用 CardCmd.Upgrade —— 它在 CombatManager.IsEnding（本回合已全灭敌人）时会静默跳过；
+        // 这两步就是它的核心，且不需要跑 Hook / 播牌堆特效。
+        if (IsUpgraded)
+        {
+            foreach (var candidate in choices.Where(c => c.IsUpgradable))
+            {
+                candidate.UpgradeInternal();
+                candidate.FinalizeUpgradeInternal();
+            }
+        }
+
+        return choices;
     }
 
     protected override async Task OnPlay(PlayerChoiceContext choiceContext, CardPlay cardPlay)

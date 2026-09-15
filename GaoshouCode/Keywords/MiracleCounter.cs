@@ -107,4 +107,10 @@ public sealed class MiracleCounter : SingletonModel
             return false;
         return !_turnStartDrawn.Contains(card);
     }
+
+    // 仅用于卡牌视觉高光：奇迹提示只应显示在手牌中。实际打出时仍使用 IsMiracleReady。
+    public static bool IsMiracleGlowReady(CardModel? card)
+    {
+        return card?.Pile?.Type == PileType.Hand && IsMiracleReady(card);
+    }
 }

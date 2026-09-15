@@ -1,3 +1,4 @@
+using MegaCrit.Sts2.Core.Nodes.Rooms;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -36,7 +37,7 @@ public sealed class GuardMaster : ModEventTemplate
     // 事件立绘（背景图位置）：走本模组自己的事件美术，约定文件名＝事件键（snake_case），
     // 图片由美术那一路生成，这里只声明路径。
     public override EventAssetProfile AssetProfile => new(
-        InitialPortraitPath: $"{Entry.ResPath}/images/events/guard_master.png");
+        InitialPortraitPath: $"{Entry.ResPath}/images/events/_base_notebook.png");
 
     protected override IEnumerable<DynamicVar> CanonicalVars =>
     [
@@ -116,8 +117,10 @@ public sealed class GuardMaster : ModEventTemplate
     private async Task Understood()
     {
         await GrantCard<StrikeDefendMastery>();
-        // ENLIGHTENED 页的旁白已经收尾（"…看来打击格挡都十分重要，我悟了！"）→ 直接结束。
-        SetEventFinished(PageDescription("ENLIGHTENED"));
+        // ENLIGHTENED 页本身就是结束页 → 结束并直接离开（不再多按一次"继续"）。
+        SetEventFinished(PageDescription("END"));
+        await Cmd.CustomScaledWait(0.35f, 0.5f);
+        await NEventRoom.Proceed();
     }
 
     // ---- 页面流转 ----
@@ -131,11 +134,12 @@ public sealed class GuardMaster : ModEventTemplate
         ]);
     }
 
-    private Task Leave()
+    private async Task Leave()
     {
-        // TRAINED 页的旁白已经收尾（"大哥拍拍我的肩膀，让我明天接着来。"）→ 直接结束。
-        SetEventFinished(PageDescription("TRAINED"));
-        return Task.CompletedTask;
+        // TRAINED 页本身就是结束页 → 结束并直接离开。
+        SetEventFinished(PageDescription("END"));
+        await Cmd.CustomScaledWait(0.35f, 0.5f);
+        await NEventRoom.Proceed();
     }
 
     // ---- 给牌 ----

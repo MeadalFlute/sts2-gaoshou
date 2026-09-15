@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://di4oc2llgd2qp"
-path="res://.godot/imported/super_upgrader.png-bb85115c5cd152608c8f5b4e3822bd33.ctex"
+uid="uid://lkbwq7l0jnhs"
+path="res://.godot/imported/_base_notebook.png-5aaef0e0edd09f5d95cb7bd3f18656be.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Gaoshou/images/events/super_upgrader.png"
-dest_files=["res://.godot/imported/super_upgrader.png-bb85115c5cd152608c8f5b4e3822bd33.ctex"]
+source_file="res://Gaoshou/images/events/_base_notebook.png"
+dest_files=["res://.godot/imported/_base_notebook.png-5aaef0e0edd09f5d95cb7bd3f18656be.ctex"]
 
 [params]
 

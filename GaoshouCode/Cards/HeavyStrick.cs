@@ -13,11 +13,11 @@ using STS2RitsuLib.Scaffolding.Content;
 
 namespace Gaoshou.Cards;
 
-// 狠狠打击：攻击（罕见）。耗 4 能量。移除目标的护甲；造成 30(38) 点伤害；施加 3(5) 层易伤。
+// 狠狠打击：攻击（罕见）。耗 3 能量。移除目标的护甲；造成 30(38) 点伤害；施加 3(5) 层易伤。
 [RegisterCard(typeof(GaoshouCardPool))]
 public sealed class HeavyStrick : ModCardTemplate
 {
-    private const int BaseEnergyCost = 4;
+    private const int BaseEnergyCost = 3;
     private const CardType CardKind = CardType.Attack;
     private const CardRarity CardRarityValue = CardRarity.Uncommon;
     private const TargetType CardTarget = TargetType.AnyEnemy;

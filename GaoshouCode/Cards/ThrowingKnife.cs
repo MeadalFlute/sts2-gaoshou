@@ -28,7 +28,7 @@ public sealed class ThrowingKnife : ModCardTemplate
         PortraitPath: $"{Entry.ResPath}/images/cards/ThrowingKnife.png");
 
     // 流转就绪（颜色与上一张牌完全不同）时泛橙光。
-    protected override bool ShouldGlowGoldInternal => GaoshouFlowTracker.IsFlowReady(this);
+    protected override bool ShouldGlowGoldInternal => GaoshouFlowTracker.IsFlowGlowReady(this);
 
     // 词条：流转（可悬停显示释义）。
     public override IEnumerable<CardKeyword> CanonicalKeywords =>

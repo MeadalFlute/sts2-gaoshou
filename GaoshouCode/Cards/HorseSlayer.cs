@@ -32,7 +32,7 @@ public sealed class HorseSlayer : ModCardTemplate
         PortraitPath: $"{Entry.ResPath}/images/cards/HorseSlayer.png");
 
     // 流转就绪（颜色与上一张牌完全不同）时泛橙光。
-    protected override bool ShouldGlowGoldInternal => GaoshouFlowTracker.IsFlowReady(this);
+    protected override bool ShouldGlowGoldInternal => GaoshouFlowTracker.IsFlowGlowReady(this);
 
     // 悬浮释义：临时力量（能力）。
     protected override IEnumerable<IHoverTip> AdditionalHoverTips =>

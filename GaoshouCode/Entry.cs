@@ -123,6 +123,8 @@ public partial class Entry
         // 设置项「禁用原版事件」：给 RoomSet.EnsureNextEventIsValid 挂前缀，把玩家禁用的原版事件从本局抽取池里移除
         //（**不能**改 EventModel.IsAllowed：13 个目标里 8 个自己重写了该方法且不调 base，基类补丁拦不到）。
         patcher.RegisterPatch<VanillaEventDisablePatch>();
+        // 事件插图叠加：10 个事件共用一张 notebook 底图，各自的小插图在这里贴到 %Portrait 左半。
+        patcher.RegisterPatch<EventArtOverlayPatch>();
         if (!patcher.PatchAll())
             Logger.Error("Patch application failed!");
 

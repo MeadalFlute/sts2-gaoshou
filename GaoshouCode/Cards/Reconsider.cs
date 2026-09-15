@@ -29,7 +29,7 @@ public sealed class Reconsider : ModCardTemplate
         PortraitPath: $"{Entry.ResPath}/images/cards/Reconsider.png");
 
     // 奇迹就绪（进入手牌的方式非"回合开始时抽牌"）时泛橙光。
-    protected override bool ShouldGlowGoldInternal => MiracleCounter.IsMiracleReady(this);
+    protected override bool ShouldGlowGoldInternal => MiracleCounter.IsMiracleGlowReady(this);
 
     // 悬浮释义：奇迹（自定义词条）。
     protected override IEnumerable<IHoverTip> AdditionalHoverTips =>

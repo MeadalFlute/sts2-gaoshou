@@ -10,7 +10,7 @@ using STS2RitsuLib.Scaffolding.Content;
 namespace Gaoshou.Powers;
 
 // 火花（能力，环绕轨道同款）：每当你打出【临时】牌时计数（倒计时显示）。
-// 多个火花 buff 各自独立：Amount = 火花数量；每累计 5 张临时牌 → 奖励 数量×1 能量与辉星（数量叠加）。
+// 多个火花 buff 各自独立：Amount = 火花数量；每累计 4 张临时牌 → 奖励 数量×1 能量与辉星（数量叠加）。
 // 临时机制：打出的牌「临时」（局内生成、不属于牌组 DeckVersion==null）。仅响应自己的打出（多人防串触发）。
 [RegisterPower]
 public sealed class SparkPower : ModPowerTemplate
@@ -18,7 +18,7 @@ public sealed class SparkPower : ModPowerTemplate
     public class Data
     {
         public int tempPlayed;
-        public int threshold = 5;   // 每 threshold 张临时牌结算（由火花卡的 Count 变量设置，升级 5->4）。
+        public int threshold = 4;   // 每 threshold 张临时牌结算（由火花卡的 Count 变量设置，升级 4->3）。
     }
 
     public override PowerType Type => PowerType.Buff;
@@ -49,7 +49,7 @@ public sealed class SparkPower : ModPowerTemplate
     // 能量/辉星图标、触发阈值 Count（能力描述用 {Energy:energyIcons()}{Stars:starIcons()}、{Count}）。
     protected override IEnumerable<DynamicVar> CanonicalVars =>
     [
-        new IntVar("Count", 5),
+        new IntVar("Count", 4),
         new EnergyVar(1),
         new StarsVar(1),
     ];

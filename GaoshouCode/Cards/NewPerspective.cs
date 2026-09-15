@@ -34,7 +34,7 @@ public sealed class NewPerspective : ModCardTemplate
     ];
 
     // 奇迹就绪（非回合开始抽牌进入手牌）时泛橙光。
-    protected override bool ShouldGlowGoldInternal => MiracleCounter.IsMiracleReady(this);
+    protected override bool ShouldGlowGoldInternal => MiracleCounter.IsMiracleGlowReady(this);
 
     protected override IEnumerable<DynamicVar> CanonicalVars =>
     [

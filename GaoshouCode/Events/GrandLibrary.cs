@@ -1,6 +1,7 @@
 // 大书库（Hive + Glory / ACT2+ACT3）：借书（从全角色牌池里挑牌入组）或捐赠（删 1 张牌换 1 个随机遗物）。
 // 设计意图：后期的「牌组整形站」——借书给的是广度（能拿到别的角色的牌），
 // 捐赠给的是纯度（精简牌组）外加一份随机遗物，两者都只能做一次。
+using MegaCrit.Sts2.Core.Nodes.Rooms;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -29,7 +30,7 @@ public sealed class GrandLibrary : ModEventTemplate
     // 立绘名 = GaoshouEventSettings 里的事件键（小写下划线），与磁盘上的图片/`.import` 一致。
     // 注意：RitsuLib 不做 PascalCase↔snake_case 转换，写成 {GetType().Name} 会找不到图（静默回退、立绘空白）。
     public override EventAssetProfile AssetProfile => new(
-        InitialPortraitPath: $"{Entry.ResPath}/images/events/grand_library.png");
+        InitialPortraitPath: $"{Entry.ResPath}/images/events/_base_notebook.png");
 
     // 只在 Hive(1) / Glory(2) 出现，且要过模组设置里的开关。
     public override bool IsAllowed(IRunState runState)
@@ -95,11 +96,13 @@ public sealed class GrandLibrary : ModEventTemplate
         return Task.CompletedTask;
     }
 
-    /// <summary>离开（AFTER 页）：AFTER 的旁白本身就是结束句（"真是不错的图书馆呀！"）→ 直接结束事件。</summary>
-    private Task LeaveAfter()
+    /// <summary>离开（AFTER 页）：AFTER 的旁白本身就是结束句 → 直接结束（空文案 pages.END，避免重复）。</summary>
+    private async Task LeaveAfter()
     {
-        SetEventFinished(PageDescription("AFTER"));
-        return Task.CompletedTask;
+        // AFTER 页本身就是结束页 → 结束并直接离开事件。
+        SetEventFinished(PageDescription("END"));
+        await Cmd.CustomScaledWait(0.35f, 0.5f);
+        await NEventRoom.Proceed();
     }
 
     /// <summary>借书/捐赠都进同一页 AFTER，页面上只有一个「走了！」。</summary>

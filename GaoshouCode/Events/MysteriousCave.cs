@@ -1,3 +1,4 @@
+using MegaCrit.Sts2.Core.Nodes.Rooms;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -27,7 +28,7 @@ public sealed class MysteriousCave : ModEventTemplate
 {
     // 立绘：本模组自制底图（图由美术侧生成）。
     public override EventAssetProfile AssetProfile => new(
-        InitialPortraitPath: $"{Entry.ResPath}/images/events/mysterious_cave.png"
+        InitialPortraitPath: $"{Entry.ResPath}/images/events/_base_notebook.png"
     );
 
     protected override IEnumerable<DynamicVar> CanonicalVars =>
@@ -60,6 +61,8 @@ public sealed class MysteriousCave : ModEventTemplate
     {
         await LoseCaveHp();
         await PlayerCmd.GainGold(DynamicVars["Gold1"].BaseValue, Owner!);
+        // 洞穴有多张插图：逐场景换（原版 Trial 事件也是运行时换立绘）。
+        EventArtOverlay.ShowInRoom("mysterious_cave_1");
         SetEventState(PageDescription("DEEP1"),
         [
             new EventOption(this, More, ModOptionKey("DEEP1", "MORE")),
@@ -77,6 +80,7 @@ public sealed class MysteriousCave : ModEventTemplate
                 CardCreationOptions.ForNonCombatWithDefaultOdds([Owner!.Character.CardPool]),
                 3, Owner),
         ]);
+        EventArtOverlay.ShowInRoom("mysterious_cave_2");
         SetEventState(PageDescription("DEEP2"),
         [
             new EventOption(this, Bottom, ModOptionKey("DEEP2", "BOTTOM")),
@@ -94,6 +98,7 @@ public sealed class MysteriousCave : ModEventTemplate
         if (relic != null)
             await RelicCmd.Obtain(relic, Owner!);
 
+        EventArtOverlay.ShowInRoom("mysterious_cave_3");
         SetEventState(PageDescription("DEEP3"),
         [
             new EventOption(this, DoneOpt, ModOptionKey("DEEP3", "DONE_OPT"), true, true),
@@ -107,9 +112,10 @@ public sealed class MysteriousCave : ModEventTemplate
     private async Task DoneOpt()
     {
         await Cmd.CustomScaledWait(0.3f, 0.5f);
-        // DEEP3 页的旁白本身就是结束句（"搜到了好宝贝！不错"），点完直接结束事件，
-        // 不再进入额外补写的 DONE 结尾页。
-        SetEventFinished(PageDescription("DEEP3"));
+        // DEEP3 页本身就是结束页：保留这段旁白、直接离开事件（连"继续"都不用再点一次）。
+        SetEventFinished(PageDescription("END"));
+        await Cmd.CustomScaledWait(0.35f, 0.5f);
+        await NEventRoom.Proceed();
     }
 
     private Task Leave()

@@ -30,7 +30,7 @@ public sealed class RoadsideBench : ModEventTemplate
     // 文件名必须是 GaoshouEventSettings 里的事件键（小写下划线，如 roadside_bench.png）：
     // RitsuLib 不做 PascalCase↔snake_case 转换，写成 {GetType().Name} 会找不到图（静默回退、立绘空白）。
     public override EventAssetProfile AssetProfile => new(
-        InitialPortraitPath: $"{Entry.ResPath}/images/events/roadside_bench.png");
+        InitialPortraitPath: $"{Entry.ResPath}/images/events/_base_notebook.png");
 
     // 只在 Overgrowth（CurrentActIndex == 0）出现，且要过模组设置里的开关。
     public override bool IsAllowed(IRunState runState)

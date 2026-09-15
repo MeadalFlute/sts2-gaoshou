@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://0m4joxtn1656"
-path="res://.godot/imported/mysterious_shop.png-73e17a69c79aa2ee1cc07a00cc81bfcb.ctex"
+uid="uid://b80tj10hiok0i"
+path="res://.godot/imported/super_upgrader.png-cfe78adfc346b930da192a578e1604cf.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Gaoshou/images/events/mysterious_shop.png"
-dest_files=["res://.godot/imported/mysterious_shop.png-73e17a69c79aa2ee1cc07a00cc81bfcb.ctex"]
+source_file="res://Gaoshou/images/events/art/super_upgrader.png"
+dest_files=["res://.godot/imported/super_upgrader.png-cfe78adfc346b930da192a578e1604cf.ctex"]
 
 [params]
 

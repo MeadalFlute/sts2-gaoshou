@@ -33,7 +33,7 @@ public sealed class GunFu : ModCardTemplate
 
         protected override IEnumerable<MegaCrit.Sts2.Core.Localization.DynamicVars.DynamicVar> CanonicalVars =>
     [
-        ModCardVars.Int("BlockGain", 3),
+        ModCardVars.Int("BlockGain", 4),
     ];
 
 public override CardAssetProfile AssetProfile => new(
@@ -59,6 +59,6 @@ public override CardAssetProfile AssetProfile => new(
 
     protected override void OnUpgrade()
     {
-        DynamicVars.GetRequired<IntVar>("BlockGain").UpgradeValueBy(1);   // 3 -> 4
+        DynamicVars.GetRequired<IntVar>("BlockGain").UpgradeValueBy(1);   // 4 -> 5
     }
 }

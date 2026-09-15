@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://pa1qqhx2xsbi"
-path="res://.godot/imported/roadside_bench.png-0e7e44c7eb42767f37bfc87e1f1f27ba.ctex"
+uid="uid://cl62vmr3rq02v"
+path="res://.godot/imported/mysterious_shop.png-9e83e4cc93d5fda38a0f59ca237d9181.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Gaoshou/images/events/roadside_bench.png"
-dest_files=["res://.godot/imported/roadside_bench.png-0e7e44c7eb42767f37bfc87e1f1f27ba.ctex"]
+source_file="res://Gaoshou/images/events/art/mysterious_shop.png"
+dest_files=["res://.godot/imported/mysterious_shop.png-9e83e4cc93d5fda38a0f59ca237d9181.ctex"]
 
 [params]
 

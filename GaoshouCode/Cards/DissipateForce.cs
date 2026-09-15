@@ -13,7 +13,7 @@ using STS2RitsuLib.Scaffolding.Content;
 
 namespace Gaoshou.Cards;
 
-// 卸力：技能（普通）。耗 0 能量 2 辉星。获得 8(12) 格挡。对所有敌人施加 1(2) 层虚弱。
+// 卸力：技能（普通）。耗 0 能量 2 辉星。获得 7(12) 格挡。流转：对所有敌人施加 1(2) 层虚弱。
 [RegisterCard(typeof(GaoshouCardPool))]
 public sealed class DissipateForce : ModCardTemplate
 {
@@ -27,6 +27,8 @@ public sealed class DissipateForce : ModCardTemplate
 
     public override bool GainsBlock => true;
 
+    protected override bool ShouldGlowGoldInternal => GaoshouFlowTracker.IsFlowGlowReady(this);
+
     public override CardAssetProfile AssetProfile => new(
         PortraitPath: $"{Entry.ResPath}/images/cards/DissipateForce.png");
 
@@ -38,8 +40,13 @@ public sealed class DissipateForce : ModCardTemplate
 
     protected override IEnumerable<DynamicVar> CanonicalVars =>
     [
-        new BlockVar(8m, ValueProp.Move),
+        new BlockVar(7m, ValueProp.Move),
         ModCardVars.Power<WeakPower>(1),
+    ];
+
+    public override IEnumerable<CardKeyword> CanonicalKeywords =>
+    [
+        GaoshouKeyword.Flow,
     ];
 
     public DissipateForce() : base(BaseEnergyCost, CardKind, CardRarityValue, CardTarget, ShowInCardLibrary)
@@ -51,13 +58,14 @@ public sealed class DissipateForce : ModCardTemplate
     protected override async Task OnPlay(PlayerChoiceContext choiceContext, CardPlay cardPlay)
     {
         await CreatureCmd.GainBlock(Owner.Creature, DynamicVars.Block, cardPlay);
-        foreach (var enemy in this.CombatState?.HittableEnemies ?? [])
-            await PowerCmd.Apply<WeakPower>(choiceContext, enemy, DynamicVars.GetRequired<PowerVar<WeakPower>>("WeakPower").BaseValue, Owner.Creature, this);
+        if (GaoshouFlowTracker.IsFlowReady(this))
+            foreach (var enemy in this.CombatState?.HittableEnemies ?? [])
+                await PowerCmd.Apply<WeakPower>(choiceContext, enemy, DynamicVars.GetRequired<PowerVar<WeakPower>>("WeakPower").BaseValue, Owner.Creature, this);
     }
 
     protected override void OnUpgrade()
     {
-        DynamicVars.Block.UpgradeValueBy(4m);                                       // 8 -> 12
+        DynamicVars.Block.UpgradeValueBy(5m);                                       // 7 -> 12
         DynamicVars.GetRequired<PowerVar<WeakPower>>("WeakPower").UpgradeValueBy(1); // 1 -> 2
     }
 }

@@ -15,7 +15,7 @@ using STS2RitsuLib.Scaffolding.Content;
 
 namespace Gaoshou.Powers;
 
-// 浮光掠影（能力）：每当你对敌人造成伤害时，获得与当前层数等量的格挡。
+// 浮光掠影（能力）：每当你通过打出的卡牌对敌人造成伤害时，获得与当前层数等量的格挡。
 // 每当你受到未被格挡的伤害时，层数 -1（归零移除）。
 [RegisterPower]
 public sealed class LoomingPresencePower : ModPowerTemplate
@@ -33,11 +33,11 @@ public sealed class LoomingPresencePower : ModPowerTemplate
         IconPath: $"{Entry.ResPath}/images/powers/loomingpresence.png",
         BigIconPath: $"{Entry.ResPath}/images/powers/loomingpresence.png");
 
-    // 每当你对敌人造成伤害时：获得与当前层数等量的格挡。
+    // 仅响应有卡牌来源的伤害；能力（例如势不可当）造成的伤害没有 cardSource。
     public override async Task AfterDamageGiven(PlayerChoiceContext choiceContext, Creature? dealer,
         DamageResult result, ValueProp props, Creature? target, CardModel? cardSource)
     {
-        if (dealer != Owner || Amount <= 0)
+        if (dealer != Owner || cardSource == null || Amount <= 0)
             return;
         // 不吃敏捷（Unpowered）。
         await CreatureCmd.GainBlock(Owner, Amount, ValueProp.Move | ValueProp.Unpowered, null);

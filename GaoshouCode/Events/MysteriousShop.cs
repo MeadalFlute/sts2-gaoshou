@@ -27,7 +27,7 @@ public sealed class MysteriousShop : ModEventTemplate
 {
     // 立绘：本模组自制底图（图由美术侧生成）。
     public override EventAssetProfile AssetProfile => new(
-        InitialPortraitPath: $"{Entry.ResPath}/images/events/mysterious_shop.png"
+        InitialPortraitPath: $"{Entry.ResPath}/images/events/_base_notebook.png"
     );
 
     protected override IEnumerable<DynamicVar> CanonicalVars =>

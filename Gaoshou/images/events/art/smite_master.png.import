@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://d4i3b6uvtk8s7"
-path="res://.godot/imported/grand_library.png-f1f64e9076438c08c5651b1a375db216.ctex"
+uid="uid://6en68g10xtvj"
+path="res://.godot/imported/smite_master.png-c1cc97db3870977477b03584556153d1.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Gaoshou/images/events/grand_library.png"
-dest_files=["res://.godot/imported/grand_library.png-f1f64e9076438c08c5651b1a375db216.ctex"]
+source_file="res://Gaoshou/images/events/art/smite_master.png"
+dest_files=["res://.godot/imported/smite_master.png-c1cc97db3870977477b03584556153d1.ctex"]
 
 [params]
 

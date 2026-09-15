@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://bb4pn277l61kb"
-path="res://.godot/imported/mysterious_cave.png-2a256106008b34426d272b193feee9e5.ctex"
+uid="uid://8xhavktd16p4"
+path="res://.godot/imported/mysterious_cave_3.png-e079641a305f8ea6f4772ccb0e45f40f.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Gaoshou/images/events/mysterious_cave.png"
-dest_files=["res://.godot/imported/mysterious_cave.png-2a256106008b34426d272b193feee9e5.ctex"]
+source_file="res://Gaoshou/images/events/art/mysterious_cave_3.png"
+dest_files=["res://.godot/imported/mysterious_cave_3.png-e079641a305f8ea6f4772ccb0e45f40f.ctex"]
 
 [params]
 

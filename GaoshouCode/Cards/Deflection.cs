@@ -43,7 +43,7 @@ public sealed class Deflection : ModCardTemplate
     ];
 
     // 奇迹就绪（进入手牌的方式非"回合开始时抽牌"）时泛橙光。
-    protected override bool ShouldGlowGoldInternal => MiracleCounter.IsMiracleReady(this);
+    protected override bool ShouldGlowGoldInternal => MiracleCounter.IsMiracleGlowReady(this);
 
     public override int CanonicalStarCost => 2;
 

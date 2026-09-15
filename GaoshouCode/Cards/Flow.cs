@@ -31,7 +31,7 @@ public sealed class Flow : ModCardTemplate
     {
         get
         {
-            var r = GaoshouFlowTracker.IsFlowReady(this);
+            var r = GaoshouFlowTracker.IsFlowGlowReady(this);
             Godot.GD.Print($"GAOSHOU-FLOW-GLOW flowReady={r}");
             return r;
         }

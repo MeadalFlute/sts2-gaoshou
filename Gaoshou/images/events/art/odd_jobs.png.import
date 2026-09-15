@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://cfttttavchv54"
-path="res://.godot/imported/magic_prodigy.png-14f4900f86fc5fd2c886e799f7efe0a2.ctex"
+uid="uid://cy5bpouc2j8vt"
+path="res://.godot/imported/odd_jobs.png-b11186cfadd372af23081b6df64a94a1.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Gaoshou/images/events/magic_prodigy.png"
-dest_files=["res://.godot/imported/magic_prodigy.png-14f4900f86fc5fd2c886e799f7efe0a2.ctex"]
+source_file="res://Gaoshou/images/events/art/odd_jobs.png"
+dest_files=["res://.godot/imported/odd_jobs.png-b11186cfadd372af23081b6df64a94a1.ctex"]
 
 [params]
 

@@ -26,7 +26,7 @@ public sealed class Burst : ModCardTemplate
 
     // 泛光：流转可触发或奇迹可触发时亮起。
     protected override bool ShouldGlowGoldInternal =>
-        GaoshouFlowTracker.IsFlowReady(this) || MiracleCounter.IsMiracleReady(this);
+        GaoshouFlowTracker.IsFlowGlowReady(this) || MiracleCounter.IsMiracleGlowReady(this);
 
     // 悬浮释义：奇迹。
     protected override IEnumerable<IHoverTip> AdditionalHoverTips =>

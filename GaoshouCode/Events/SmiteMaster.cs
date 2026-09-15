@@ -1,3 +1,4 @@
+using MegaCrit.Sts2.Core.Nodes.Rooms;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -34,7 +35,7 @@ public sealed class SmiteMaster : ModEventTemplate
     // 事件立绘（背景图位置）：走本模组自己的事件美术，约定文件名＝事件键（snake_case），
     // 图片由美术那一路生成，这里只声明路径。
     public override EventAssetProfile AssetProfile => new(
-        InitialPortraitPath: $"{Entry.ResPath}/images/events/smite_master.png");
+        InitialPortraitPath: $"{Entry.ResPath}/images/events/_base_notebook.png");
 
     public override bool IsAllowed(IRunState runState)
         => GaoshouEventSettings.IsModEventEnabled(SettingsKey) && runState.CurrentActIndex is 0 or 1;
@@ -102,11 +103,12 @@ public sealed class SmiteMaster : ModEventTemplate
         ]);
     }
 
-    private Task Leave()
+    private async Task Leave()
     {
-        // TAUGHT 页的旁白已经收尾（"…不然我会很难过的！」"）→ 直接结束，不再进 DONE 结尾页。
-        SetEventFinished(PageDescription("TAUGHT"));
-        return Task.CompletedTask;
+        // TAUGHT 页本身就是结束页 → 结束并直接离开（不再多按一次"继续"）。
+        SetEventFinished(PageDescription("END"));
+        await Cmd.CustomScaledWait(0.35f, 0.5f);
+        await NEventRoom.Proceed();
     }
 
     // ---- 给牌 ----

@@ -40,7 +40,7 @@ public sealed class Parrys : ModCardTemplate
         {
             var attackers = (this.CombatState?.HittableEnemies ?? [])
                 .Where(e => e.Monster?.NextMove?.Intents.Any(i => i.IntentType == IntentType.Attack) ?? false).ToList();
-            var miracle = MiracleCounter.IsMiracleReady(this);
+            var miracle = MiracleCounter.IsMiracleGlowReady(this);
             return miracle && attackers.Count > 0;
         }
     }

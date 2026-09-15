@@ -22,7 +22,7 @@ namespace Gaoshou.Events;
 public sealed class MagicProdigy : ModEventTemplate
 {
     public override EventAssetProfile AssetProfile => new(
-        InitialPortraitPath: $"{Entry.ResPath}/images/events/magic_prodigy.png");
+        InitialPortraitPath: $"{Entry.ResPath}/images/events/_base_notebook.png");
 
     // 只在 Hive（CurrentActIndex == 1）出现，且要过模组设置里的开关。
     public override bool IsAllowed(IRunState runState)

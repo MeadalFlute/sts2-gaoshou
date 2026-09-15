@@ -15,7 +15,7 @@ using STS2RitsuLib.Scaffolding.Content;
 namespace Gaoshou.Cards;
 
 // 寸劲：技能（罕见）。耗 2 能量（无升级费用变化）。
-// 获得 2(3) 点临时力量；流转（直接触发）：获得 2 点能量。
+// 获得 2(4) 点临时力量；流转（直接触发）：获得 2 点能量。
 [RegisterCard(typeof(GaoshouCardPool))]
 public sealed class OneinchPunch : ModCardTemplate
 {
@@ -31,7 +31,7 @@ public sealed class OneinchPunch : ModCardTemplate
         PortraitPath: $"{Entry.ResPath}/images/cards/OneinchPunch.png");
 
     // 流转就绪（颜色与上一张牌完全不同）时泛橙光。
-    protected override bool ShouldGlowGoldInternal => GaoshouFlowTracker.IsFlowReady(this);
+    protected override bool ShouldGlowGoldInternal => GaoshouFlowTracker.IsFlowGlowReady(this);
 
     // 悬浮释义：临时力量（能力）。
     protected override IEnumerable<IHoverTip> AdditionalHoverTips =>
@@ -67,6 +67,6 @@ public sealed class OneinchPunch : ModCardTemplate
 
     protected override void OnUpgrade()
     {
-        DynamicVars.GetRequired<IntVar>("TemporaryStrength").UpgradeValueBy(1);   // 2 -> 3
+        DynamicVars.GetRequired<IntVar>("TemporaryStrength").UpgradeValueBy(2);   // 2 -> 4
     }
 }

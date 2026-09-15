@@ -35,7 +35,7 @@ public sealed class StunningFist : ModCardTemplate
     ];
 
     // 流转就绪（颜色与上一张牌完全不同）时泛橙光。
-    protected override bool ShouldGlowGoldInternal => GaoshouFlowTracker.IsFlowReady(this);
+    protected override bool ShouldGlowGoldInternal => GaoshouFlowTracker.IsFlowGlowReady(this);
 
     // 词条：消耗。流转（按颜色判定触发，满足时击晕）。
     public override IEnumerable<CardKeyword> CanonicalKeywords =>

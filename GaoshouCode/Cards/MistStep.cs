@@ -29,7 +29,7 @@ public sealed class MistStep : ModCardTemplate
         PortraitPath: $"{Entry.ResPath}/images/cards/{GetType().Name}.png");
 
     // 流转就绪（颜色与上一张牌完全不同）时泛橙光。
-    protected override bool ShouldGlowGoldInternal => GaoshouFlowTracker.IsFlowReady(this);
+    protected override bool ShouldGlowGoldInternal => GaoshouFlowTracker.IsFlowGlowReady(this);
 
     // 词条：流转（供子弹/流转类能力按条件触发）。
     public override IEnumerable<CardKeyword> CanonicalKeywords =>

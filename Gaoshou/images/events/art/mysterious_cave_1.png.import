@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://dyhy3k54ikld2"
-path="res://.godot/imported/strange_temple.png-25b03aec3723ecb0d64c1e3426e04355.ctex"
+uid="uid://eecrpnpsc3d3"
+path="res://.godot/imported/mysterious_cave_1.png-24c06d41ea079d310e3c1dfbfa9104ab.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Gaoshou/images/events/strange_temple.png"
-dest_files=["res://.godot/imported/strange_temple.png-25b03aec3723ecb0d64c1e3426e04355.ctex"]
+source_file="res://Gaoshou/images/events/art/mysterious_cave_1.png"
+dest_files=["res://.godot/imported/mysterious_cave_1.png-24c06d41ea079d310e3c1dfbfa9104ab.ctex"]
 
 [params]
 
