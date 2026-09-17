@@ -74,7 +74,7 @@ public sealed class TornadoDicimatesTrailerPark : ModCardTemplate
                 .TargetingAllOpponents(this.CombatState)
                 .Execute(choiceContext);
 
-        // 获得 2 点临时力量（同步等量力量）。
+        // 获得 1 点临时力量（同步等量力量）。
         await GaoshouTemporaryStrengthPower.GrantAsync(choiceContext, Owner.Creature,
             DynamicVars.GetRequired<IntVar>("TemporaryStrength").BaseValue, Owner.Creature, this);
     }

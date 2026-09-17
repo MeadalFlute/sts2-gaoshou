@@ -11,8 +11,8 @@ using STS2RitsuLib.Scaffolding.Content;
 
 namespace Gaoshou.Cards;
 
-// 呼吸：技能（罕见）。耗 1 能量（升级 0）。
-// 若被打出：抽 4 张牌，消耗。若被弃置：获得 1 能量（不消耗）。
+// 呼吸：技能（罕见）。耗 1 能量。
+// 若被打出：抽 3（4） 张牌，消耗。若被弃置：获得 1 能量（不消耗）。
 [RegisterCard(typeof(GaoshouCardPool))]
 public sealed class Breath : ModCardTemplate
 {
@@ -36,7 +36,7 @@ public sealed class Breath : ModCardTemplate
     protected override IEnumerable<DynamicVar> CanonicalVars =>
     [
         ModCardVars.Energy("Energy", 1),
-        ModCardVars.Int("Cards", 4),
+        ModCardVars.Int("Cards", 3),
     ];
 
     public Breath() : base(BaseEnergyCost, CardKind, CardRarityValue, CardTarget, ShowInCardLibrary)
@@ -45,7 +45,7 @@ public sealed class Breath : ModCardTemplate
 
     protected override async Task OnPlay(PlayerChoiceContext choiceContext, CardPlay cardPlay)
     {
-        // 若被打出：抽 4 张牌（消耗由 Exhaust 词条处理）。
+        // 若被打出：抽 3（4） 张牌（消耗由 Exhaust 词条处理）。
         await CardPileCmd.Draw(choiceContext, DynamicVars.GetRequired<IntVar>("Cards").BaseValue, Owner);
     }
 
@@ -59,6 +59,7 @@ public sealed class Breath : ModCardTemplate
 
     protected override void OnUpgrade()
     {
-        EnergyCost.UpgradeBy(-1);   // 能量 1 -> 0
+        // EnergyCost.UpgradeBy(-1);   // 能量 1 -> 0
+        DynamicVars.GetRequired<IntVar>("Cards").UpgradeValueBy(1);
     }
 }

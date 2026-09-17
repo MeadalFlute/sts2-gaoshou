@@ -40,6 +40,8 @@ public sealed class SniperRifle : ModCardTemplate
         CardKeyword.Retain,
 
         CardKeyword.Exhaust,
+
+        CardKeyword.Retain, // 追加保留
     ];
 
     // 计算伤害：基础 0 + 3 × 当前力量（描述 {CalculatedDamage:diff()} 显示战斗内伤害预览）。

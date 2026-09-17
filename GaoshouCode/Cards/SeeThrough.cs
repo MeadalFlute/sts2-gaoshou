@@ -32,6 +32,7 @@ public sealed class SeeThrough : ModCardTemplate
     [
         HoverTipFactory.FromPower<VulnerablePower>(),
         HoverTipFactory.FromPower<WeakPower>(),
+        HoverTipFactory.FromPower<ArtifactPower>(), // 追加人工制品
     ];
 
     public override IEnumerable<CardKeyword> CanonicalKeywords =>
@@ -53,7 +54,11 @@ public sealed class SeeThrough : ModCardTemplate
     {
         ArgumentNullException.ThrowIfNull(cardPlay.Target);
 
-        // 对目标敌人施加 3 层易伤、3 层虚弱。
+        // 对目标敌人施加 3 层易伤、3 层虚弱。追加移除人工。
+        if (cardPlay.Target.HasPower<ArtifactPower>())
+		{
+			await PowerCmd.Remove<ArtifactPower>(cardPlay.Target);
+		}
         await PowerCmd.Apply<VulnerablePower>(choiceContext, cardPlay.Target,
             DynamicVars.GetRequired<PowerVar<VulnerablePower>>("VulnerablePower").BaseValue, Owner.Creature, this);
         await PowerCmd.Apply<WeakPower>(choiceContext, cardPlay.Target,

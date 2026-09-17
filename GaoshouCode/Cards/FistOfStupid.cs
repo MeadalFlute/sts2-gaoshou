@@ -15,7 +15,7 @@ using STS2RitsuLib.Scaffolding.Content;
 
 namespace Gaoshou.Cards;
 
-// 没脑子拳：攻击（罕见）。耗 0 能量。对随机敌人造成 2 点伤害 2 次；将 1 张眩晕加入你的弃牌堆。
+// 没脑子拳：攻击（罕见）。耗 0 能量。对随机敌人造成 2 点伤害 3(4) 次；将 1 张眩晕加入你的弃牌堆。
 // 风暴（能量、能量）：满足时重复打出一次。
 [RegisterCard(typeof(GaoshouCardPool))]
 public sealed class FistOfStupid : ModCardTemplate

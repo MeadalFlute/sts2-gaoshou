@@ -13,7 +13,7 @@ using STS2RitsuLib.Scaffolding.Content;
 
 namespace Gaoshou.Cards;
 
-// 突破极限：技能（普通）。耗 0 能量。抽 3(4) 张牌；随后将 1 张“凋萎”状态牌加入弃牌堆（暂未实装）。
+// 突破极限：技能（普通）。耗 0 能量。抽 3(4) 张牌；随后将 1 张“凋萎”状态牌加入~~弃牌~~抽牌堆。
 [RegisterCard(typeof(GaoshouCardPool))]
 public sealed class LimitBreak : ModCardTemplate
 {
@@ -53,7 +53,7 @@ public sealed class LimitBreak : ModCardTemplate
         {
             var wither = Owner.Creature.CombatState?.CreateCard(ModelDb.Card<Wither>(), Owner);
             if (wither != null)
-                CardCmd.PreviewCardPileAdd(await CardPileCmd.AddGeneratedCardToCombat(wither, PileType.Discard, Owner));
+                CardCmd.PreviewCardPileAdd(await CardPileCmd.AddGeneratedCardToCombat(wither, PileType.Draw, Owner));
         }
     }
 

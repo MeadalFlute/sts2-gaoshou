@@ -125,6 +125,8 @@ public partial class Entry
         patcher.RegisterPatch<VanillaEventDisablePatch>();
         // 事件插图叠加：10 个事件共用一张 notebook 底图，各自的小插图在这里贴到 %Portrait 左半。
         patcher.RegisterPatch<EventArtOverlayPatch>();
+        // 幻影副本按分配到的单色切换卡面（<类名>_R/_B/_P/_G.png，找不到就回落本体卡面）。
+        patcher.RegisterPatch<PhantomPortraitPatch>();
         if (!patcher.PatchAll())
             Logger.Error("Patch application failed!");
 

@@ -12,7 +12,7 @@ using STS2RitsuLib.Scaffolding.Content;
 
 namespace Gaoshou.Cards;
 
-// 点穴手：技能（普通）。耗 1 能量。施加 1 层虚弱、1 层易伤。增幅2（升级后4）。
+// 点穴手：技能（普通）。耗 1 能量。施加 1 层虚弱、1 层易伤。增幅1（升级后2）。
 // 增幅机制（弃置手牌后重复打出）暂未实装，仅展示词条与数值。
 [RegisterCard(typeof(GaoshouCardPool))]
 public sealed class Acupoint : ModCardTemplate
@@ -42,7 +42,7 @@ public sealed class Acupoint : ModCardTemplate
     [
         ModCardVars.Power<WeakPower>(1),
         ModCardVars.Power<VulnerablePower>(1),
-        ModCardVars.Int("AmplifyCount", 2),
+        ModCardVars.Int("AmplifyCount", 1),
     ];
 
     public Acupoint() : base(BaseEnergyCost, CardKind, CardRarityValue, CardTarget, ShowInCardLibrary)
@@ -64,13 +64,13 @@ public sealed class Acupoint : ModCardTemplate
         ArgumentNullException.ThrowIfNull(cardPlay.Target);
         await MainOnceAsync(choiceContext, cardPlay);
 
-        // 增幅 2(4)：弃置手牌中最多 AmplifyCount 张，然后按实际弃置数重放。
+        // 增幅 1(2)：弃置手牌中最多 AmplifyCount 张，然后按实际弃置数重放。
         var amplifyCount = (int)DynamicVars.GetRequired<IntVar>("AmplifyCount").BaseValue;
         await this.AmplifyAsync(choiceContext, amplifyCount, ctx => MainOnceAsync(ctx, cardPlay));
     }
 
     protected override void OnUpgrade()
     {
-        DynamicVars.GetRequired<IntVar>("AmplifyCount").UpgradeValueBy(2);   // 2 -> 4
+        DynamicVars.GetRequired<IntVar>("AmplifyCount").UpgradeValueBy(1);   // 1 -> 2
     }
 }

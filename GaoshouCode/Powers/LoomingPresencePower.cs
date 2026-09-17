@@ -1,3 +1,4 @@
+using MegaCrit.Sts2.Core.Localization;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -57,5 +58,19 @@ public sealed class LoomingPresencePower : ModPowerTemplate
         }
         Amount -= loss;
         InvokeDisplayAmountChanged();
+    }
+
+    /// <summary>
+    /// 卡面上的能力悬浮释义走的是这里（HoverTipFactory.FromPower），不是 loc 表的自动注入路径，
+    /// 所以必须自己把 DynamicVars 加进去；否则会出现 {LossPerHit} 原文。
+    /// </summary>
+    public override LocString Description
+    {
+        get
+        {
+            var text = base.Description;
+            DynamicVars.AddTo(text);
+            return text;
+        }
     }
 }

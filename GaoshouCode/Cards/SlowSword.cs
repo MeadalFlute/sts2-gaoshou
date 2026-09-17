@@ -62,14 +62,19 @@ public override CardAssetProfile AssetProfile => new(
     {
         await CreatureCmd.GainBlock(Owner.Creature, DynamicVars.Block, cardPlay);
 
-        // 奇迹：非回合开始时抽牌进入手牌 → 对随机敌人造成 10(15) 点伤害。
+        // 奇迹：非回合开始时抽牌进入手牌 → 对~~随机~~所有敌人造成 10(15) 点伤害。
         if (MiracleCounter.IsMiracleReady(this))
         {
-            var enemies = (this.CombatState?.HittableEnemies ?? []).ToList();
+            /*var enemies = (this.CombatState?.HittableEnemies ?? []).ToList();
             var random = enemies.Count > 0 ? Owner.RunState.Rng.CombatTargets.NextItem(enemies) : null;
             if (random != null)
                 await DamageCmd.Attack(DynamicVars.GetRequired<DamageVar>("miracle").BaseValue)
                     .FromCard(this, cardPlay).Targeting(random).Execute(choiceContext);
+                    */
+            await DamageCmd.Attack(DynamicVars.GetRequired<DamageVar>("miracle").BaseValue)
+                .FromCard(this, cardPlay)
+                .TargetingAllOpponents(this.CombatState)
+                .Execute(choiceContext);
         }
     }
 

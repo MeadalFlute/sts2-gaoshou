@@ -12,7 +12,7 @@ using STS2RitsuLib.Scaffolding.Content;
 
 namespace Gaoshou.Cards;
 
-// 寻找掩护：技能（普通）。耗 2 能量。获得 9(12) 层格挡；下回合开始时获得 1 辉星。
+// 寻找掩护：技能（普通）。耗 2 能量。获得 11(15) 层格挡；下回合开始时获得 1 辉星。
 [RegisterCard(typeof(GaoshouCardPool))]
 public sealed class TakeCover : ModCardTemplate
 {
@@ -31,7 +31,7 @@ public sealed class TakeCover : ModCardTemplate
 
     protected override IEnumerable<DynamicVar> CanonicalVars =>
     [
-        new BlockVar(9m, ValueProp.Move),
+        new BlockVar(11m, ValueProp.Move),
         ModCardVars.Stars("Stars", 1),
     ];
 
@@ -50,7 +50,7 @@ public sealed class TakeCover : ModCardTemplate
 
     protected override void OnUpgrade()
     {
-        DynamicVars.Block.UpgradeValueBy(3);   // 9 -> 12
+        DynamicVars.Block.UpgradeValueBy(4);   // 11 -> 15
         DynamicVars.GetRequired<StarsVar>("Stars").UpgradeValueBy(1);   // 下回合辉星 1 -> 2
     }
 }

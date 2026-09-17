@@ -39,7 +39,7 @@ public sealed class WasteNot : ModCardTemplate
     // 每回合开始时获得 Amount 张废品牌（能力层数）；升级后打出时立即获得 WasteGain 张。
     protected override IEnumerable<DynamicVar> CanonicalVars =>
     [
-        ModCardVars.Int("Amount", 1),
+        ModCardVars.Int("Amount", 2),
         ModCardVars.Int("WasteGain", 2),
     ];
 

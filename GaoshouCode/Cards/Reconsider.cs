@@ -12,14 +12,14 @@ using STS2RitsuLib.Scaffolding.Content;
 
 namespace Gaoshou.Cards;
 
-// 重整思路：技能（罕见）。耗 0 能量 0 辉星。
+// 重整思路：技能（罕见）。耗 1 能量 0 辉星。
 // 弃掉所有手牌，抽 4 张牌；奇迹（默认直接触发）：获得 1 能量、1 辉星。消耗（升级后移除）。
 [RegisterCard(typeof(GaoshouCardPool))]
 public sealed class Reconsider : ModCardTemplate
 {
     public GaoshouCardColor CardColor => GaoshouCardColor.Blue;
 
-    private const int BaseEnergyCost = 0;
+    private const int BaseEnergyCost = 1;
     private const CardType CardKind = CardType.Skill;
     private const CardRarity CardRarityValue = CardRarity.Uncommon;
     private const TargetType CardTarget = TargetType.Self;
@@ -77,5 +77,6 @@ public sealed class Reconsider : ModCardTemplate
         // 升级后移除"消耗"（直接改实例词条）。
         // RemoveKeyword(CardKeyword.Exhaust);
         AddKeyword(CardKeyword.Retain);
+        // EnergyCost.UpgradeBy(-1);
     }
 }
