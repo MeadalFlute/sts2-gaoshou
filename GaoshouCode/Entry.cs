@@ -35,14 +35,34 @@ public partial class Entry
     public static Logger Logger { get; } = new(ModId, LogType.Generic);
 
     // 心流(DoubleDamagePower) 用的原版「双倍伤害」buff 图标：改用高手自定义图。
+    // 尺寸必须对齐原版规格，否则会渲染异常：
+    //   * 小图标走图集 atlases/power_atlas.sprites/<id>.png，原版一律 64×64（271 个 sprite 里 194 个是 64×64）；
+    //     power.tscn 的 %Icon 是 TextureRect + expand_mode=1 + stretch_mode=4（保持原尺寸比例），
+    //     喂 128×128 会画成两倍大小、溢出槽位；悬浮释义行同样被撑高，把容器尺寸算歪。
+    //   * 大图标走 images/powers/<id>.png，原版是 256×256，且 NPower 里它是 CPUParticles2D（%PowerFlash）的贴图。
     private const string DoubleDamagePowerIconPath = $"{ResPath}/images/powers/doubledamage.png";
+    private const string DoubleDamagePowerBigIconPath = $"{ResPath}/images/powers/doubledamage_big.png";
 
     private static Godot.Texture2D? _doubleDamagePowerIcon;
+    private static Godot.Texture2D? _doubleDamagePowerBigIcon;
 
     private static Godot.Texture2D? DoubleDamagePowerIcon =>
-        _doubleDamagePowerIcon ??=
-            Godot.ResourceLoader.Load<Godot.Texture2D>(DoubleDamagePowerIconPath, null,
-                Godot.ResourceLoader.CacheMode.Reuse);
+        _doubleDamagePowerIcon ??= LoadIcon(DoubleDamagePowerIconPath);
+
+    private static Godot.Texture2D? DoubleDamagePowerBigIcon =>
+        _doubleDamagePowerBigIcon ??= LoadIcon(DoubleDamagePowerBigIconPath);
+
+    // 载入失败时返回 null（RitsuLib 的取用逻辑会跳过 null 值，自动回落到原版图标），并在日志里留痕。
+    private static Godot.Texture2D? LoadIcon(string path)
+    {
+        var texture = Godot.ResourceLoader.Load<Godot.Texture2D>(path, null, Godot.ResourceLoader.CacheMode.Reuse);
+        if (texture == null)
+            Logger.Warn($"[Icon] failed to load '{path}'; the vanilla icon will be used instead.");
+        else
+            Logger.Info($"[Icon] loaded '{path}' ({texture.GetWidth()}x{texture.GetHeight()}).");
+
+        return texture;
+    }
 
     public static void Initialize()
     {
@@ -127,21 +147,35 @@ public partial class Entry
         patcher.RegisterPatch<EventArtOverlayPatch>();
         // 幻影副本按分配到的单色切换卡面（<类名>_R/_B/_P/_G.png，找不到就回落本体卡面）。
         patcher.RegisterPatch<PhantomPortraitPatch>();
+        // 「限制」挡住出牌时的台词：原版对非五种模型的阻挡者取不到名字 → 显示 <Unknown>，这里换成限制自己的台词。
+        patcher.RegisterPatch<LimitedDialoguePatch>();
+        // 「胆小 Skittish」结算时机：我们的多段卡是"每段一条 AttackCommand"，原版这条"挨打后获得格挡"的反应
+        // 会在第一段之后就结算，后面的段数被格挡吃掉 → 压到该牌全部伤害打完之后（只在我们的多段卡结算窗口内生效）。
+        // （蜷身 CurlUp 挂在出牌结束上，原版节奏本就正确，不处理。）
+        patcher.RegisterPatch<SkittishReactionDelayPatch>();
+        // 废品牌悬浮预览：临时武器 / 垃圾宝箱 / 可别浪费 的卡面悬浮里逐个展示所有废品牌。
+        // 三条独立补丁（RitsuLib 用 GetMethod("Postfix") 取方法，同名重载会抛歧义异常，不能合成一个类）：
+        //   1) 记归属：悬浮窗创建时若挂在三张卡之一上就登记（不能只看"里面有没有废品牌卡片" ——
+        //      损失规避的悬浮里就有硬纸板预览，硬纸板也是废品牌，会被误轮换）；
+        //   2) 滚轮（常驻的 NCursorManager._Input，用 SetInputAsHandled 独占滚轮）；
+        //   3) 2 秒兜底自动切换（NHoverTipSet._Process）。都只就地换 NCard.Model，不重建悬浮窗。
+        patcher.RegisterPatch<WastePreviewOwnerPatch>();
+        patcher.RegisterPatch<WastePreviewWheelPatch>();
+        patcher.RegisterPatch<WastePreviewPatch>();
         if (!patcher.PatchAll())
             Logger.Error("Patch application failed!");
 
-        // 心流：把原版「双倍伤害」buff 的图标换成高手自定义图（其余原版 buff 图标不动）。
-        // 原版能力走的是模型自带图标，这里用 RitsuLib 的外部资源覆盖注册表按模型类型过滤替换；
-        // IconPath/PackedIconPath、Icon(小图标)、BigIcon(悬浮释义大图) 三条读取路径都要覆盖。
-        ExternalAssetOverrideRegistry.RegisterPowerIconPathProvider(
-            ModId + ".power_icon.double_damage.path",
-            power => power is DoubleDamagePower ? DoubleDamagePowerIconPath : null);
-        ExternalAssetOverrideRegistry.RegisterPowerIconTextureProvider(
-            ModId + ".power_icon.double_damage.texture",
-            power => power is DoubleDamagePower ? DoubleDamagePowerIcon : null);
-        ExternalAssetOverrideRegistry.RegisterPowerBigIconTextureProvider(
-            ModId + ".power_icon.double_damage.big_texture",
-            power => power is DoubleDamagePower ? DoubleDamagePowerIcon : null);
+        // 心流：双倍伤害(DoubleDamagePower) 的图标**暂时不做覆盖**（2026-09-20 撤下）。
+        // 原因：改成自定义图后实测出现「buff 图标渲染异常（像空的）+ 悬停 buff 时说明条目全挤到屏幕左上角」，
+        // 且把尺寸对齐原版规格（小图标 64×64 / 大图 256×256）后依旧复现 —— 说明问题出在"覆盖图集切图"这条路径本身
+        // （原版小图标来自 atlases/power_atlas.sprites/*，是图集切出来的 AtlasTexture，不是独立贴图）。
+        // 相关资源与代码保留在下面（未注册），将来若要再试可直接启用：
+        //   ExternalAssetOverrideRegistry.RegisterPowerIconPathProvider(ModId + ".power_icon.double_damage.path",
+        //       power => power is DoubleDamagePower ? DoubleDamagePowerIconPath : null);
+        //   ExternalAssetOverrideRegistry.RegisterPowerIconTextureProvider(ModId + ".power_icon.double_damage.texture",
+        //       power => power is DoubleDamagePower ? DoubleDamagePowerIcon : null);
+        //   ExternalAssetOverrideRegistry.RegisterPowerBigIconTextureProvider(ModId + ".power_icon.double_damage.big_texture",
+        //       power => power is DoubleDamagePower ? DoubleDamagePowerBigIcon : null);
 
         // 新手教程：首次游玩高手时在第一场战斗开场 / 首战胜利后各弹一次指引（RitsuLib 生命周期事件驱动）。
         GaoshouTutorial.Initialize(Logger);

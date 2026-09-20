@@ -14,7 +14,7 @@ using STS2RitsuLib.Scaffolding.Content;
 
 namespace Gaoshou.Cards;
 
-// 旋风斧：攻击（普通）。耗 1 能量 1 辉星。获得 6(9) 层临时力量，对随机敌人造成 8(12) 点伤害。
+// 旋风斧：攻击（普通）。耗 1 能量 1 辉星。造成 10(15) 点伤害，施加2（3）层易伤。
 [RegisterCard(typeof(GaoshouCardPool))]
 public sealed class FlyingAxe : ModCardTemplate
 {
@@ -38,7 +38,7 @@ public sealed class FlyingAxe : ModCardTemplate
     protected override IEnumerable<DynamicVar> CanonicalVars =>
     [
         ModCardVars.Power<VulnerablePower>(2),
-        new DamageVar(8m, ValueProp.Move),
+        new DamageVar(10m, ValueProp.Move),
     ];
 
     public FlyingAxe() : base(BaseEnergyCost, CardKind, CardRarityValue, CardTarget, ShowInCardLibrary)
@@ -53,7 +53,7 @@ public sealed class FlyingAxe : ModCardTemplate
         if (cardPlay.Target is not { } target)
             return;
 
-        // 普通攻击：对所选目标造成 8(12) 点伤害。
+        // 普通攻击：对所选目标造成 10(15) 点伤害。
         await DamageCmd.Attack(DynamicVars.Damage.BaseValue)
             .FromCard(this, cardPlay)
             .Targeting(target)
@@ -67,6 +67,6 @@ public sealed class FlyingAxe : ModCardTemplate
     protected override void OnUpgrade()
     {
         DynamicVars.GetRequired<PowerVar<VulnerablePower>>("VulnerablePower").UpgradeValueBy(1);   // 2 -> 3
-        DynamicVars.Damage.UpgradeValueBy(4);                                  // 8 -> 12
+        DynamicVars.Damage.UpgradeValueBy(5);                                  // 10 -> 15
     }
 }

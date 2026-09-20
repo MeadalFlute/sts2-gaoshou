@@ -58,6 +58,6 @@ public sealed class Execution : ModCardTemplate
 
     protected override void OnUpgrade()
     {
-        UpgradeStarCostBy(-2);   // 辉星 10 -> 8（不再追加保留）
+        UpgradeStarCostBy(-2);   // 辉星 8 -> 6（不再追加保留）
     }
 }

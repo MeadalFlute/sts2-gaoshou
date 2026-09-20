@@ -38,6 +38,7 @@ public sealed class WaitingforChance : ModCardTemplate
     public override IEnumerable<CardKeyword> CanonicalKeywords =>
     [
         CardKeyword.Exhaust,
+        GaoshouKeyword.Limited,
     ];
 
     public WaitingforChance() : base(BaseEnergyCost, CardKind, CardRarityValue, CardTarget, ShowInCardLibrary)

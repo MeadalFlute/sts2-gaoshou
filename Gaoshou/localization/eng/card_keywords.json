@@ -6,7 +6,7 @@
   "GAOSHOU_KEYWORD_MIRACLE.title": "Miracle",
   "GAOSHOU_KEYWORD_MIRACLE.description": "Triggers when this card enters your hand by any means other than drawing at turn start.",
   "GAOSHOU_KEYWORD_PHANTOM.title": "Phantom",
-  "GAOSHOU_KEYWORD_PHANTOM.description": "Add a temporary copy to your hand: cost -1, no Phantom, no Echo, with Exhaust.",
+  "GAOSHOU_KEYWORD_PHANTOM.description": "Add a temporary copy to your hand: cost -1, no Phantom, no Rebound, with Exhaust.",
   "GAOSHOU_KEYWORD_STORM.title": "Storm",
   "GAOSHOU_KEYWORD_STORM.description": "Storm (condition): After playing, if your current [gold]Energy[/gold]/[gold]Stars[/gold] meet the condition shown on the card, play it once more.",
   "GAOSHOU_KEYWORD_ECHO.title": "Rebound",
@@ -30,5 +30,8 @@
   "GAOSHOU_KEYWORD_BONUS.title": "Bonus",
   "GAOSHOU_KEYWORD_BONUS.description": "When drawn, draw n extra cards.",
   "GAOSHOU_KEYWORD_VIRTUE.title": "Virtue",
-  "GAOSHOU_KEYWORD_VIRTUE.description": "When played, gain 1 Energy and draw 1 card."
+  "GAOSHOU_KEYWORD_VIRTUE.description": "When played, gain 1 Energy and draw 1 card.",
+  "GAOSHOU_KEYWORD_LIMITED.title": "Limited",
+  "GAOSHOU_KEYWORD_LIMITED.description": "You can only play 1 Limited card each turn.",
+  "GAOSHOU_KEYWORD_LIMITED.dialogue": "I can only play 1 Limited card each turn."
 }

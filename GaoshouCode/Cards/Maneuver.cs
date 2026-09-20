@@ -31,6 +31,7 @@ public sealed class Maneuver : ModCardTemplate
     // 消耗；升级后移除。
     public override IEnumerable<CardKeyword> CanonicalKeywords =>
     [
+        GaoshouKeyword.Limited,
         CardKeyword.Exhaust,
     ];
 

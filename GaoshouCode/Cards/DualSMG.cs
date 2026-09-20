@@ -32,7 +32,7 @@ public sealed class DualSMG : ModCardTemplate
     // 悬浮释义：装弹（升级后：装弹+，变化目标卡）。
     protected override IEnumerable<IHoverTip> AdditionalHoverTips =>
     [
-        HoverTipFactory.FromCard<Reload>(IsUpgraded),
+        HoverTipFactory.FromCard<Reload>(),
     ];
 
     // 词条：风暴、消耗（打出后生成装弹加入抽牌堆）。
@@ -50,6 +50,9 @@ public sealed class DualSMG : ModCardTemplate
 
     protected override IEnumerable<DynamicVar> CanonicalVars =>
     [
+        
+        // 配对编号的存储位（由本实例在生成装弹时写入；卡面不引用它，所以不会显示）。
+        ModCardVars.Int("PairId", 0),
         new DamageVar(2m, ValueProp.Move),
         ModCardVars.Int("Times", 3),
         ModCardVars.Energy("EnergyStorm", 1),
@@ -107,14 +110,18 @@ public sealed class DualSMG : ModCardTemplate
             && Owner.PlayerCombatState.Stars >= (int)DynamicVars.GetRequired<StarsVar>("StarsStorm").BaseValue)
             await PlayOnce(choiceContext, cardPlay);
 
-        // 仅在现有装弹数量不足时生成一张装弹（升级后：装弹+）。
+        // 仅在现有装弹数量不足时生成一张装弹（装弹本身不可升级）。
         if (ShouldGenerateReload())
         {
             var reload = Owner.Creature.CombatState?.CreateCard(ModelDb.Card<Reload>(), Owner);
             if (reload != null)
             {
-                if (IsUpgraded)
-                    CardCmd.Upgrade(reload);   // 升级效果：装弹+
+                // 一对一配对：给"这张冲锋枪"与"它生成的装弹"写同一个编号（双方写成同一个数），
+                // 装弹结算时按编号精确找回这一张 —— 不再依赖装弹自身的升级状态（局内升级/降级不再影响回收）。
+                var pairId = NextPairId();
+                DynamicVars.GetRequired<IntVar>("PairId").BaseValue = pairId;
+                reload.DynamicVars.GetRequired<IntVar>("PairId").BaseValue = pairId;
+
                 CardCmd.PreviewCardPileAdd(await CardPileCmd.AddGeneratedCardToCombat(reload, PileType.Draw, Owner, CardPilePosition.Random));
             }
         }
@@ -124,4 +131,10 @@ public sealed class DualSMG : ModCardTemplate
     {
         DynamicVars.GetRequired<IntVar>("Times").UpgradeValueBy(1);    // 3 -> 4（伤害不变）
     }
+    // 本场战斗内递增的配对编号（确定性：两端在同一出牌点各自 +1，结果一致；
+    // 编号只在"同一实例对"之间比较，不需要跨战斗唯一）。
+    private static int _nextPairId = 1;
+
+    private static int NextPairId() => _nextPairId++;
+
 }

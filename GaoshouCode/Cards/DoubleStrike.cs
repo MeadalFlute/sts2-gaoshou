@@ -49,6 +49,6 @@ public sealed class DoubleStrike : ModCardTemplate
 
     protected override void OnUpgrade()
     {
-        DynamicVars.GetRequired<IntVar>("StrengthBonus").UpgradeValueBy(2);   // 4 -> 6
+        DynamicVars.GetRequired<IntVar>("StrengthBonus").UpgradeValueBy(2);   // 3 -> 5
     }
 }

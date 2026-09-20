@@ -16,7 +16,7 @@ public sealed class WellPrepared : ModCardTemplate
 {
     public GaoshouCardColor CardColor => GaoshouCardColor.Blue;
 
-    private const int BaseEnergyCost = 1;
+    private const int BaseEnergyCost = 0;
     private const CardType CardKind = CardType.Skill;
     private const CardRarity CardRarityValue = CardRarity.Uncommon;
     private const TargetType CardTarget = TargetType.Self;
@@ -33,6 +33,8 @@ public sealed class WellPrepared : ModCardTemplate
     public WellPrepared() : base(BaseEnergyCost, CardKind, CardRarityValue, CardTarget, ShowInCardLibrary)
     {
     }
+    // 辉星
+    public override int CanonicalStarCost => 2;
 
     protected override async Task OnPlay(PlayerChoiceContext choiceContext, CardPlay cardPlay)
     {

@@ -12,14 +12,14 @@ using STS2RitsuLib.Scaffolding.Content;
 
 namespace Gaoshou.Cards;
 
-// 武学宗师：能力（稀有）。耗 1 能量 1 辉星。
+// 武学宗师：能力（罕见）。耗 1 能量 1 辉星。
 // 每当你触发【流转】后，获得 1（2）层「临时力量」。升级后获得"固有"。
 [RegisterCard(typeof(GaoshouCardPool))]
 public sealed class GrandMaster : ModCardTemplate
 {
     private const int BaseEnergyCost = 1;
     private const CardType CardKind = CardType.Power;
-    private const CardRarity CardRarityValue = CardRarity.Rare;
+    private const CardRarity CardRarityValue = CardRarity.Uncommon;
     private const TargetType CardTarget = TargetType.Self;
     private const bool ShowInCardLibrary = true;
 

@@ -19,7 +19,7 @@ public sealed class TensionAndRelaxation : ModCardTemplate
 {
     private const int BaseEnergyCost = 0;
     private const CardType CardKind = CardType.Skill;
-    private const CardRarity CardRarityValue = CardRarity.Common;
+    private const CardRarity CardRarityValue = CardRarity.Uncommon;
     private const TargetType CardTarget = TargetType.Self;
     private const bool ShowInCardLibrary = true;
 

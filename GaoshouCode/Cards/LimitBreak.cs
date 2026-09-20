@@ -53,7 +53,7 @@ public sealed class LimitBreak : ModCardTemplate
         {
             var wither = Owner.Creature.CombatState?.CreateCard(ModelDb.Card<Wither>(), Owner);
             if (wither != null)
-                CardCmd.PreviewCardPileAdd(await CardPileCmd.AddGeneratedCardToCombat(wither, PileType.Draw, Owner));
+                CardCmd.PreviewCardPileAdd(await CardPileCmd.AddGeneratedCardToCombat(wither, PileType.Draw, Owner, CardPilePosition.Random));
         }
     }
 

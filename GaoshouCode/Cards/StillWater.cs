@@ -14,7 +14,7 @@ using Gaoshou.Powers;
 
 namespace Gaoshou.Cards;
 
-// 止水：技能（普通）。耗 0 能量 1 辉星（升级 0/0）。获得 2 点临时力量（简化为 2 点力量）；增幅1（暂不实装）。
+// 止水：技能（普通）。耗 0 能量 1 辉星。获得 1 点临时力量；增幅2。
 [RegisterCard(typeof(GaoshouCardPool))]
 public sealed class StillWater : ModCardTemplate
 {
@@ -38,8 +38,8 @@ public sealed class StillWater : ModCardTemplate
 
     protected override IEnumerable<DynamicVar> CanonicalVars =>
     [
-        ModCardVars.Int("AmplifyCount", 1),
-        ModCardVars.Int("Strength", 2),
+        ModCardVars.Int("AmplifyCount", 2),
+        ModCardVars.Int("Strength", 1),
     ];
 
     public StillWater() : base(BaseEnergyCost, CardKind, CardRarityValue, CardTarget, ShowInCardLibrary)
@@ -49,7 +49,7 @@ public sealed class StillWater : ModCardTemplate
     // 0 能量 1 辉星（升级 0 能量 0 辉星）。
     public override int CanonicalStarCost => 1;
 
-    // 主效果：获得 2 层临时力量（同步等量力量）。
+    // 主效果：获得 1 层临时力量（同步等量力量）。
     private async Task MainOnceAsync(PlayerChoiceContext choiceContext)
     {
         await GaoshouTemporaryStrengthPower.GrantAsync(choiceContext, Owner.Creature,
@@ -61,13 +61,15 @@ public sealed class StillWater : ModCardTemplate
         await MainOnceAsync(choiceContext);
 
         // 增幅1：弃置最多 1 张牌，然后按实际弃置数重放。
-        // 增幅：弃置最多 1(3) 张牌后重放主效果。
-        await this.AmplifyAsync(choiceContext, IsUpgraded ? 2 : 1, MainOnceAsync);
+        // 增幅：弃置最多 1(2) 张牌后重放主效果。
+        var amplifyCount = (int)DynamicVars.GetRequired<IntVar>("AmplifyCount").BaseValue;
+        await this.AmplifyAsync(choiceContext, amplifyCount, MainOnceAsync);
     }
 
     protected override void OnUpgrade()
     {
-        // 升级：增幅 1 -> 3（费用保持 0/1，不再减辉星）。
-        DynamicVars.GetRequired<IntVar>("AmplifyCount").UpgradeValueBy(1);   // 1 -> 3
+        // 升级：辉星→0。
+        DynamicVars.GetRequired<IntVar>("AmplifyCount").UpgradeValueBy(2);   // 2 -> 4
+        // UpgradeStarCostBy(-1);
     }
 }

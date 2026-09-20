@@ -44,6 +44,17 @@ public sealed class AdaptiveCapacitor : ModRelicTemplate
         await Task.CompletedTask;
     }
 
+    /// <summary>
+    /// 战斗开始时清零累计加成。
+    /// 遗物是**跨战斗存在**的对象，而 <see cref="_bonusMaxEnergy" /> 只是本场战斗内累加的状态
+    /// （存档也不会保存它）—— 不重置就会出现"能量上限越打越高、SL 后才恢复正常"的 bug（玩家实测）。
+    /// </summary>
+    public override Task BeforeCombatStart()
+    {
+        _bonusMaxEnergy = 0;
+        return Task.CompletedTask;
+    }
+
     public override decimal ModifyMaxEnergy(Player player, decimal amount)
     {
         if (player != Owner)

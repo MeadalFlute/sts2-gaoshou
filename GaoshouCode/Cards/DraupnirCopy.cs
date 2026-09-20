@@ -30,7 +30,7 @@ public sealed class DraupnirCopy : ModCardTemplate
     public override int MaxUpgradeLevel => 0;
 
     // 1 辉星：辉星费用通过覆写 CanonicalStarCost 设置。
-    public override int CanonicalStarCost => 1;
+    // public override int CanonicalStarCost => 1;
 
     public override CardAssetProfile AssetProfile => new(
         PortraitPath: $"{Entry.ResPath}/images/cards/{GetType().Name}.png");

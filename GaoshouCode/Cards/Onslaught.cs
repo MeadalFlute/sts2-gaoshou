@@ -16,7 +16,7 @@ using STS2RitsuLib.Scaffolding.Content;
 namespace Gaoshou.Cards;
 
 // 攻势：技能（罕见 / 多人游戏牌）。耗 1 能量 0 辉星。
-//   给予所有玩家 3(5) 层「临时力量」。
+//   给予所有玩家 2(4) 层「临时力量」。
 // 多人安全：队友枚举与原版 Blade Symphony / Outrage 同款——GetTeammatesOf(含自己) 且只取存活的玩家生物；
 //   临时力量必须与等量力量一起给，统一走 GaoshouTemporaryStrengthPower.GrantAsync（内部会先给力量再给临时力量计数）。
 [RegisterCard(typeof(GaoshouCardPool))]
@@ -44,7 +44,7 @@ public sealed class Onslaught : ModCardTemplate
 
     protected override IEnumerable<DynamicVar> CanonicalVars =>
     [
-        ModCardVars.Int("TemporaryStrength", 3),
+        ModCardVars.Int("TemporaryStrength", 2),
     ];
 
     public Onslaught() : base(BaseEnergyCost, CardKind, CardRarityValue, CardTarget, ShowInCardLibrary)
@@ -75,7 +75,7 @@ public sealed class Onslaught : ModCardTemplate
 
     protected override void OnUpgrade()
     {
-        // 3 -> 5 层。
+        // 2 -> 4 层。
         DynamicVars.GetRequired<IntVar>("TemporaryStrength").UpgradeValueBy(2);
     }
 }

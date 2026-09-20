@@ -48,15 +48,15 @@ public override CardAssetProfile AssetProfile => new(
 
     protected override IEnumerable<DynamicVar> CanonicalVars =>
     [
-        new BlockVar(10m, ValueProp.Move),
-        new DamageVar("miracle", 10m, ValueProp.Move),
+        new BlockVar(7m, ValueProp.Move),
+        new DamageVar("miracle", 7m, ValueProp.Move),
     ];
 
     public SlowSword() : base(BaseEnergyCost, CardKind, CardRarityValue, CardTarget, ShowInCardLibrary)
     {
     }
 
-    public override int CanonicalStarCost => 2;
+    public override int CanonicalStarCost => 1;
 
     protected override async Task OnPlay(PlayerChoiceContext choiceContext, CardPlay cardPlay)
     {
@@ -80,7 +80,7 @@ public override CardAssetProfile AssetProfile => new(
 
     protected override void OnUpgrade()
     {
-        DynamicVars.Block.UpgradeValueBy(5);                        // 10 -> 15
-        DynamicVars.GetRequired<DamageVar>("miracle").UpgradeValueBy(5); // 10 -> 15
+        DynamicVars.Block.UpgradeValueBy(3);                        // 10 -> 15
+        DynamicVars.GetRequired<DamageVar>("miracle").UpgradeValueBy(3); // 10 -> 15
     }
 }

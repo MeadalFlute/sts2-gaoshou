@@ -29,6 +29,7 @@ public sealed class LittleStone : ModCardTemplate, Gaoshou.Keywords.IWasteCard
     public override IEnumerable<CardKeyword> CanonicalKeywords =>
     [
         CardKeyword.Exhaust,
+        GaoshouKeyword.Limited,
     ];
 
     protected override IEnumerable<DynamicVar> CanonicalVars =>

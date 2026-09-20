@@ -49,7 +49,7 @@ public override CardAssetProfile AssetProfile => new(
     }
 
     // 1 能量 1 辉星。
-    public override int CanonicalStarCost => 1;
+    // public override int CanonicalStarCost => 1;
 
     protected override async Task OnPlay(PlayerChoiceContext choiceContext, CardPlay cardPlay)
     {

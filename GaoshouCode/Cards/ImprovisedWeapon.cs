@@ -3,6 +3,7 @@ using System.Linq;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Factories;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
+using MegaCrit.Sts2.Core.HoverTips;
 using MegaCrit.Sts2.Core.Localization.DynamicVars;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.ValueProps;
@@ -35,6 +36,9 @@ public sealed class ImprovisedWeapon : ModCardTemplate
         new DamageVar(4m, ValueProp.Move),
         ModCardVars.Int("WasteGain", 2),
     ];
+
+    // 悬浮释义：逐个预览所有废品牌（滚轮切换 / 2 秒自动轮播，见 Cards/WastePreview.cs）。
+    protected override IEnumerable<IHoverTip> AdditionalHoverTips => WastePreview.Build();
 
     public ImprovisedWeapon() : base(BaseEnergyCost, CardKind, CardRarityValue, CardTarget, ShowInCardLibrary)
     {

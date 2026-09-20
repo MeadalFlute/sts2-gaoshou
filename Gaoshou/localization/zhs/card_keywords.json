@@ -24,5 +24,8 @@
   "GAOSHOU_KEYWORD_BONUS.title": "附赠",
   "GAOSHOU_KEYWORD_BONUS.description": "抽到这张牌时，额外抽n张牌。",
   "GAOSHOU_KEYWORD_VIRTUE.title": "美德",
-  "GAOSHOU_KEYWORD_VIRTUE.description": "打出后获得1点能量，抽1张牌。"
+  "GAOSHOU_KEYWORD_VIRTUE.description": "打出后获得1点能量，抽1张牌。",
+  "GAOSHOU_KEYWORD_LIMITED.title": "限制",
+  "GAOSHOU_KEYWORD_LIMITED.description": "每回合只能打出1张限制牌。",
+  "GAOSHOU_KEYWORD_LIMITED.dialogue": "我每回合只能打出1张限制牌。"
 }

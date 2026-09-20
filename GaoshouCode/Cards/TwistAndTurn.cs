@@ -35,7 +35,7 @@ public sealed class TwistAndTurn : ModCardTemplate
     protected override IEnumerable<DynamicVar> CanonicalVars =>
     [
         ModCardVars.Stars("Stars", 1),
-        ModCardVars.Int("DoubleThreshold", 2),
+        ModCardVars.Int("DoubleThreshold", 3),
     ];
 
     public TwistAndTurn() : base(BaseEnergyCost, CardKind, CardRarityValue, CardTarget, ShowInCardLibrary)
@@ -56,12 +56,13 @@ public sealed class TwistAndTurn : ModCardTemplate
         // 当 X>=2 时，X 本身翻倍（能量消耗翻倍计辉星）；升级 +1 在翻倍后追加。
         if (x >= DynamicVars.GetRequired<IntVar>("DoubleThreshold").IntValue)
             x *= 2;
-        var gain = x + (IsUpgraded ? 1 : 0);
+        var gain = x ;// + (IsUpgraded ? 1 : 0);
         await PlayerCmd.GainStars(gain, Owner);
     }
 
     protected override void OnUpgrade()
     {
         // 升级：X -> X+1（在 OnPlay 中按 IsUpgraded 处理）。
+         DynamicVars.GetRequired<IntVar>("DoubleThreshold").UpgradeValueBy(-1);   // 1 -> 2
     }
 }

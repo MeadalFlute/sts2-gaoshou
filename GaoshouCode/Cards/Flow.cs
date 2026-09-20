@@ -63,9 +63,16 @@ public sealed class Flow : ModCardTemplate
         Godot.GD.Print($"GAOSHOU-FLOW-2 prev-flags card={cardPlay.Card.Id?.Entry} flowReady={_flowReady} thisColor={GaoshouFlowTracker.GetColor(cardPlay.Card)} isGreen={cardPlay.Card.Keywords.Contains(GaoshouKeyword.Flow)}");
         if (_flowReady)
         {
-            await PowerCmd.Apply<DoubleDamagePower>(choiceContext, Owner.Creature,
-                DynamicVars["DoubleDamagePower"].BaseValue, Owner.Creature, this);
-            Godot.GD.Print($"GAOSHOU-FLOW-2 applied DoubleDamage");
+            // 注意：原版 DoubleDamagePower 的层数 = **剩余回合数**（它的 AfterSideTurnEnd 每回合末只 -1），
+            // 所以每次触发都 +1 会让时长无限累加（实测能堆到 88 层、永不结束）。
+            // 本卡是"本回合造成伤害翻倍" → 只在没有该 buff 时应用 1 层，回合末自然消失。
+            var already = Owner.Creature.GetPowerAmount<DoubleDamagePower>();
+            if (already <= 0)
+            {
+                await PowerCmd.Apply<DoubleDamagePower>(choiceContext, Owner.Creature,
+                    DynamicVars["DoubleDamagePower"].BaseValue, Owner.Creature, this);
+                Godot.GD.Print($"GAOSHOU-FLOW-2 applied DoubleDamage");
+            }
         }
     }
 

@@ -59,7 +59,7 @@ public sealed class Breath : ModCardTemplate
 
     protected override void OnUpgrade()
     {
-        // EnergyCost.UpgradeBy(-1);   // 能量 1 -> 0
-        DynamicVars.GetRequired<IntVar>("Cards").UpgradeValueBy(1);
+        EnergyCost.UpgradeBy(-1);   // 能量 1 -> 0
+        // DynamicVars.GetRequired<IntVar>("Cards").UpgradeValueBy(1);
     }
 }

@@ -15,14 +15,14 @@ using STS2RitsuLib.Scaffolding.Content;
 
 namespace Gaoshou.Cards;
 
-// 仪式匕首：攻击（罕见）。耗 2 能量。造成 12(+n(n+7)/2) 点伤害（n=升级次数）。
+// 仪式匕首：攻击（稀有）。耗 2 能量。造成 12(+n(n+7)/2) 点伤害（n=升级次数）。
 // 斩杀时：升级自己，可无限升级。
 [RegisterCard(typeof(GaoshouCardPool))]
 public sealed class RitualDagger : ModCardTemplate
 {
     private const int BaseEnergyCost = 2;
     private const CardType CardKind = CardType.Attack;
-    private const CardRarity CardRarityValue = CardRarity.Uncommon;
+    private const CardRarity CardRarityValue = CardRarity.Rare;
     private const TargetType CardTarget = TargetType.AnyEnemy;
     private const bool ShowInCardLibrary = true;
 

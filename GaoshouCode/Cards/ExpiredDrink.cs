@@ -14,7 +14,7 @@ using STS2RitsuLib.Scaffolding.Content;
 
 namespace Gaoshou.Cards;
 
-// 过期饮料：技能（无色衍生）。耗 0 能量 1 辉星。
+// 过期饮料：技能（无色衍生）。耗 0 能量 1 辉星（升级后 0 辉星）。
 // 查看抽牌堆顶 4 张牌，选择 1 张加入手牌，弃置剩余牌。消耗。
 [RegisterCard(typeof(TokenCardPool))]
 public sealed class ExpiredDrink : ModCardTemplate, Gaoshou.Keywords.IWasteCard
@@ -78,6 +78,7 @@ public sealed class ExpiredDrink : ModCardTemplate, Gaoshou.Keywords.IWasteCard
 
     protected override void OnUpgrade()
     {
-        // 暂不升级：数值固定，升级可后续再设计。
+        // 辉星费用 1 -> 0（原版 API：CardModel.UpgradeStarCostBy，专门给 OnUpgrade 用；X 费牌不可用）。
+        UpgradeStarCostBy(-1);
     }
 }

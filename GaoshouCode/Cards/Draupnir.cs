@@ -10,6 +10,7 @@ using Gaoshou.Keywords;
 using STS2RitsuLib.Cards.DynamicVars;
 using STS2RitsuLib.Interop.AutoRegistration;
 using STS2RitsuLib.Scaffolding.Content;
+using MegaCrit.Sts2.Core.HoverTips;
 
 namespace Gaoshou.Cards;
 
@@ -33,6 +34,10 @@ public sealed class Draupnir : ModCardTemplate
 
     public override CardAssetProfile AssetProfile => new(
         PortraitPath: $"{Entry.ResPath}/images/cards/{GetType().Name}.png");
+    protected override IEnumerable<IHoverTip> AdditionalHoverTips =>
+    [
+        HoverTipFactory.FromCard<DraupnirCopy>(),
+    ];
 
     public override IEnumerable<CardKeyword> CanonicalKeywords =>
     [

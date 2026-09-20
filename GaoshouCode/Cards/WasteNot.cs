@@ -3,6 +3,7 @@ using System.Linq;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Factories;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
+using MegaCrit.Sts2.Core.HoverTips;
 using MegaCrit.Sts2.Core.Localization.DynamicVars;
 using MegaCrit.Sts2.Core.Models;
 using Gaoshou.Characters;
@@ -35,6 +36,9 @@ public sealed class WasteNot : ModCardTemplate
     }
 
     public override int CanonicalStarCost => 2;
+
+    // 悬浮释义：逐个预览所有废品牌（滚轮切换 / 2 秒自动轮播，见 Cards/WastePreview.cs）。
+    protected override IEnumerable<IHoverTip> AdditionalHoverTips => WastePreview.Build();
 
     // 每回合开始时获得 Amount 张废品牌（能力层数）；升级后打出时立即获得 WasteGain 张。
     protected override IEnumerable<DynamicVar> CanonicalVars =>

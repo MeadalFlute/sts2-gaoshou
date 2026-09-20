@@ -22,6 +22,7 @@ namespace Gaoshou.Keywords;
 [RegisterOwnedCardKeyword(nameof(Hoard), CardDescriptionPlacement = ModKeywordCardDescriptionPlacement.None, IncludeInCardHoverTip = true)]
 [RegisterOwnedCardKeyword(nameof(Bonus), CardDescriptionPlacement = ModKeywordCardDescriptionPlacement.None, IncludeInCardHoverTip = true)]
 [RegisterOwnedCardKeyword(nameof(Virtue), CardDescriptionPlacement = ModKeywordCardDescriptionPlacement.None, IncludeInCardHoverTip = true)]
+    [RegisterOwnedCardKeyword(nameof(Limited), CardDescriptionPlacement = ModKeywordCardDescriptionPlacement.AfterCardDescription, IncludeInCardHoverTip = true)]
 public class GaoshouKeyword
 {
     public static readonly CardKeyword Flow = ModContentRegistry
@@ -55,4 +56,8 @@ public class GaoshouKeyword
     /// <summary>美德：打出后获得 1 能量，抽 1 张牌。</summary>
     public static readonly CardKeyword Virtue = ModContentRegistry
         .GetQualifiedKeywordId(Entry.ModId, nameof(Virtue)).GetModCardKeyword();
+
+    /// <summary>限制：每回合每名玩家最多只能打出 1 张带该词条的牌（规则由 LimitedPlayRule 驱动）。</summary>
+    public static readonly CardKeyword Limited = ModContentRegistry
+        .GetQualifiedKeywordId(Entry.ModId, nameof(Limited)).GetModCardKeyword();
 }
