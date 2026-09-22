@@ -49,17 +49,27 @@ public sealed class OddJobs : ModEventTemplate
         DynamicVars["WorkGold"].BaseValue += Rng.NextInt(-20, 21);
     }
 
-    protected override IReadOnlyList<EventOption> GenerateInitialOptions() =>
-    [
-        new EventOption(this, Train, InitialOptionKey("TRAIN")),
-        new EventOption(this, Work, InitialOptionKey("WORK")),
-        new EventOption(this, RestUp, InitialOptionKey("REST")),
-    ];
+    protected override IReadOnlyList<EventOption> GenerateInitialOptions()
+    {
+        // 金币不足时「训练」直接**锁定**（EventOption 的 IsLocked 由 onChosen == null 决定，
+        // 原版 LuminousChoir / TeaMaster、本模组神秘商店 / 超级升级器都是这套做法）：
+        // 显示灰色不可点，而不是"能点、点了把身上的钱掏空还照样升级"。
+        var canPay = (Owner?.Gold ?? 0m) >= DynamicVars["TrainCost"].BaseValue;
+        Func<Task>? train = canPay ? Train : null;
+
+        return
+        [
+            new EventOption(this, train, InitialOptionKey(canPay ? "TRAIN" : "TRAIN_LOCKED")),
+            new EventOption(this, Work, InitialOptionKey("WORK")),
+            new EventOption(this, RestUp, InitialOptionKey("REST")),
+        ];
+    }
 
     /// <summary>训练：失去金币，选 2 张牌升级。</summary>
     private async Task Train()
     {
-        // PlayerCmd.LoseGold 内部把金币夹到 0 以上，所以钱不够时只是把剩下的钱掏空，不会变成负数。
+        // 金币不足时该选项已被锁定（见 GenerateInitialOptions），不会走到这里；
+        // 另外 PlayerCmd.LoseGold 内部会把金币夹到 0 以上，即便被外部强制调用也不会变成负数。
         await PlayerCmd.LoseGold(DynamicVars["TrainCost"].BaseValue, Owner!, GoldLossType.Spent);
 
         // FromDeckForUpgrade 自带「可升级」过滤；可升级牌不足 2 张时会直接返回全部，不会卡住。

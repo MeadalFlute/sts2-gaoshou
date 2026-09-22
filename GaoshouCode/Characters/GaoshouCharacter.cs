@@ -42,6 +42,18 @@ public sealed class GaoshouCharacter : ModCharacterTemplate<GaoshouCardPool, Gao
 
     // 不覆写 TryCreateCreatureVisuals()：返回 null 表示使用已配置的场景路径，
     // 结合 PlaceholderCharacterId="regent" 会加载储君的战斗模型。
+    //
+    // 【角色帧动画：暂缓】2026-09-20 曾接入一套 GPT 生成的待机帧（6 帧、RitsuLib VisualCueSet +
+    // 自建 gaoshou_visuals.tscn），因该套图逐帧一致性不足（姿态/比例漂移）而回退到储君占位。
+    // 相关资产与场景已挪到 _workspace\backups\character_anim_20260920_174*，
+    // 生成脚本仍在 _workspace\_imgwork\make_character_idle_frames.py，源图在 _workspace\DiceCards\GPT\。
+    // 将来要重做时的要点：
+    //   1) 帧规格 512×512 透明画布、脚底落在 y=456、水平居中；人物高度取 330px
+    //      （原版玩家小人的真实基准是储君场景里的 %Bounds = 230×335，不是 400px）；
+    //   2) 场景照 res://scenes/creature_visuals/rocket.tscn 的结构：纯 Node2D 根 + %Visuals(Sprite2D)/
+    //      %Bounds/%CenterPos/%IntentPos，根节点**不要**挂脚本（那是游戏工程内的路径，mod 工程没有），
+    //      Sprite2D 上移 200px 使"脚底=节点原点"；.tscn 里也不能写 ';' 注释；
+    //   3) 帧一致性坑：必须逐帧按脚底中心对齐 + 逐帧高度归一化，否则源图的几像素浮动会原样播成抖动。
 
     public override List<string> GetArchitectAttackVfx()
     {

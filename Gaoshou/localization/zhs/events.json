@@ -41,6 +41,8 @@
   "GAOSHOU_EVENT_ODD_JOBS.pages.INITIAL.description": "这有个小店铺，处理各类疑难杂务。从占卜算卦，到修鞋补钥匙，都没问题。",
   "GAOSHOU_EVENT_ODD_JOBS.pages.INITIAL.options.TRAIN.title": "训练一下！",
   "GAOSHOU_EVENT_ODD_JOBS.pages.INITIAL.options.TRAIN.description": "失去[red]{TrainCost}[/red]金币，升级2张牌。",
+  "GAOSHOU_EVENT_ODD_JOBS.pages.INITIAL.options.TRAIN_LOCKED.title": "训练一下！（金币不足）",
+  "GAOSHOU_EVENT_ODD_JOBS.pages.INITIAL.options.TRAIN_LOCKED.description": "要[red]{TrainCost}[/red]金币，我付不起。",
   "GAOSHOU_EVENT_ODD_JOBS.pages.INITIAL.options.WORK.title": "打工一下！",
   "GAOSHOU_EVENT_ODD_JOBS.pages.INITIAL.options.WORK.description": "获得{WorkGold}金币。",
   "GAOSHOU_EVENT_ODD_JOBS.pages.INITIAL.options.REST.title": "休息一下！",

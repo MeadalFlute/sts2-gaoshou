@@ -41,6 +41,8 @@
   "GAOSHOU_EVENT_ODD_JOBS.pages.INITIAL.description": "There's a little shop here that handles every kind of odd job. Fortune telling, mending shoes, cutting keys — no problem at all.",
   "GAOSHOU_EVENT_ODD_JOBS.pages.INITIAL.options.TRAIN.title": "Get some training!",
   "GAOSHOU_EVENT_ODD_JOBS.pages.INITIAL.options.TRAIN.description": "Lose [red]{TrainCost}[/red] Gold. Upgrade 2 cards.",
+  "GAOSHOU_EVENT_ODD_JOBS.pages.INITIAL.options.TRAIN_LOCKED.title": "Get some training! (not enough gold)",
+  "GAOSHOU_EVENT_ODD_JOBS.pages.INITIAL.options.TRAIN_LOCKED.description": "Costs [red]{TrainCost}[/red] Gold. I can't afford it.",
   "GAOSHOU_EVENT_ODD_JOBS.pages.INITIAL.options.WORK.title": "Take a shift!",
   "GAOSHOU_EVENT_ODD_JOBS.pages.INITIAL.options.WORK.description": "Gain {WorkGold} Gold.",
   "GAOSHOU_EVENT_ODD_JOBS.pages.INITIAL.options.REST.title": "Take a break!",

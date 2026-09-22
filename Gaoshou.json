@@ -4,7 +4,7 @@
   "pck_name": "Gaoshou",
   "author": "米德",
   "description": "新角色“高手”。白模继承储君，使用能量与辉星双资源。包含100张牌、8个专属遗物、初始遗物高手护符，以及10个新事件与事件开关设置。",
-  "version": "1.1.13",
+  "version": "1.1.14",
   "has_pck": true,
   "has_dll": true,
   "affects_gameplay": true,
