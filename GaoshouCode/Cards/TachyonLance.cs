@@ -23,8 +23,11 @@ using STS2RitsuLib.Scaffolding.Content;
 namespace Gaoshou.Cards;
 
 // 速子长矛：攻击（稀有）。X 辉星费用（0 能量）。
-// 对随机敌人造成 2 点伤害，获得 1(2) 层临时力量，重复 X 次；本场每触发一次奇迹效果，重复次数再乘 X
-// （本场奇迹次数为 0 时本卡不产生效果；参考铁甲战士-扯碎）。
+// 对随机敌人造成 2 点伤害，获得 1 层临时力量，重复 X 次；本场每触发一次奇迹，额外攻击一次（X +1）
+// ⇒ 命中数 = X + 本场奇迹次数（奇迹次数为 0 时就是普通的 X 连击；参考铁甲战士-扯碎）。
+//
+// 【2026-09-24 平衡调整】原效果是"本场每触发一次奇迹就**重放整张牌一次**"（命中数 = X × 奇迹次数），
+// 奇迹攒起来之后是乘算爆炸；现改成加算 —— 每次奇迹只让 X +1（多打一下）。
 [RegisterCard(typeof(GaoshouCardPool))]
 public sealed class TachyonLance : ModCardTemplate
 {
@@ -52,21 +55,20 @@ public override CardAssetProfile AssetProfile => new(
         ModCardVars.Int("TemporaryStrength", 1),
         new CalculationBaseVar(0m),
         new CalculationExtraVar(1m),
-        // 额外命中数 = X × 本场奇迹次数（X 见 ResolveX：打出时是实付辉星，预览时是当前辉星，两者都含化学物X等修正）。
+        // 额外命中数 = 本场奇迹次数（每次奇迹让 X +1 ⇒ 多打一下）。
         new CalculatedVar("CalculatedHits").WithMultiplier(static (card, _) =>
-            ResolveX(card) * MiracleCounter.GetMiracleCount(card.Owner!)),
-        // 预览用：额外打出次数 = 本场奇迹触发次数（纯计数，无 X 依赖）。
+            MiracleCounter.GetMiracleCount(card.Owner!)),
+        // 预览用：本场奇迹触发次数（= 额外攻击次数）。
         new CalculatedVar("MiracleCount").WithMultiplier(static (card, _) =>
             MiracleCounter.GetMiracleCount(card.Owner!)),
-        // 预览用：本回合预计总次数（X + X×奇迹）与预计总伤害。
+        // 预览用：本回合预计总次数（X + 奇迹次数）。
+        new CalculatedVar("TotalHits").WithMultiplier(static (card, _) =>
+            ResolveX(card) + MiracleCounter.GetMiracleCount(card.Owner!)),
+        // 预览用：本回合预计总伤害。
         // 单段伤害走引擎自己的预览管线 Hook.ModifyDamage(..., CardPreviewMode.Normal)，
         // 所以力量/活力/双倍伤害/其它 mod 加的 buff 全部自动算在内；
-        // 又因为本卡每段结束会给自己 +1 层临时力量 → 伤害是等差数列，总伤 = N×单段 + N(N−1)/2。
-        new CalculatedVar("TotalHits").WithMultiplier(static (card, _) =>
-        {
-            var x = ResolveX(card);
-            return x + x * MiracleCounter.GetMiracleCount(card.Owner!);
-        }),
+        // 又因为本卡每段结束会给自己 +1 层临时力量 → 伤害是等差数列，
+        // 总伤 = N×单段 + N(N−1)/2（N 段的递增），再加上第 2 段起手工补的活力 (N−1)×vigor。
         new CalculatedVar("CalculatedTotal").WithMultiplier(static (card, target) =>
         {
             var owner = card.Owner;
@@ -78,19 +80,15 @@ public override CardAssetProfile AssetProfile => new(
                 card.DynamicVars.Damage.BaseValue, ValueProp.Move, card, null,
                 ModifyDamageHookType.All, CardPreviewMode.Normal, out _);
 
-            var x = ResolveX(card);
-            var hits = x + x * MiracleCounter.GetMiracleCount(owner);
+            var hits = ResolveX(card) + MiracleCounter.GetMiracleCount(owner);
             if (hits <= 0 || perHit <= 0m)
                 return 0m;
 
-            // 等差数列求和：N×单段 + N(N−1)/2（每段给自己 +1 层临时力量）
-            // X 段：第一段原版已含活力，第 2..X 段手工补同样的加成 → X×perHit + X(X−1)/2；
-            // 奇迹/replay 多打出来的 extra 段不补活力（与原版 replay 一致）→ 每段按 perHit − 当前活力 计。
+            // 第 1 段由引擎自己吃活力；第 2 段起我们在 OnPlay 里手工补同样的层数（奇迹多打的也算）。
             var vigor = owner.Creature.GetPowerAmount<VigorPower>();
-            var extra = hits - x;
-            var xDamage = x * perHit + x * (x - 1) / 2m;
-            var extraDamage = extra * Math.Max(0m, perHit - vigor);
-            return xDamage + extraDamage;
+            return hits * perHit
+                   + hits * (hits - 1) / 2m
+                   + (hits - 1) * Math.Max(0m, vigor);
         }),
     ];
 
@@ -132,9 +130,9 @@ public override CardAssetProfile AssetProfile => new(
 
     protected override async Task OnPlay(PlayerChoiceContext choiceContext, CardPlay cardPlay)
     {
-        // 总命中 = X（基础，含化学物X等修正） + X×奇迹（额外打出）。
+        // 总命中 = X（基础，含化学物X等修正） + 本场奇迹次数（每次奇迹让 X +1）。
         var x = ResolveX(this);
-        var extra = x * MiracleCounter.GetMiracleCount(Owner!);
+        var extra = MiracleCounter.GetMiracleCount(Owner!);
         var hits = x + extra;
         if (hits <= 0)
             return;
@@ -146,8 +144,9 @@ public override CardAssetProfile AssetProfile => new(
 
         // 活力补偿：X 费那几次是**分开的多次攻击**（各自一次 DamageCmd.Attack），
         // 而原版 VigorPower 的加成绑定在"一次 AttackCommand"上（出手前快照 → 每次伤害实例加 → 攻击后一次性扣光），
-        // 所以只有第一段能吃到活力。这里在出手前快照层数，第 2..X 段手工补上同样的加成。
-        // 注意：**奇迹/replay 多打出来的部分不补** —— 与原版 replay 的表现保持一致（那时活力已被扣掉）。
+        // 所以只有第一段能吃到活力。这里在出手前快照层数，第 2 段起手工补上同样的加成。
+        // 注：奇迹多打出来的那几下现在**也算在 X 里**（X+1），所以一并补活力 ——
+        // 这与旧的"重放"版本不同（那时重放段不补，因为活力已被扣光且重放等同原版 replay）。
         var vigor = Owner!.Creature.GetPowerAmount<VigorPower>();
 
         // 逐命中交错循环：每次 攻击（随机索敌）→ 叠 1 层临时力量。
@@ -155,7 +154,7 @@ public override CardAssetProfile AssetProfile => new(
         for (var i = 0; i < hits; i++)
         {
             var damage = DynamicVars.Damage.BaseValue;
-            if (i > 0 && i < x)
+            if (i > 0)
                 damage += vigor;
 
             var random = enemies.Count > 0 ? Owner.RunState.Rng.CombatTargets.NextItem(enemies) : null;

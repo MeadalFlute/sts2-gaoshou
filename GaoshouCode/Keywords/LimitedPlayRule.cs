@@ -1,9 +1,12 @@
 using System.Collections.Generic;
+using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.Entities.Cards;
+using MegaCrit.Sts2.Core.Entities.Creatures;
 using MegaCrit.Sts2.Core.Entities.Players;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Modding;
+using Gaoshou.Powers;
 using STS2RitsuLib.Interop.AutoRegistration;
 using MegaCrit.Sts2.Core.Combat;
 
@@ -51,18 +54,38 @@ public sealed class LimitedPlayRule : SingletonModel
         return Task.CompletedTask;
     }
 
-    /// <summary>打出带「限制」的牌时，把本回合的额度标记为已用掉。</summary>
-    public override Task BeforeCardPlayed(CardPlay cardPlay)
+    /// <summary>
+    /// 打出带「限制」的牌时：把本回合额度标记为已用掉，并挂上提示 buff「累坏了」
+    /// （该 buff 没有任何效果，只是告诉玩家本回合不能再打限制牌了）。
+    /// </summary>
+    public override async Task BeforeCardPlayed(CardPlay cardPlay)
     {
         var card = cardPlay?.Card;
         var player = cardPlay?.Player;
         if (card == null || player == null)
-            return Task.CompletedTask;
+            return;
 
-        if (card.Keywords.Contains(GaoshouKeyword.Limited))
-            State[Key(player)] = (CurrentTurn(player), true);
+        if (!card.Keywords.Contains(GaoshouKeyword.Limited))
+            return;
 
-        return Task.CompletedTask;
+        State[Key(player)] = (CurrentTurn(player), true);
+
+        await PowerCmd.Apply<TiredOutPower>(new ThrowingPlayerChoiceContext(),
+            player.Creature, 1m, player.Creature, card);
+    }
+
+    /// <summary>
+    /// 你的下个回合开始时移除「累坏了」：与额度重置同一时机
+    /// （额度是按"回合号变了就算重置"判定的，见 <see cref="ShouldPlay" />）。
+    /// </summary>
+    public override async Task AfterSideTurnStart(CombatSide side, IReadOnlyList<Creature> participants,
+        ICombatState combatState)
+    {
+        foreach (var creature in participants)
+        {
+            if (creature.IsPlayer)
+                await PowerCmd.Remove<TiredOutPower>(creature);
+        }
     }
 
     public override bool ShouldPlay(CardModel card, AutoPlayType autoPlayType)

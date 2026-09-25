@@ -64,5 +64,11 @@
   "GAOSHOU_POWER_SPLINTER_TWIN_POWER.smartDescription": "你打出的下一张牌额外结算一次，回合结束时移除。",
   "GAOSHOU_POWER_GAOSHOU_RETAIN_BLOCK_POWER.description": "你的回合开始时，最多保留与层数等量的格挡。",
   "GAOSHOU_POWER_GAOSHOU_RETAIN_BLOCK_POWER.smartDescription": "你的回合开始时，最多保留与层数等量的格挡。",
-  "GAOSHOU_POWER_GAOSHOU_RETAIN_BLOCK_POWER.title": "全副武装"
+  "GAOSHOU_POWER_GAOSHOU_RETAIN_BLOCK_POWER.title": "全副武装",
+  "GAOSHOU_POWER_COUNTER_HELIX_POWER.title": "反击螺旋",
+  "GAOSHOU_POWER_COUNTER_HELIX_POWER.description": "本回合你每次受到攻击时，反击对所有敌人造成[blue]5[/blue]点伤害。",
+  "GAOSHOU_POWER_COUNTER_HELIX_POWER.smartDescription": "本回合你每次受到攻击时，反击对所有敌人造成[blue]{Amount}[/blue]点伤害。",
+  "GAOSHOU_POWER_TIRED_OUT_POWER.title": "累坏了",
+  "GAOSHOU_POWER_TIRED_OUT_POWER.description": "你这回合已经打出过限制牌了。",
+  "GAOSHOU_POWER_TIRED_OUT_POWER.smartDescription": "你这回合已经打出过限制牌了。"
 }

@@ -12,14 +12,17 @@ namespace Gaoshou.Keywords;
 // 约定（对齐 LexNinja2）：
 //  - None：词条以「[gold]词条[/gold]：效果文本」形式写进卡面描述（流转/增幅/奇迹/囤积），不再自动追加词条行，避免重复。
 //  - AfterCardDescription：词条作为独立行追加在描述末尾（幻影/风暴/回响/临时等无内联文本的词条）。
-[RegisterOwnedCardKeyword(nameof(Flow), CardDescriptionPlacement = ModKeywordCardDescriptionPlacement.None, IncludeInCardHoverTip = true)]
+[RegisterOwnedCardKeyword(nameof(Flow), CardDescriptionPlacement = ModKeywordCardDescriptionPlacement.None, IncludeInCardHoverTip = true,
+    IconPath = $"{Entry.ResPath}/images/keywords/flow_on.png")]
 [RegisterOwnedCardKeyword(nameof(Amplify), CardDescriptionPlacement = ModKeywordCardDescriptionPlacement.None, IncludeInCardHoverTip = true)]
-[RegisterOwnedCardKeyword(nameof(Miracle), CardDescriptionPlacement = ModKeywordCardDescriptionPlacement.None, IncludeInCardHoverTip = true)]
+[RegisterOwnedCardKeyword(nameof(Miracle), CardDescriptionPlacement = ModKeywordCardDescriptionPlacement.None, IncludeInCardHoverTip = true,
+    IconPath = $"{Entry.ResPath}/images/keywords/miracle_on.png")]
 [RegisterOwnedCardKeyword(nameof(Phantom), CardDescriptionPlacement = ModKeywordCardDescriptionPlacement.AfterCardDescription, IncludeInCardHoverTip = true)]
 [RegisterOwnedCardKeyword(nameof(Storm), CardDescriptionPlacement = ModKeywordCardDescriptionPlacement.None, IncludeInCardHoverTip = true)]
 [RegisterOwnedCardKeyword(nameof(Echo), CardDescriptionPlacement = ModKeywordCardDescriptionPlacement.AfterCardDescription, IncludeInCardHoverTip = true)]
 [RegisterOwnedCardKeyword(nameof(Temporary), CardDescriptionPlacement = ModKeywordCardDescriptionPlacement.AfterCardDescription, IncludeInCardHoverTip = true)]
-[RegisterOwnedCardKeyword(nameof(Hoard), CardDescriptionPlacement = ModKeywordCardDescriptionPlacement.None, IncludeInCardHoverTip = true)]
+[RegisterOwnedCardKeyword(nameof(Hoard), CardDescriptionPlacement = ModKeywordCardDescriptionPlacement.None, IncludeInCardHoverTip = true,
+    IconPath = $"{Entry.ResPath}/images/powers/hoard.png")]
 [RegisterOwnedCardKeyword(nameof(Bonus), CardDescriptionPlacement = ModKeywordCardDescriptionPlacement.None, IncludeInCardHoverTip = true)]
 [RegisterOwnedCardKeyword(nameof(Virtue), CardDescriptionPlacement = ModKeywordCardDescriptionPlacement.None, IncludeInCardHoverTip = true)]
     [RegisterOwnedCardKeyword(nameof(Limited), CardDescriptionPlacement = ModKeywordCardDescriptionPlacement.AfterCardDescription, IncludeInCardHoverTip = true)]

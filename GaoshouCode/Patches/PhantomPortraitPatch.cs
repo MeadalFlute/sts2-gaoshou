@@ -9,11 +9,13 @@ namespace Gaoshou.Patches;
 /// <summary>
 /// 幻影副本按"分配到的单色"切换卡面。
 ///
-/// 背景：双色卡的幻影/复制品在创建时会被 <see cref="PhantomColorRegistry" /> 分配**一个**主色
-/// （<c>PhantomCloneColorPatch</c> / <c>PhantomSingleton</c> 两处登记），mana 释义与[gold]流转[/gold]判定
+/// 背景：双色卡的**幻影复制品**在创建时会被 <see cref="PhantomColorRegistry" /> 分配**一个**主色
+/// （唯一登记点：<c>PhantomSingleton</c>，即 Keywords\Phantom.cs），mana 释义与[gold]流转[/gold]判定
 /// 都已经按它走；只有**卡面**还是本体那张双色图。这里补上卡面：
 /// 若该卡实例有分配色，且存在对应的单色图 <c>res://Gaoshou/images/cards/&lt;类名&gt;_&lt;色码&gt;.png</c>
 /// （色码 R/B/P/G，对应 <see cref="GaoshouCardColor" /> 的四个单色），就用它替换立绘路径；否则原样返回。
+/// 注意：其它来源的克隆**不**登记实例色，所以它们保持本体双色卡面（2026-09-22 起；
+/// 原先还有一个挂在 CloneCard 上的补丁会给所有克隆都分配单色，已撤下）。
 ///
 /// 挂钩点：<c>ModCardTemplate.CustomPortraitPath</c>（RitsuLib 的虚属性，见 STS2-RitsuLib 源码
 /// <c>ModCardTemplate.cs:65</c>）。本模组所有卡牌都没有覆写它 → 打在基类 getter 上即可覆盖全部卡牌；

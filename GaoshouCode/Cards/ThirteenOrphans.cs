@@ -1,11 +1,9 @@
 using System.Linq;
-using MegaCrit.Sts2.Core.CardSelection;
 using MegaCrit.Sts2.Core.Combat;
 using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
 using MegaCrit.Sts2.Core.Models;
-using MegaCrit.Sts2.Core.Models.Relics;
 using Gaoshou.Characters;
 using Gaoshou.Keywords;
 using STS2RitsuLib.Interop.AutoRegistration;
@@ -16,6 +14,9 @@ namespace Gaoshou.Cards;
 // 十三幺：技能（稀有）。耗 1 能量 0 辉星。
 // 若手牌中至少有 9 张牌且名称各不相同：将所有手牌设为免费，并从左到右依次打出。
 // 参考：静默猎手-子弹时间（手牌免费）+ 低语耳环（从左到右依次自动打出）。
+//
+// 【2026-09-24 调整】不再用 VakuuCardSelector 代选 —— 结算过程中玩家要做的选择（弃牌 / 选牌）
+// 一律停下来等玩家，与原版「倾泻 Cascade」的自动打出同一口径。详见 OnPlay 里的说明。
 // 升级后获得"保留"。
 [RegisterCard(typeof(GaoshouCardPool))]
 public sealed class ThirteenOrphans : ModCardTemplate
@@ -64,25 +65,33 @@ public sealed class ThirteenOrphans : ModCardTemplate
         // 先依次把这批手牌移入结算区（Play 区），锁定它们、脱离手牌变动；
         // 再逐张 AutoPlay 结算。这样上一张结算时，其它牌已在 Play 区，
         // 不会被手牌变化/弃置/消耗/变化影响（快照引用保持有效）。
-        using (CardSelectCmd.PushSelector(new VakuuCardSelector()))
+        // ⇒ 预期副作用：这批牌结算期间**手牌是空的**，所以"从手牌里选一张"的提示会看到空手牌、
+        //   直接跳过（就是要这个效果）；但如果某张牌带**抽牌**效果，手牌会重新有牌，
+        //   那时的选牌提示就会正常停下来让玩家选（见下面的说明）。
+        foreach (var card in cards)
         {
-            foreach (var card in cards)
-            {
-                if (CombatManager.Instance.IsOverOrEnding)
-                    break;
+            if (CombatManager.Instance.IsOverOrEnding)
+                break;
 
-                if (card.Pile?.Type != PileType.Play)
-                    await CardPileCmd.Add(card, PileType.Play);
-            }
+            if (card.Pile?.Type != PileType.Play)
+                await CardPileCmd.Add(card, PileType.Play);
+        }
 
-            // 全部移入结算区后再逐张结算。
-            foreach (var card in cards)
-            {
-                if (CombatManager.Instance.IsOverOrEnding)
-                    break;
+        // 全部移入结算区后再逐张结算。
+        //
+        // ⚠️ 这里**故意不**再 Push VakuuCardSelector（自动代选）：
+        //   十三幺会一次性结算整手牌，中间任何"弃一张牌 / 选一张牌"都应该**停下来等玩家选**，
+        //   与原版「倾泻 Cascade」的自动打出同一口径 —— CardSelectCmd.FromHand 在 Selector == null 时
+        //   会 SignalPlayerChoiceBegun 并等本地 UI / 远端选择（反编译 CardSelectCmd.cs:829-863）。
+        //   主要场景：这批牌里有抽牌效果 ⇒ 手牌重新有牌 ⇒ 玩家可以从新抽到的牌里自己挑。
+        //   （空手牌时 FromHand 会直接返回空列表、不弹提示，所以不会卡住。）
+        //   ⚠️ 换目标仍然不弹（AutoPlay 传 target=null ⇒ 随机索敌），与原版自动打出一致。
+        foreach (var card in cards)
+        {
+            if (CombatManager.Instance.IsOverOrEnding)
+                break;
 
-                await CardCmd.AutoPlay(choiceContext, card, null);
-            }
+            await CardCmd.AutoPlay(choiceContext, card, null);
         }
     }
 

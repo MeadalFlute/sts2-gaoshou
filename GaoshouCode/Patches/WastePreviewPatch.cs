@@ -8,6 +8,9 @@ using MegaCrit.Sts2.Core.Nodes;
 using MegaCrit.Sts2.Core.Nodes.Cards;
 using MegaCrit.Sts2.Core.Nodes.Cards.Holders;
 using MegaCrit.Sts2.Core.Nodes.HoverTips;
+using MegaCrit.Sts2.Core.Nodes.Rewards;
+using MegaCrit.Sts2.Core.Nodes.Screens;
+using MegaCrit.Sts2.Core.Rewards;
 using STS2RitsuLib.Patching.Models;
 
 namespace Gaoshou.Patches;
@@ -99,7 +102,8 @@ public sealed class WastePreviewPatch : IPatchMethod
 
     /// <summary>
     /// 这个节点（通常是悬浮窗的 owner / 鼠标下的控件）是不是"那三张卡"的卡片节点。
-    /// 沿控件链向上找 <c>NCardHolder.CardModel</c> 或 <c>NCard.Model</c>。
+    /// 沿控件链向上找 <c>NCardHolder.CardModel</c> 或 <c>NCard.Model</c>；
+    /// 奖励界面（"搜刮！"）那种"owner 是奖励按钮、卡片只在悬浮窗里"的情况单独按奖励内容判断。
     /// </summary>
     internal static bool IsPreviewOwner(Node? owner)
     {
@@ -109,6 +113,20 @@ public sealed class WastePreviewPatch : IPatchMethod
             {
                 case NCardHolder holder when WastePreview.IsPreviewCard(holder.CardModel):
                 case NCard card when WastePreview.IsPreviewCard(card.Model):
+                    return true;
+
+                // 「搜刮！」奖励界面的奖励按钮：owner 就是按钮本身，而卡片只存在于悬浮窗里
+                // （CardReward 没覆写 CreateIcon —— 只有 Potion/Relic 覆写了，按钮上是个通用图标），
+                // 沿控件链向上找永远找不到卡片节点 → 改判"这条奖励的内容里有没有我们的三张卡之一"。
+                // 2026-09-23 修：原先只向上找，导致奖励界面里轮播完全不生效（悬浮窗从未被登记）。
+                // 注意这里判的是**奖励内容**，不是悬浮窗内容 —— 损失规避的悬浮里那张硬纸板预览依然不会误触发。
+                case NRewardButton button when button.Reward is CardReward cardReward
+                    && cardReward.Cards.Any(WastePreview.IsPreviewCard):
+                    return true;
+
+                // 查看卡牌界面（NInspectCardScreen）：owner 同样是屏幕本身，被查看的卡是它的
+                // `_card`（NCard 字段）→ 一并用同一个判据补上，否则在牌库里放大查看这三张卡时也不会轮播。
+                case NInspectCardScreen screen when WastePreview.IsPreviewCard(screen._card?.Model):
                     return true;
             }
         }

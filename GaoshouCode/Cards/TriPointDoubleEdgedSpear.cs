@@ -45,21 +45,27 @@ public sealed class TriPointDoubleEdgedSpear : ModCardTemplate
     protected override async Task OnPlay(PlayerChoiceContext choiceContext, CardPlay cardPlay)
     {
         // 对随机一名敌人造成伤害。RandomEnemy 目标由游戏选出并放入 cardPlay.Target。
+        // ⚠️ 没有合法目标时**绝不能提前 return**：回响（回手）是"出牌后处理"，与是否打成伤害无关，
+        //    提前 return 会让牌直接进弃牌堆而不回手（bug report 2026-09-25：无可打击敌人时打该牌不回手 ✗）。
+        //    同族正确写法见 TachyonLance：只把"攻击"那一步放进 if，后续效果照常结算 ✓。
         var enemy = cardPlay.Target;
         if (enemy == null)
         {
             var enemies = this.CombatState?.HittableEnemies.ToList() ?? [];
-            if (enemies.Count == 0)
-                return;
-            enemy = Owner.RunState.Rng.CombatTargets.NextItem(enemies)!;
+            if (enemies.Count > 0)
+                enemy = Owner.RunState.Rng.CombatTargets.NextItem(enemies)!;
         }
 
-        await DamageCmd.Attack(DynamicVars.Damage.BaseValue)
-            .FromCard(this, cardPlay)
-            .Targeting(enemy)
-            .Execute(choiceContext);
+        if (enemy != null)
+        {
+            await DamageCmd.Attack(DynamicVars.Damage.BaseValue)
+                .FromCard(this, cardPlay)
+                .Targeting(enemy)
+                .Execute(choiceContext);
+        }
 
         // 回响：打出后无条件回到手牌（幻影复制品已移除该词条，故复制品不再回手）。
+        // "无条件"= 打成伤害与否都回手（含没有合法目标的情况）。
         if (Keywords.Contains(GaoshouKeyword.Echo))
             await CardPileCmd.Add(this, PileType.Hand, CardPilePosition.Top, this, false);
 

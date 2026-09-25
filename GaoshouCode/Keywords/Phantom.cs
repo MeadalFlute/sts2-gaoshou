@@ -35,6 +35,16 @@ public sealed class PhantomSingleton : SingletonModel
         yield return this;
     }
 
+    // 新战斗开始时清空上一场的实例色记录。
+    // PhantomColorRegistry 是 static 表（跨战斗、跨局存活），key 是卡实例 → 不清就一直拽着旧卡对象。
+    // 实例色只在战斗内有意义（幻影复制品只活在战斗牌堆里，颜色判定也只在战斗中读），所以这里清是安全的。
+    // 写法与 GaoshouFlowTracker.BeforeCombatStart 一致。
+    public override Task BeforeCombatStart()
+    {
+        PhantomColorRegistry.Clear();
+        return Task.CompletedTask;
+    }
+
     public override Task BeforeCardPlayed(CardPlay cardPlay)
     {
         // 打出前：若该卡带附魔，克隆快照供复制时使用（打出后原附魔会被消耗）。

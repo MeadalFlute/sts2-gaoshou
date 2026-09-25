@@ -44,8 +44,10 @@ public sealed class CursedIdol : ModCardTemplate
         await CreatureCmd.LoseMaxHp(choiceContext, Owner.Creature,
             DynamicVars.GetRequired<IntVar>("HpLoss").BaseValue, true);
 
-        // 能量变量用 Energy 型（描述里以图标呈现），实际数值取 BaseValue。
-        var energy = (int)DynamicVars.GetRequired<IntVar>("Energy").BaseValue;
+        // 能量变量是 **Energy 型**，不能用 GetRequired<IntVar>：那样会抛 KeyNotFoundException，
+        // 卡牌动作带着异常结束 → 表现为"扣完上限生命就卡在空中"（2026-09-23 据 bug report 修复）。
+        // 写法与 DyingSurge / LittleStone 等一致。
+        var energy = DynamicVars.GetRequired<EnergyVar>("Energy").BaseValue;
         if (energy > 0)
             await PlayerCmd.GainEnergy(energy, Owner);
     }

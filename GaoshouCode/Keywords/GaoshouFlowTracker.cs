@@ -13,13 +13,16 @@ namespace Gaoshou.Keywords;
 // 流转（Flow）判定器：
 //  - 按玩家分别记录各自上一张打出的牌的颜色（多人互不影响）。
 //  - 「流转触发」= 本卡带【流转】词条，且颜色与本玩家上一张牌的颜色“完全不同”（无共同基础色）。
-//  - 供流转卡 OnPlay 条件、流转触发类能力（枪斗术/武学宗师）以及手牌泛光（ShouldGlowGoldInternal）使用。
+//  - 特例（2026-09-22 起）：本场战斗还没打出过牌时（即第一张牌）同样视为触发。
+//  - 供流转卡 OnPlay 条件、流转触发类能力（枪斗术/武学宗师/剑舞）以及手牌泛光（ShouldGlowGoldInternal）使用。
 [RegisterSingleton]
 public sealed class GaoshouFlowTracker : SingletonModel
 {
     public override bool ShouldReceiveCombatHooks => true;
 
-    private static readonly Dictionary<ulong, GaoshouCardColor> _lastPlayedByPlayer = new();
+    private static readonly Dictionary<ulong, CardModel> _currentCard = new();
+
+    private static readonly Dictionary<ulong, GaoshouCardColor> _previousColor = new();
 
     private static readonly Dictionary<Type, GaoshouCardColor> _colorCache = new();
 
@@ -50,25 +53,37 @@ public sealed class GaoshouFlowTracker : SingletonModel
         yield return this;
     }
 
-    // 新战斗开始时清空上一场的颜色记录，避免跨战斗串色。
+    // 新战斗开始时清空记录（含卡引用），避免跨战斗串色与残留引用。
     public override Task BeforeCombatStart()
     {
-        _lastPlayedByPlayer.Clear();
+        _currentCard.Clear();
+        _previousColor.Clear();
         return Task.CompletedTask;
     }
 
-    public override Task AfterCardPlayedLate(PlayerChoiceContext choiceContext, CardPlay cardPlay)
+    /// <summary>
+    /// 在**打出开始**时登记，而不是打完再登记。
+    ///
+    /// 2026-09-23 据 bug report 修复：旧实现挂在 AfterCardPlayedLate 上（打出结束才记颜色），
+    /// 于是"上一张打出的牌"在**嵌套打出**里是错的 ——
+    /// 止水（蓝）播放期间弃掉醉拳（红紫），醉拳被奇巧自动打出时会去比"止水之前的那张牌"
+    /// （可能是红/紫，于是流转不触发）。现在：
+    ///   * 开始打出一张牌时，把原来那张挪到"上一张"，自己成为"正在打出的牌"；
+    ///   * 正在打出的牌 → 与"上一张"比（嵌套时就是外层父牌，即止水）；
+    ///   * 其它情况（例如手牌泛光）→ 与"正在打出的那张"比。
+    /// </summary>
+    public override Task BeforeCardPlayed(CardPlay cardPlay)
     {
-        RecordPlay(cardPlay.Card);
-        return Task.CompletedTask;
-    }
-
-    public static void RecordPlay(CardModel card)
-    {
+        var card = cardPlay.Card;
         if (card.Owner == null)
-            return;
-        var color = GetColor(card);
-        _lastPlayedByPlayer[card.Owner.NetId] = color;
+            return Task.CompletedTask;
+
+        var netId = card.Owner.NetId;
+        if (_currentCard.TryGetValue(netId, out var previous))
+            _previousColor[netId] = GetColor(previous);
+
+        _currentCard[netId] = card;
+        return Task.CompletedTask;
     }
 
     /// <summary>
@@ -95,18 +110,30 @@ public sealed class GaoshouFlowTracker : SingletonModel
 
     /// <summary>
     /// 本卡当前是否满足“流转”触发条件：带流转词条，且颜色与本玩家上一张打出牌完全不同。
-    /// 本玩家尚未打出过牌时（上一张未知）不触发。
+    ///
+    /// 2026-09-22 应玩家要求调整：**本场战斗还没打出过牌时（= 第一张牌）也视为就绪**。
+    /// 2026-09-23 修复嵌套打出的比较对象（见 BeforeCardPlayed 的注释）。
+    /// 注意记录是按**战斗**清空的（BeforeCombatStart），所以“第一张牌”指本场战斗的第一张，
+    /// 而不是每个回合的第一张。
     /// </summary>
     public static bool IsFlowReady(CardModel card)
     {
         if (!card.Keywords.Contains(GaoshouKeyword.Flow))
             return false;
-        if (card.Owner == null || !_lastPlayedByPlayer.TryGetValue(card.Owner.NetId, out var previous))
-        {
+        if (card.Owner == null)
             return false;
-        }
-        var ready = !SharesBaseColor(GetColor(card), previous);
-        return ready;
+
+        var netId = card.Owner.NetId;
+
+        // 自己不是"正在打出的那张"（例如手牌泛光）：与正在打出的那张比。
+        if (_currentCard.TryGetValue(netId, out var current) && current != card)
+            return !SharesBaseColor(GetColor(card), GetColor(current));
+
+        // 本玩家本场战斗还没打出过牌（= 第一张）：按“就绪”处理（2026-09-22 调整）。
+        if (!_previousColor.TryGetValue(netId, out var previous))
+            return true;
+
+        return !SharesBaseColor(GetColor(card), previous);
     }
 
     /// <summary>

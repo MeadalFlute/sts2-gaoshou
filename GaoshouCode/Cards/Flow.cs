@@ -27,15 +27,7 @@ public sealed class Flow : ModCardTemplate
         PortraitPath: $"{Entry.ResPath}/images/cards/Flow.png");
 
     // 高亮（流转就绪）——打点评估时机。
-    protected override bool ShouldGlowGoldInternal
-    {
-        get
-        {
-            var r = GaoshouFlowTracker.IsFlowGlowReady(this);
-            Godot.GD.Print($"GAOSHOU-FLOW-GLOW flowReady={r}");
-            return r;
-        }
-    }
+    protected override bool ShouldGlowGoldInternal => GaoshouFlowTracker.IsFlowGlowReady(this);
 
     public override IEnumerable<CardKeyword> CanonicalKeywords =>
     [
@@ -59,9 +51,7 @@ public sealed class Flow : ModCardTemplate
     protected override async Task OnPlay(PlayerChoiceContext choiceContext, CardPlay cardPlay)
     {
         // 流转（颜色与上一张牌完全不同）：本回合造成的伤害翻倍（暗影步同款 DoubleDamagePower）。
-        var _flowReady = GaoshouFlowTracker.IsFlowReady(this);
-        Godot.GD.Print($"GAOSHOU-FLOW-2 prev-flags card={cardPlay.Card.Id?.Entry} flowReady={_flowReady} thisColor={GaoshouFlowTracker.GetColor(cardPlay.Card)} isGreen={cardPlay.Card.Keywords.Contains(GaoshouKeyword.Flow)}");
-        if (_flowReady)
+        if (GaoshouFlowTracker.IsFlowReady(this))
         {
             // 注意：原版 DoubleDamagePower 的层数 = **剩余回合数**（它的 AfterSideTurnEnd 每回合末只 -1），
             // 所以每次触发都 +1 会让时长无限累加（实测能堆到 88 层、永不结束）。
@@ -71,7 +61,6 @@ public sealed class Flow : ModCardTemplate
             {
                 await PowerCmd.Apply<DoubleDamagePower>(choiceContext, Owner.Creature,
                     DynamicVars["DoubleDamagePower"].BaseValue, Owner.Creature, this);
-                Godot.GD.Print($"GAOSHOU-FLOW-2 applied DoubleDamage");
             }
         }
     }

@@ -34,11 +34,21 @@ public sealed class LoomingPresencePower : ModPowerTemplate
         IconPath: $"{Entry.ResPath}/images/powers/loomingpresence.png",
         BigIconPath: $"{Entry.ResPath}/images/powers/loomingpresence.png");
 
-    // 仅响应有卡牌来源的伤害；能力（例如势不可当）造成的伤害没有 cardSource。
+    // 仅响应"打向敌方"的卡牌伤害。
+    //
+    // ⚠️ 不能只判断 dealer / cardSource：状态牌（灼伤 BURN / 感染 INFECTION / 凋萎 WITHER / 腐朽 DECAY）
+    // 的伤害是"玩家打给自己"的，但 CreatureCmd.Damage(ctx, target, damageVar, cardSource, cardPlay)
+    // 会把 dealer 记成 cardSource.Owner.Creature（= 玩家本人），cardSource 又是那张状态牌 ——
+    // 两个条件都会成立，于是"挨灼伤"也会叠格挡（2026-09-22 据 bug report 修复）。
+    // 原版同类能力（EnvenomPower / PaperCutsPower）靠 props.IsPoweredAttack() 排除 Unpowered 的状态牌伤害；
+    // 我们按设计要算"任意卡牌伤害"，所以改用目标阵营判断。
     public override async Task AfterDamageGiven(PlayerChoiceContext choiceContext, Creature? dealer,
         DamageResult result, ValueProp props, Creature? target, CardModel? cardSource)
     {
         if (dealer != Owner || cardSource == null || Amount <= 0)
+            return;
+        // 目标必须是敌方（排除自伤、以及联机里误伤队友/宠物）。
+        if (target == null || target.Side == Owner.Side)
             return;
         // 不吃敏捷（Unpowered）。
         await CreatureCmd.GainBlock(Owner, Amount, ValueProp.Move | ValueProp.Unpowered, null);

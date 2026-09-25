@@ -14,10 +14,12 @@ using STS2RitsuLib.Scaffolding.Content;
 namespace Gaoshou.Powers;
 
 // 搏命（能力）：本回合你造成的伤害翻倍；你的回合开始时，你直接死亡。
+// 登记为 **Buff**（而不是 Debuff），是刻意的：效果是负面的，但**不希望它被"净化/移除负面效果"清掉**，
+// 否则可以靠净化白嫖一回合双倍伤害却不死。PowerType 只影响图标呈现与"能否被净化"这一层。
 [RegisterPower]
 public sealed class DyingSurgePower : ModPowerTemplate
 {
-    public override PowerType Type => PowerType.Debuff;
+    public override PowerType Type => PowerType.Buff;
     public override PowerStackType StackType => PowerStackType.Counter;
 
     public override PowerAssetProfile AssetProfile => new(

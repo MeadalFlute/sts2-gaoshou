@@ -8,7 +8,6 @@ using MegaCrit.Sts2.Core.Context;
 using MegaCrit.Sts2.Core.Nodes.CommonUi;
 using MegaCrit.Sts2.Core.Rooms;
 using MegaCrit.Sts2.Core.Runs;
-using MegaCrit.Sts2.Core.Saves;
 using MegaCrit.Sts2.Core.TestSupport;
 using STS2RitsuLib;
 using STS2RitsuLib.Utils;
@@ -29,8 +28,10 @@ namespace Gaoshou.Tutorial;
 //     它们是为深色 UI 配的，在纸上对比度差）；标题是 MegaLabel（Label 不支持 BBCode），不能带标签。
 //
 // 关键约束（踩坑记录）：
-//   - 复用游戏自身的 FTUE 持久化（SaveManager.SeenFtue / MarkFtueAsComplete）：
-//     玩家在设置里关掉教程时 SeenFtue 恒返回 true，我们无需自己判断开关。
+//   - 教程进度记在**模组自己**的数据存储里（GaoshouTutorialSettings），不再用原版 SeenFtue：
+//     原版 SeenFtue(key) 把"玩家关掉了教程"和"该 key 已完成"混成同一个 true，既分不清也没法重置。
+//     现在：教程开关 = 模组自己的设置项（默认开，**不**跟随原版的 EnableFtues）；是否播过 = 模组自己的记录。
+//     全部教程播过一遍后不再触发，设置页「新手教程 → 重置」可以清空记录重新播。
 //   - 用 RitsuLib 生命周期事件触发，不写 Harmony 补丁；回调里只做 CallDeferred，
 //     绝不 await（在 CombatStarting 里 await 会卡住战斗启动流程）。
 //   - NModalContainer 同时只允许一个模态：遇到原版 FTUE 占用时排队等待（轮询 OpenModal），
@@ -108,31 +109,55 @@ public static class GaoshouTutorial
         return combats <= 1;
     }
 
-    private static bool IsLocalGaoshouInStandardRun(IRunState runState, ICombatState? combatState)
+    /// <summary>
+    /// 通用前置检查：本端是不是"该看到教程的那个玩家"，以及教程开关 / 播放进度是否允许。
+    /// **每一条跳过原因都会写日志** —— 排查"怎么没弹教程"全指望这几行（2026-09-23 加）。
+    /// </summary>
+    private static bool MayShowTutorial(string label, IRunState runState, ICombatState? combatState, string ftueKey)
     {
-        // 与原版 NCombatRulesFtue.Create() / RunManager.ShouldApplyTutorialModifications 的口径一致。
         if (TestMode.IsOn)
+        {
+            _logger?.Info($"[GaoshouTutorial] {label} skipped: test mode.");
             return false;
-        if (runState.GameMode != GameMode.Standard)
+        }
+
+        // 不是高手玩家的那一端：静默（联机里其它角色不需要看到我们的教程）。
+        if (LocalContext.GetMe(combatState)?.Character is not GaoshouCharacter)
             return false;
 
-        var me = LocalContext.GetMe(combatState);
-        return me?.Character is GaoshouCharacter;
+        // 模组自己的教程开关（默认开）。
+        // 刻意**不**跟随原版 Progress.EnableFtues：那个开关只关原版教程，很多玩家/开发者早就把它关了，
+        // 跟着它会导致模组教程永远不弹（2026-09-23 实测：日志里两条 "EnableFtues=false" 就是这个原因）。
+        if (!GaoshouTutorialSettings.IsEnabled)
+        {
+            _logger?.Info($"[GaoshouTutorial] {label} skipped: 模组设置里关闭了新手教程。");
+            return false;
+        }
+
+        // 已经播过就不弹（模组自己记的进度；全部播完后自然再也不触发）。
+        if (GaoshouTutorialSettings.IsPlayed(ftueKey))
+        {
+            _logger?.Info($"[GaoshouTutorial] {label} skipped: 已经播放过（模组进度里已记录；设置页可重置）。");
+            return false;
+        }
+
+        // 非标准局（自定义 / 每日等）也放行 —— 2026-09-23 起按"默认为触发"处理：
+        // 自测常在自定义模式里进行，原先只在标准局弹会表现为"怎么都不弹"。这里只留一行日志备查。
+        if (runState.GameMode != GameMode.Standard)
+            _logger?.Info($"[GaoshouTutorial] {label}: GameMode={runState.GameMode}（非标准局同样放行）。");
+
+        return true;
     }
 
     private static void OnCombatStarting(CombatStartingEvent evt)
     {
-        if (!IsLocalGaoshouInStandardRun(evt.RunState, evt.CombatState))
-            return;
-
-        if (SaveManager.Instance.SeenFtue(IntroFtueKey))
+        if (!MayShowTutorial("intro", evt.RunState, evt.CombatState, IntroFtueKey))
             return;
 
         if (!IsFirstCombatOfRun(evt.RunState))
         {
-            // 诊断（首战验收通过后可删）：确认"第一场战斗"判定是否符合预期。
-            _logger?.Info($"[GaoshouTutorial] intro skipped: not the run's first combat " +
-                          $"(TotalFloor={evt.RunState.TotalFloor})");
+            _logger?.Info("[GaoshouTutorial] intro skipped: 不是本局第一场战斗" +
+                          $"（TotalFloor={evt.RunState.TotalFloor}）—— 开场教程只在第一场战斗弹，换新局即可。");
             return;
         }
 
@@ -141,19 +166,22 @@ public static class GaoshouTutorial
 
     private static void OnCombatVictory(CombatVictoryEvent evt)
     {
-        if (!IsLocalGaoshouInStandardRun(evt.RunState, evt.CombatState))
-            return;
-
-        if (SaveManager.Instance.SeenFtue(FirstWinFtueKey))
+        if (!MayShowTutorial("first-win", evt.RunState, evt.CombatState, FirstWinFtueKey))
             return;
 
         if (!IsFirstCombatOfRun(evt.RunState))
+        {
+            _logger?.Info("[GaoshouTutorial] first-win skipped: 不是本局第一场战斗。");
             return;
+        }
 
-        // ① 既没在本局弹过、历史上也没标记过 → 说明 ① 被跳过了（例如模态被原版 FTUE 长时间占用），
+        // ① 既没在本局弹过、历史上也没播过 → 说明 ① 这次被跳过了（例如模态被原版 FTUE 长时间占用），
         // 这时单独弹 ② 会很突兀，直接跳过（下次开局仍会补弹 ①）。
-        if (!_introShownThisRun && !SaveManager.Instance.SeenFtue(IntroFtueKey))
+        if (!_introShownThisRun && !GaoshouTutorialSettings.IsPlayed(IntroFtueKey))
+        {
+            _logger?.Info("[GaoshouTutorial] first-win skipped: 开场教程这次没弹过，先等下次开局把开场补上。");
             return;
+        }
 
         ShowDeferred(FirstWinFtueKey, BuildFirstWinPages);
     }
@@ -196,8 +224,9 @@ public static class GaoshouTutorial
                 return;   // 构建失败：不标记，下一局再试
 
             container.Add(panel, false);
-            // 与原版 NRewardsScreen.RewardFtueCheck 一致：弹出即标记，避免强退后反复重弹。
-            SaveManager.Instance.MarkFtueAsComplete(ftueKey);
+            // 弹出即标记（与原版 NRewardsScreen.RewardFtueCheck 同一口径：避免强退后反复重弹）。
+            // 注意标记的是**模组自己的进度**（全部播完后即停止触发；设置页可重置）。
+            GaoshouTutorialSettings.MarkPlayed(ftueKey);
             onShown?.Invoke();
             panel.Start();
         }

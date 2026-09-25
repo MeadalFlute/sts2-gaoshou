@@ -1,6 +1,8 @@
-// 大书库（Hive + Glory / ACT2+ACT3）：借书（从全角色牌池里挑牌入组）或捐赠（删 1 张牌换 1 个随机遗物）。
+// 大书库（Hive + Glory / ACT2+ACT3）：借书（从全角色牌池里挑牌入组）或捐赠（删牌换遗物）。
 // 设计意图：后期的「牌组整形站」——借书给的是广度（能拿到别的角色的牌），
-// 捐赠给的是纯度（精简牌组）外加一份随机遗物，两者都只能做一次。
+// 捐赠给的是纯度（精简牌组）外加一份遗物，两者都只能做一次。
+//   选项2 捐赠：删 1 张 → 1 个**普通**遗物（2026-09-23 起明确限定普通；原先用无参重载，稀有度是随机摇的）。
+//   选项3 贵客：牌组里有本模组的「神秘」时可选 → 删最多 3 张 → 1 个**稀有**遗物（不消耗「神秘」）。
 using MegaCrit.Sts2.Core.Nodes.Rooms;
 using System.Collections.Generic;
 using System.Linq;
@@ -9,10 +11,12 @@ using Gaoshou.Patches;
 using MegaCrit.Sts2.Core.CardSelection;
 using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.Entities.Cards;
+using MegaCrit.Sts2.Core.Entities.Relics;
 using MegaCrit.Sts2.Core.Events;
 using MegaCrit.Sts2.Core.Factories;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Models.Acts;
+using MegaCrit.Sts2.Core.Rewards;
 using MegaCrit.Sts2.Core.Runs;
 using STS2RitsuLib.Interop.AutoRegistration;
 using STS2RitsuLib.Scaffolding.Content;
@@ -27,6 +31,9 @@ public sealed class GrandLibrary : ModEventTemplate
     private const int OfferedCardCount = 20;
     private const int MaxSelectCount = 2;
 
+    // 本模组「神秘」的卡牌 Id（升级与否都是同一个 Id）。
+    private const string CrypticCardId = "GAOSHOU_CARD_CRYPTIC";
+
     // 立绘名 = GaoshouEventSettings 里的事件键（小写下划线），与磁盘上的图片/`.import` 一致。
     // 注意：RitsuLib 不做 PascalCase↔snake_case 转换，写成 {GetType().Name} 会找不到图（静默回退、立绘空白）。
     public override EventAssetProfile AssetProfile => new(
@@ -40,8 +47,16 @@ public sealed class GrandLibrary : ModEventTemplate
     [
         new EventOption(this, Borrow, InitialOptionKey("BORROW")),
         new EventOption(this, Donate, InitialOptionKey("DONATE")),
+        // 选项3：牌组里有「神秘」才可选；没有就锁定（灰着但可见，同神秘商店"金币不足"的写法）。
+        DeckHasCryptic()
+            ? new EventOption(this, DonateAsGuest, InitialOptionKey("DONATE_RARE"))
+            : new EventOption(this, null, InitialOptionKey("DONATE_RARE_LOCKED")),
         new EventOption(this, Leave, InitialOptionKey("LEAVE")),
     ];
+
+    /// <summary>牌组里是否有本模组的「神秘」（Cryptic）——升级过的也算，Id 不变。</summary>
+    private bool DeckHasCryptic()
+        => Owner!.Deck.Cards.Any(c => c.Id.Entry == CrypticCardId);
 
     /// <summary>借阅：从 20 张任意角色的牌里选至多 2 张加入牌组。</summary>
     private async Task Borrow()
@@ -70,7 +85,7 @@ public sealed class GrandLibrary : ModEventTemplate
         GoToAfterPage();
     }
 
-    /// <summary>捐赠：移除 1 张牌，换 1 个随机遗物。</summary>
+    /// <summary>捐赠：移除 1 张牌，换 1 个**普通**遗物（2026-09-23 起明确限定普通）。</summary>
     private async Task Donate()
     {
         // 删牌：MaxSelect=MinSelect=1，所以只要能选就一定选中 1 张；牌组里没有可移除的牌时返回空集合。
@@ -81,13 +96,42 @@ public sealed class GrandLibrary : ModEventTemplate
             await CardPileCmd.RemoveFromDeck(removed);
         }
 
-        // 随机遗物：按稀有度权重从本局抓包里抽；抓包里的模型是 canonical，
-        // 必须先 ToMutable()，否则 RelicCmd.Obtain 里的 AssertMutable 会抛。
-        var relic = RelicFactory.PullNextRelicFromFront(Owner!).ToMutable();
-        await RelicCmd.Obtain(relic, Owner!);
+        // 指定稀有度取遗物：走该玩家抓包队列（PullFromFront(rarity, …)），没有额外随机 → 联机两端一致。
+        // 抓包里的模型是 canonical，必须先 ToMutable()。
+        var relic = RelicFactory.PullNextRelicFromFront(Owner!, RelicRarity.Common).ToMutable();
+        await OfferRelic(relic);
 
         GoToAfterPage();
     }
+
+    /// <summary>
+    /// 贵客捐赠（选项3）：移除至多 3 张牌，换 1 个**稀有**遗物。
+    /// 前提只是"牌组里有「神秘」"，不消耗那张牌 —— 相当于持有它会籍（所以选项在缺它时是灰的）。
+    /// </summary>
+    private async Task DonateAsGuest()
+    {
+        // MinSelect=0：最多 3 张，一张不删也能确认。
+        var removed = (await CardSelectCmd.FromDeckForRemoval(
+            Owner!, new CardSelectorPrefs(CardSelectorPrefs.RemoveSelectionPrompt, 0, 3))).ToList();
+        if (removed.Count > 0)
+        {
+            await CardPileCmd.RemoveFromDeck(removed);
+        }
+
+        var relic = RelicFactory.PullNextRelicFromFront(Owner!, RelicRarity.Rare).ToMutable();
+        await OfferRelic(relic);
+
+        GoToAfterPage();
+    }
+
+    /// <summary>
+    /// 用原版奖励界面（就是战斗结算那个「搜刮！」，键名 COMBAT_REWARD_HEADER_LOOT）给遗物 ——
+    /// 这样玩家**可以跳过**不想要的遗物，而不是被硬塞。
+    /// OfferCustom 内部会 await 整个奖励流程（取走 / 跳过都算结束），所以回来之后再翻 AFTER 页。
+    /// 写法与用法同原版事件 WarHistorianRepy.UnlockChest；奖励流程本身走同步器，联机安全。
+    /// </summary>
+    private Task OfferRelic(RelicModel relic)
+        => RewardsCmd.OfferCustom(Owner!, [new RelicReward(relic, Owner!)]);
 
     /// <summary>离开（初始页）：直接结束事件。</summary>
     private Task Leave()

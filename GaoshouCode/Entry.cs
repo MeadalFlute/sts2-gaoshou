@@ -127,17 +127,24 @@ public partial class Entry
             null,
             true,
             HarmonyLib.MethodType.Normal));
-        // 幻影复制品单色分配（所有 CloneCard 复制的双色卡随机一个主色）。
-        patcher.RegisterPatch(new ModPatchInfo(
-            PhantomCloneColorPatch.PatchId,
-            typeof(CombatState),
-            "CloneCard",
-            typeof(PhantomCloneColorPatch),
-            false,
-            "random single color for phantom copies",
-            null,
-            true,
-            HarmonyLib.MethodType.Normal));
+        // 【幻影复制品单色分配：已撤下，2026-09-22】
+        // 原来这里注册 PhantomCloneColorPatch（挂 CombatState.CloneCard），会给**所有**克隆出来的
+        // 双色卡随机赋一个单色。但按设计只有「幻影」复制品才该取单色（由 PhantomSingleton 在触发
+        // 幻影时用同步 RNG 登记）；其它来源的克隆（DualWield 那类外部复制、遗物、事件、UI 预览）
+        // 都应当保持卡牌本来的双色。撤下后：外部克隆查不到实例色 →
+        // GaoshouFlowTracker.GetColor 回退到类型色（如杠杆霰弹枪 = RedPurple 双色），行为正确。
+        // 代码保留在 GaoshouCode/Cards/PhantomCloneColorPatch.cs（已改为纯注释档，未注册）。
+        //
+        // patcher.RegisterPatch(new ModPatchInfo(
+        //     PhantomCloneColorPatch.PatchId,
+        //     typeof(CombatState),
+        //     "CloneCard",
+        //     typeof(PhantomCloneColorPatch),
+        //     false,
+        //     "random single color for phantom copies",
+        //     null,
+        //     true,
+        //     HarmonyLib.MethodType.Normal));
         // 事件「色彩哲学家」：把高手卡池并入备选颜色池，让「红蓝双色」与原版颜色等权随机（RitsuLib IPatchMethod 写法）。
         patcher.RegisterPatch<ColorfulPhilosophersPatch>();
         // 设置项「禁用原版事件」：给 RoomSet.EnsureNextEventIsValid 挂前缀，把玩家禁用的原版事件从本局抽取池里移除
@@ -147,6 +154,16 @@ public partial class Entry
         patcher.RegisterPatch<EventArtOverlayPatch>();
         // 幻影副本按分配到的单色切换卡面（<类名>_R/_B/_P/_G.png，找不到就回落本体卡面）。
         patcher.RegisterPatch<PhantomPortraitPatch>();
+        // 事件页「文本没变」时跳过进场动画：超级强化机这类翻页只换计数、文案一模一样的循环事件，
+        // 原先每翻一页都要重播 0.5s 延迟 + 1s 淡入 + 1s 逐字（按钮还要再等 index*0.2s 才可点），非常拖沓。
+        // 拆成两个类是因为 RitsuLib 按方法名取 "Prefix"，一个类只能对应一个目标方法。
+        patcher.RegisterPatch<SkipDuplicateEventDescriptionAnimation>();
+        patcher.RegisterPatch<SkipDuplicateEventOptionAnimation>();
+        // 手牌高光配色：流转就绪=金橙、奇迹就绪=紫罗兰、两者都就绪=品红。
+        // （原版只有金/红两种预设，而红在游戏里是"不可打出"的警告语义，不适合当"奇迹就绪"。）
+        patcher.RegisterPatch<GaoshouGlowColorPatch>();
+        // 流转/奇迹词条的悬浮提示：按当前状态显示 on/off 图标（flow_on 蓝 / miracle_on 橙 / off 白）。
+        patcher.RegisterPatch<KeywordStateIconPatch>();
         // 「限制」挡住出牌时的台词：原版对非五种模型的阻挡者取不到名字 → 显示 <Unknown>，这里换成限制自己的台词。
         patcher.RegisterPatch<LimitedDialoguePatch>();
         // 「胆小 Skittish」结算时机：我们的多段卡是"每段一条 AttackCommand"，原版这条"挨打后获得格挡"的反应
@@ -162,6 +179,10 @@ public partial class Entry
         patcher.RegisterPatch<WastePreviewOwnerPatch>();
         patcher.RegisterPatch<WastePreviewWheelPatch>();
         patcher.RegisterPatch<WastePreviewPatch>();
+        // AoE 横扫动画：在 AttackCommand.Execute 前缀里判定"这次打的是不是全体"，
+        // 给视觉状态机在「横扫 / 挥拳」之间选路（**本模组补丁必须在这里显式注册，
+        // 只写 IPatchMethod 类是不会被挂上的** —— 2026-09-24 就因为这个，横扫一次都没触发过）。
+        patcher.RegisterPatch<SetAoeAttackStylePatch>();
         if (!patcher.PatchAll())
             Logger.Error("Patch application failed!");
 

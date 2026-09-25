@@ -10,8 +10,15 @@ using STS2RitsuLib.Scaffolding.Content;
 
 namespace Gaoshou.Powers;
 
-// 战斗直觉（能力）：敌人的血条与意图被隐藏。
+// 战斗直觉（能力）：敌人的血条与意图被隐藏 —— **全场玩家都看不见**。
 // 意图：由 BattleInstinctPatch 在渲染源头拦截；血条：打出时隐藏一次 + 每次意图刷新(含新敌人入场)时由补丁再隐藏一次。
+//
+// 为什么代价是全场而不是只施放者（2026-09-22 确认）：多人下玩家之间可以交流，只让施放者一个人看不见
+// 等于没有代价；所以补丁按"场上任一玩家持有本能力"判断，隐藏所有客户端的信息。
+//
+// 本能力登记为 **Buff**（而不是 Debuff），是刻意的：效果虽然是负面的（看不见敌人血条与意图），
+// 但**不希望它被"净化/移除负面效果"清掉** —— 否则队友一个净化就能把全场的代价解掉。
+// PowerType 只影响图标呈现与"能否被净化"这一层；隐藏逻辑由 BattleInstinctPatch 独立判断，与 PowerType 无关。
 [RegisterPower]
 public sealed class BattleInstinctPower : ModPowerTemplate
 {
