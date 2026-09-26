@@ -183,6 +183,19 @@ public partial class Entry
         // 给视觉状态机在「横扫 / 挥拳」之间选路（**本模组补丁必须在这里显式注册，
         // 只写 IPatchMethod 类是不会被挂上的** —— 2026-09-24 就因为这个，横扫一次都没触发过）。
         patcher.RegisterPatch<SetAoeAttackStylePatch>();
+        // 「连续攻击」循环动画：把游戏算出的**实际段数**（Hook.ModifyAttackHitCount）抄一份，
+        // 让视觉状态机能区分"多段连击"与"单击"，从而决定是否进 atk_loop 视频循环。
+        // 同样是 Postfix 纯旁路读取，不改游戏返回值 ✓。
+        patcher.RegisterPatch<RecordAttackHitCountPatch>();
+        // 「连续攻击」循环的收尾计时器要按**每段命中**重置，而"每段"只有 TriggerAnim 能提供
+        //（ModifyAttackHitCount 在命中循环之外、每张牌只调一次 ✗）⇒ 额外挂这条纯旁路通知。
+        patcher.RegisterPatch<RecordAttackTriggerPatch>();
+        // ⚠️ 上面那条只给到"**出拳开始**"（TriggerAnim 是每段开头、且本身 async，Postfix 看不到 await 完成），
+        // 于是收拳计时器是**从出拳开始**起算的，比"这一拳打完"早了半段动画 ⇒
+        // 实机症状"打完之后依旧会回到 stance"（末段在动画走完前就被 GuardEnd 收拳）。
+        // 这条挂在 AddResultsInternal（每段命中循环的最后一句，实参里带着 await CreatureCmd.Damage(...)）
+        // ⇒ Postfix 在**伤害已经结算完**之后才触发，正好是"这一拳真的打完了"这一时刻 ✓。
+        patcher.RegisterPatch<RecordAttackHitSettledPatch>();
         if (!patcher.PatchAll())
             Logger.Error("Patch application failed!");
 
