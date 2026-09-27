@@ -2,22 +2,22 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://bd01p7pye7scn"
-path="res://.godot/imported/Gaoshou_select_bg_b.png-a70c108358a972fa3e47ab8c8f236629.ctex"
+uid="uid://ditjnpn1g0du7"
+path="res://.godot/imported/Gaoshou_select_bg_a.jpg-7b77af25435c2323fdd44c4b36cc69f2.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Gaoshou/images/characters/Gaoshou_select_bg_b.png"
-dest_files=["res://.godot/imported/Gaoshou_select_bg_b.png-a70c108358a972fa3e47ab8c8f236629.ctex"]
+source_file="res://Gaoshou/images/characters/Gaoshou_select_bg_a.jpg"
+dest_files=["res://.godot/imported/Gaoshou_select_bg_a.jpg-7b77af25435c2323fdd44c4b36cc69f2.ctex"]
 
 [params]
 
 compress/mode=1
 compress/high_quality=false
-compress/lossy_quality=0.92
+compress/lossy_quality=0.85
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0
 compress/hdr_compression=1

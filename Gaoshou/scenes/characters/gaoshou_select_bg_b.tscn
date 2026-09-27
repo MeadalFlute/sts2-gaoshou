@@ -1,6 +1,6 @@
 [gd_scene load_steps=2 format=3]
 
-[ext_resource type="Texture2D" path="res://Gaoshou/images/characters/Gaoshou_select_bg_b.png" id="1_bg"]
+[ext_resource type="Texture2D" path="res://Gaoshou/images/characters/Gaoshou_select_bg_b.jpg" id="1_bg"]
 
 [node name="GaoshouSelectBgB" type="Control"]
 layout_mode = 3
