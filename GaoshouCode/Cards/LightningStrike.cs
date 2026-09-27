@@ -28,13 +28,13 @@ public sealed class LightningStrike : ModCardTemplate
     public override CardAssetProfile AssetProfile => new(
         PortraitPath: $"{Entry.ResPath}/images/cards/{GetType().Name}.png");
 
-    // 悬浮释义：幻影（自定义词条）。
+    // 复制品的幻影次数归零后，不再显示幻影释义。
     protected override IEnumerable<IHoverTip> AdditionalHoverTips =>
-    [
-        HoverTipFactory.FromKeyword(GaoshouKeyword.Phantom),
-    ];
+        DynamicVars.GetRequired<IntVar>("PhantomCount").IntValue > 0
+            ? [HoverTipFactory.FromKeyword(GaoshouKeyword.Phantom)]
+            : [];
 
-    // 虚无（自动追加词条行）；幻影以 PhantomCount 数量实现，不挂关键词避免重复（复制品显示幻影0 无害）。
+    // 虚无自动追加；带数量的幻影由描述按 PhantomCount > 0 显示，避免重复。
     public override IEnumerable<CardKeyword> CanonicalKeywords =>
     [
         CardKeyword.Ethereal,
