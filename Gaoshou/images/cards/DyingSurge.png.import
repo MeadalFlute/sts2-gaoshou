@@ -17,7 +17,7 @@ dest_files=["res://.godot/imported/DyingSurge.png-0a8ef2e6c98ce1ad218cabd9dea12e
 
 compress/mode=1
 compress/high_quality=false
-compress/lossy_quality=0.92
+compress/lossy_quality=0.85
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0
 compress/hdr_compression=1

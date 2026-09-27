@@ -17,7 +17,7 @@ dest_files=["res://.godot/imported/Tornado.png-8816b56bed9286b28a67db4801b928e3.
 
 compress/mode=1
 compress/high_quality=false
-compress/lossy_quality=0.92
+compress/lossy_quality=0.85
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0
 compress/hdr_compression=1

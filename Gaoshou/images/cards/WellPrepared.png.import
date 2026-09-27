@@ -17,7 +17,7 @@ dest_files=["res://.godot/imported/WellPrepared.png-6f5b8ffb53f646b5bd457cff7925
 
 compress/mode=1
 compress/high_quality=false
-compress/lossy_quality=0.92
+compress/lossy_quality=0.85
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0
 compress/hdr_compression=1
