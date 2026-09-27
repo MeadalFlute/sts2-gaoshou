@@ -84,11 +84,28 @@ public sealed class GaoshouCharacter : ModCharacterTemplate<GaoshouCardPool, Gao
                 //   * 营火常驻 cue 走 NRestSiteRoom → 按章节名 overgrowth_loop/hive_loop/glory_loop 回落到 relaxed。
                 // 营火里的「放弃游戏」走的是战斗视觉 + VisualCues（不是这里），所以营火不用挂 dead。
                 WorldProceduralVisuals: CharacterWorldProceduralVisualSetBuilder.Create()
-                    .Merchant(cues => cues
-                        .Single("relaxed_loop", GaoshouVisualSettings.ShopTexturePath,
-                            GaoshouVisualSettings.ShopStyle)
-                        .Single("dead", GaoshouVisualSettings.DeadTexturePath,
-                            GaoshouVisualSettings.CorpseStyle))
+                    .Merchant(cues =>
+                    {
+                        cues.Single("relaxed_loop", GaoshouVisualSettings.ShopTexturePath,
+                                GaoshouVisualSettings.ShopStyle)
+                            .Single("dead", GaoshouVisualSettings.DeadTexturePath,
+                                GaoshouVisualSettings.CorpseStyle);
+
+                        // 【商店 / 假商人里的「放弃游戏」】走 NMerchantCharacter.PlayAnimation("die")
+                        // ⇒ RitsuLib 在写死的别名表 DieCueNames(die/death/dead/Dead) 里找 cue，
+                        //   而这里原先只有静态 `dead` ⇒ 只会播静态尸体图（用户报的"回退到了静态图"）✗
+                        // 补一条 `die` 帧序列（RitsuLib 先查帧序列、后查单图 ⇒ 会抢在 dead 前面命中）。
+                        // ⚠️ 帧序列**必须给样式**：静态尸体图是整张 512 画布，而死亡帧序列的人物只有约 334 高，
+                        //    不补 scale 会让"开始倒下"那一帧突然缩水（换算见 MerchantDeathStyle）。
+                        if (GaoshouVisualSettings.UseFrameSequences)
+                        {
+                            cues.Sequence("die", sequence =>
+                            {
+                                AddFrames(sequence, GaoshouVisualSettings.DieFromIdleSequence);
+                                sequence.DefaultStyle(GaoshouVisualSettings.MerchantDeathStyle);
+                            });
+                        }
+                    })
                     .RestSite(cues => cues
                         .Single("relaxed", GaoshouVisualSettings.RestTexturePath,
                             GaoshouVisualSettings.RestStyle))
@@ -201,6 +218,24 @@ public sealed class GaoshouCharacter : ModCharacterTemplate<GaoshouCardPool, Gao
 
         if (!GaoshouVisualSettings.UseFrameSequences)
             return cues.Build();
+
+        // ═══【「放弃游戏」的死亡动画：必须在 `die` 这个名字下也挂一条死亡帧序列】═══
+        // 战斗之外的死亡（放弃 / 事件房 / 地图上）**根本不经过我们的战斗状态机**：
+        //   1) 放弃走 RunManager.Abandon() → CreatureCmd.Kill(force:true)，而那里是
+        //      `NCombatRoom.Instance?.GetCreatureNode(...)` ⇒ 房间外拿不到节点 ⇒ **不调用 StartDeathAnim**
+        //      ⇒ RitsuLib 的 NCreatureNonSpineDeathAnimationTriggerPatch（挂在 StartDeathAnim 的 Postfix）
+        //      永远不会替我们补发 `Dead`（模组旧注释说它会补发，那只对"战斗内死亡"成立 ✗）；
+        //   2) 之后游戏结束界面走 RitsuLib 的 CharacterGameOverScreenCompatibilityPatch，
+        //      营火/事件/地图分支是 `TryPlayCue(visuals, character, "die")`。
+        // 而 RitsuLib 的死亡 cue 别名表**写死**为 ["die", "death", "dead", "Dead"]
+        // （ModCreatureVisualPlayback.DieCueNames），且**先查帧序列、再查静态贴图**。
+        // 我们原先只把帧序列挂在 `die_idle`/`die_hurt`（那是状态机内部用的名字）、静态图挂在 `dead`
+        // ⇒ 别名一个都匹配不上，只剩静态 `dead` 能命中 ⇒ 用户看到的"回退到了静态图" ✓
+        //
+        // 修法：再挂一条**同名 `die` 的死亡帧序列**，靠"帧序列优先于单图"把它抢在前面。
+        // 不设 DefaultStyle ⇒ 沿用本场景 Sprite2D 自带的变换，与战斗里的帧动画完全同构。
+        cues = cues.Sequence("die",
+            sequence => AddFrames(sequence, GaoshouVisualSettings.DieFromIdleSequence));
 
         // 「连续攻击」cue（**两条：入场 atk_loop_entry + 稳态 atk_loop**）：**只有 anim_set = new
         // 且循环素材确实可用才挂**（legacy 是默认，行为必须与现在完全一致 ✓）。

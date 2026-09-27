@@ -1497,6 +1497,26 @@ public sealed class GaoshouVisualSettings : SingletonModel
     public static readonly VisualNodeStyle CorpseStyle = VisualNodeStyle.Create(
         position: new Vector2(0f, -200f));
 
+    /// <summary>
+    /// 商店 / 假商人里「放弃游戏」播放**死亡帧序列**时用的样式
+    /// （挂在 merchant cue 集的 <c>die</c> 上，见 <c>GaoshouCharacter</c> 的 <c>WorldProceduralVisuals</c>）。
+    ///
+    /// 【为什么不能直接用 <see cref="CorpseStyle" />】那条是给**单张静态尸体图**（512×512）用的。
+    /// 死亡帧序列是 640×512、地面线 y=456、人物中心 x=320 —— 与 <see cref="CorpseStyle" /> 同一套落位约定，
+    /// 所以 position 仍取 (0, -200)（= 512/2 - … 让贴地边落到节点原点）；
+    /// 但帧序列的**人物**比静态尸体小得多（首帧站立 bbox 高 334，静态尸体是整张 512 画布），
+    /// 直接用会让"开始倒下"这一帧突然缩水 ⇒ 必须补一个 scale。
+    ///
+    /// scale 怎么来的：商店立绘的人物屏幕高度 ≈ 729 × <c>ShopStyle</c>.scale(0.68) ≈ 496px；
+    /// 死亡首帧人物高 334 ⇒ 要让它也约 496px，需要 496 / 334 ≈ **1.484**，
+    /// 也就是 <c>0.68 × (729 / 334)</c> ✓。这样从商店立绘切到死亡动画时尺寸不跳。
+    ///
+    /// ⚠️ 1.484 是按贴图 alpha bbox 反算的初值，**需要实机看一眼**；
+    ///    若宁愿"与战斗里的死亡同尺寸"而不是"与商店立绘同尺寸"，去掉 scale 即可（沿用 0.68）。
+    /// </summary>
+    public static readonly VisualNodeStyle MerchantDeathStyle = VisualNodeStyle.Create(
+        position: new Vector2(0f, -200f), scale: new Vector2(1.484f, 1.484f));
+
     /// <summary>人物选择背景场景：战斗姿态（2560×1440 全屏图）。</summary>
     public const string SelectBgBattleScenePath = Entry.ResPath + "/scenes/characters/gaoshou_select_bg_a.tscn";
 

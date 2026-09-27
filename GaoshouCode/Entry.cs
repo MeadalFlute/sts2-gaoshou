@@ -196,6 +196,10 @@ public partial class Entry
         // 这条挂在 AddResultsInternal（每段命中循环的最后一句，实参里带着 await CreatureCmd.Damage(...)）
         // ⇒ Postfix 在**伤害已经结算完**之后才触发，正好是"这一拳真的打完了"这一时刻 ✓。
         patcher.RegisterPatch<RecordAttackHitSettledPatch>();
+        // 假商人事件房（原版 FAKE_MERCHANT）的 %CharacterContainer 是 **scale=1.75**（商店是 1），
+        // 因为原版那里塞的是战斗小人（自带 0.29），而 RitsuLib 塞的是商人节点（自带 0.47 基准 +
+        // 我们的 ShopStyle 0.68）⇒ 会被再放大 1.75 倍、顶部出屏。这条按容器缩放反算 1/k 兜住。
+        patcher.RegisterPatch<FakeMerchantBoothScalePatch>();
         if (!patcher.PatchAll())
             Logger.Error("Patch application failed!");
 
