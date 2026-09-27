@@ -79,7 +79,7 @@ public sealed class GaoshouVisualSettings : SingletonModel
     //    ⚠️ 切窗口必须切**整整一个自然周期**：只切一小段会"闪回"、看着像披风被切掉 ✗（2026-09-25 踩过）。
 
     /// <summary>站姿循环帧数（Gaoshou_char_idle_1..N.png）。</summary>
-    public const int IdleLoopFrameCount = 39;
+    public const int IdleLoopFrameCount = 41;
 
     /// <summary>站姿循环每帧时长（秒）。
     ///
@@ -93,8 +93,21 @@ public sealed class GaoshouVisualSettings : SingletonModel
     ///   * ⚠️ 试过"插值到 78 帧保周期不变"（12→24fps），用户判断**对"钝、慢"没有帮助** ——
     ///     因为钝慢来自**动作慢**，不是帧数少；所以这里改的是**时长**，帧数保持 39 不动 ✓。
     ///
-    /// 想更缓就调大这个数；想更快就调小（帧数不用动）。想同时更顺就再考虑加帧。</summary>
-    public const float IdleLoopFrameSeconds = 3.24f * 0.7f / 39f;
+    /// ═══【2026-09-28 换素材：v10 + 去雾 + 打光稳定】═══
+    ///   * 素材换成 H3 v10（"连续布料"版）：披风作为一个整体变形、摆幅只有 32px（r6 是 65px），
+    ///     每帧位移约半 ⇒ 用户实测"gif 看起来很舒服"，解决了"钝、慢"；
+    ///   * 帧数 39 → **41**（H3 的自然周期就是 41 帧 / 1.708 秒，取一整圈）；
+    ///   * 兜帽白雾：`tools/anim/defog_stance_head.py` 用全帧**逐像素 25 百分位**当模板覆盖头部
+    ///     （白雾把像素变亮 ⇒ 低百分位天然滤掉），顺带把兜帽锁成逐像素一致；
+    ///   * 正面打光（头 + 胸口共 3 处）：Astra 的 `tools/anim/stabilize_stance_light.py`
+    ///     做时间轴色彩稳定（report：alpha 不变、区域外不变、max_channel_delta=33）；
+    ///   * ⚠️ 真凶是 **H3 把这个静帧理解成了电影拍摄现场**：v6/v8/v10 开头都有"咔"声（场记板）
+    ///     + 摄影棚烟雾 ⇒ 提示词层面压不住（v8/v9/v10 都写过"不要雾效"）。对游戏无害（只取帧）。
+    ///
+    /// 周期仍按用户要求**缩短 30%** = 3.24 × 0.7 = **2.268 秒**（41 帧 ⇒ 18.1fps）。
+    /// ⚠️ Astra 的 report 里写的是 50ms/帧（= 2.05 秒），那是**它自己的假设**；
+    ///    用户明确说过"再快就不适了"，所以这里坚持 2.268 秒 ✓。</summary>
+    public const float IdleLoopFrameSeconds = 2.268f / 41f;
 
     /// <summary>站姿循环帧贴图路径（1 起）。</summary>
     public static string IdleFramePath(int index)
