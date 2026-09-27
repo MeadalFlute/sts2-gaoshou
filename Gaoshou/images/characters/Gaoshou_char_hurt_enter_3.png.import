@@ -2,7 +2,7 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://b42dq4qx5g40q"
+uid="uid://ce0806v8ssmc0"
 path="res://.godot/imported/Gaoshou_char_hurt_enter_3.png-00830d1367679470036ad5b0f2ca13ff.ctex"
 metadata={
 "vram_texture": false
@@ -15,9 +15,9 @@ dest_files=["res://.godot/imported/Gaoshou_char_hurt_enter_3.png-00830d136767947
 
 [params]
 
-compress/mode=0
+compress/mode=1
 compress/high_quality=false
-compress/lossy_quality=0.7
+compress/lossy_quality=0.85
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0
 compress/hdr_compression=1
