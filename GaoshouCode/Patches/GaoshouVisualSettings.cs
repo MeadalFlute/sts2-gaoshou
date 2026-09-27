@@ -1503,19 +1503,20 @@ public sealed class GaoshouVisualSettings : SingletonModel
     ///
     /// 【为什么不能直接用 <see cref="CorpseStyle" />】那条是给**单张静态尸体图**（512×512）用的。
     /// 死亡帧序列是 640×512、地面线 y=456、人物中心 x=320 —— 与 <see cref="CorpseStyle" /> 同一套落位约定，
-    /// 所以 position 仍取 (0, -200)（= 512/2 - … 让贴地边落到节点原点）；
-    /// 但帧序列的**人物**比静态尸体小得多（首帧站立 bbox 高 334，静态尸体是整张 512 画布），
-    /// 直接用会让"开始倒下"这一帧突然缩水 ⇒ 必须补一个 scale。
+    /// 所以 position 仍取 (0, -200) 让贴地边落到节点原点。
     ///
-    /// scale 怎么来的：商店立绘的人物屏幕高度 ≈ 729 × <c>ShopStyle</c>.scale(0.68) ≈ 496px；
-    /// 死亡首帧人物高 334 ⇒ 要让它也约 496px，需要 496 / 334 ≈ **1.484**，
-    /// 也就是 <c>0.68 × (729 / 334)</c> ✓。这样从商店立绘切到死亡动画时尺寸不跳。
+    /// 【scale 为什么就是 <c>ShopStyle</c> 的 0.68】死亡帧与站姿/待机帧**本来就是同一套世界尺度**
+    /// （两者的源视频都用同一个 TARGET_HEIGHT=331 归一化），所以**沿用站立姿态的 scale** 即正确，
+    /// 不需要任何额外补偿 ✓。直接写 0.68 而不是省略，是为了不依赖"帧序列会不会继承上一帧的 scale"。
     ///
-    /// ⚠️ 1.484 是按贴图 alpha bbox 反算的初值，**需要实机看一眼**；
-    ///    若宁愿"与战斗里的死亡同尺寸"而不是"与商店立绘同尺寸"，去掉 scale 即可（沿用 0.68）。
+    /// ⚠️【曾经踩过的坑】初版这里写了 scale=1.484，依据是"商店立绘人物高 729 × 0.68 ≈ 496px，
+    ///    而死亡首帧人物高 334 ⇒ 要 496/334 才等高"。**那是错的**：商店立绘是**放大过的头像式立绘**
+    ///    （1024×768 里人物就占 729 高），拿它去反推死亡帧的 scale 等于把立绘的放大倍数又算了一遍 ✗
+    ///    ⇒ 实机表现为"一播死亡动画就变大"，且**普通商人与假商人症状完全相同**（同一份样式）——
+    ///    这也正好反证了它和父容器 scale 无关。
     /// </summary>
     public static readonly VisualNodeStyle MerchantDeathStyle = VisualNodeStyle.Create(
-        position: new Vector2(0f, -200f), scale: new Vector2(1.484f, 1.484f));
+        position: new Vector2(0f, -200f), scale: new Vector2(0.68f, 0.68f));
 
     /// <summary>人物选择背景场景：战斗姿态（2560×1440 全屏图）。</summary>
     public const string SelectBgBattleScenePath = Entry.ResPath + "/scenes/characters/gaoshou_select_bg_a.tscn";

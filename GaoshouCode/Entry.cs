@@ -200,6 +200,12 @@ public partial class Entry
         // 因为原版那里塞的是战斗小人（自带 0.29），而 RitsuLib 塞的是商人节点（自带 0.47 基准 +
         // 我们的 ShopStyle 0.68）⇒ 会被再放大 1.75 倍、顶部出屏。这条按容器缩放反算 1/k 兜住。
         patcher.RegisterPatch<FakeMerchantBoothScalePatch>();
+        // 游戏结束界面（放弃游戏）里把我们的形象摆回**容器中心**：RitsuLib 的
+        // CharacterGameOverScreenCompatibilityPatch 用 Prefix 整体替换了原方法，而它新增的
+        // 「假商人」分支只 Reparent 不设位置、营火分支的 null 兜底也不给位置
+        // ⇒ 人物与死亡动画停在容器左下角（原版 else 分支是会居中的）。这条 Postfix 跑在它之后覆盖位置
+        //（Harmony 的 Postfix 在 Prefix 跳过原方法后仍会执行）。
+        patcher.RegisterPatch<GameOverVisualPlacementPatch>();
         if (!patcher.PatchAll())
             Logger.Error("Patch application failed!");
 
