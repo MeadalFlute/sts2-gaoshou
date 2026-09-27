@@ -33,42 +33,6 @@ namespace Gaoshou.Patches;
 /// </summary>
 public static class GaoshouAttackStyle
 {
-    /// <summary>调试日志开关（日志前缀 <c>[Gaoshou][AoE]</c>）：这个 bug 确认修好后置 false 即可。</summary>
-    public const bool LogDiagnostics = true;
-
-    // ───────────────────── 时序追踪（临时诊断，确认后删） ─────────────────────
-    //
-    // 【为什么要这个】2026-09-27 实机反馈：出拳与左右交替都对了，但**打完之后依旧会回 stance**。
-    //   怀疑点是"收拳计时器只在 `atk_guard` 的进入事件里起了一次，连击途中没有按命中推后"——
-    //   但代码里明明有两处 `AttackHitTriggered` 订阅在做重置，**看不到**所以只能猜。
-    //   猜了两轮都猜错（左右交替就是这么被绕进去的），所以这次先**把事件时间线打出来**再改。
-    //
-    // 【为什么按"帧号"追】Godot 的 `Time.GetTicksMsec()` 在快节奏连击里分辨率不够
-    //   （一段 0.33s，但重置点与到点可能同帧或差 1~2 帧）；改成
-    //   `Engine.GetProcessFrames()`（引擎已渲染帧数，单调递增）+ 相对会话起点的偏移，
-    //   就能看出"重置发生在第几帧、GuardEnd 到点在第几帧、两者差多少帧" ✓。
-    //
-    // ⚠️ **纯只读旁路**：只往日志写字符串，不碰任何游戏/状态机状态 ✓。
-    // ⚠️ 与已删除的"帧号去重门"**完全不同**：那个用帧号做**判定**（会吞事件），
-    //    这个只用帧号做**记录**（不参与任何分支）⇒ 不可能造成回归 ✓。
-    private static ulong _traceStartFrame;
-
-    /// <summary>开始一次新的攻击会话时调用，把帧号基准对齐到会话开头（日志里就能直接读相对帧）。</summary>
-    private static void TraceReset()
-    {
-        _traceStartFrame = Engine.GetProcessFrames();
-    }
-
-    /// <summary>写一行时序日志（仅在 <see cref="LogDiagnostics" /> 打开时）。</summary>
-    public static void Trace(string what)
-    {
-        if (!LogDiagnostics)
-            return;
-
-        var f = Engine.GetProcessFrames();
-        Entry.Logger.Info($"[Gaoshou][trace] +{f - _traceStartFrame,4}f (f={f}) {what}");
-    }
-
     /// <summary>会话最长存活时间（秒）：万一完成续体没跑到，也别让会话永久占住（正常一次攻击远短于它）。</summary>
     private const double StaleSessionSeconds = 2.0;
 
@@ -200,7 +164,7 @@ public static class GaoshouAttackStyle
         }
         catch (Exception e)
         {
-            Entry.Logger.Error($"[Gaoshou][AoE] AttackHitSettled 订阅方异常（已忽略）: {e.Message}");
+            Entry.Logger.Error($"[Gaoshou] AttackHitSettled 订阅方异常（已忽略）: {e.Message}");
         }
     }
 
@@ -220,7 +184,7 @@ public static class GaoshouAttackStyle
         }
         catch (Exception e)
         {
-            Entry.Logger.Error($"[Gaoshou][AoE] AttackHitTriggered 订阅方异常（已忽略）: {e.Message}");
+            Entry.Logger.Error($"[Gaoshou] AttackHitTriggered 订阅方异常（已忽略）: {e.Message}");
         }
     }
 
@@ -236,9 +200,6 @@ public static class GaoshouAttackStyle
 
         _hitCount = result;
         _hitCountKnown = true;
-        Trace($"段数已算定 = {result}（多段={result >= 2}，IsMultihit={IsMultihit}）");
-        if (LogDiagnostics)
-            Entry.Logger.Info($"[Gaoshou][AoE] 实际段数={result}（多段={_hitCount >= 2}）: {Describe(command)}");
     }
 
     /// <summary>进入 <c>AttackCommand.Execute</c>：只有最外层那次攻击才决定风格。</summary>
@@ -257,24 +218,15 @@ public static class GaoshouAttackStyle
                        ReferenceEquals(command.CardPlay, _session!.CardPlay);
 
         if (!stale && !samePlay)
-        {
-            if (LogDiagnostics)
-                Entry.Logger.Info(
-                    $"[Gaoshou][AoE] 嵌套攻击（沿用外层风格 aoe={_aoe}）: {Describe(command)}");
             return;
-        }
 
         _session = command;
         _sessionStartedAt = now;
-        TraceReset();
-        Trace($"── 攻击会话开始 ──（段数待算，IsAoe 暂 {command.IsMultiTargeted && !command.IsRandomlyTargeted}）");
         _aoe = command.IsMultiTargeted && !command.IsRandomlyTargeted;
         // 新会话 = 段数还没算出来 ⇒ 先把"已知段数"清掉，免得上一张牌的多段判定渗到这一张
         //（ModifyAttackHitCount 紧随其后就会把它设成真实值 ✓）。
         _hitCount = 1;
         _hitCountKnown = false;
-        if (LogDiagnostics)
-            Entry.Logger.Info($"[Gaoshou][AoE] 新攻击会话 aoe={_aoe}: {Describe(command)}");
     }
 
     /// <summary>该命令执行完（挂在 <c>__result.ContinueWith</c>）：只有会话主人能收尾，且不清风格。</summary>
@@ -284,9 +236,6 @@ public static class GaoshouAttackStyle
             return;
 
         _session = null;
-        Trace("── 攻击会话结束（Execute 的 Task 已完成）──");
-        if (LogDiagnostics)
-            Entry.Logger.Info($"[Gaoshou][AoE] 攻击会话结束（风格保留到下一次攻击开始）: {Describe(command)}");
     }
 
     /// <summary>
@@ -299,12 +248,6 @@ public static class GaoshouAttackStyle
         // 攻击真的结束了 ⇒ 段数判定也一起作废，避免"上一串连击是多段"渗给下一张单击牌。
         _hitCount = 1;
         _hitCountKnown = false;
-    }
-
-    private static string Describe(AttackCommand c)
-    {
-        return $"multi={c.IsMultiTargeted} single={c.IsSingleTargeted} random={c.IsRandomlyTargeted} "
-               + $"card={c.ModelSource?.GetType().Name ?? "null"} id={c.GetHashCode()}";
     }
 }
 

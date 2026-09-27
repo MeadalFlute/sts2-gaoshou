@@ -120,16 +120,36 @@ public sealed class GaoshouCharacter : ModCharacterTemplate<GaoshouCardPool, Gao
     ///
     /// 状态图（触发器名固定为 Idle/Dead/Hit/Attack/Cast/Relaxed，cue 键 = 这里传的名字）：
     /// <code>
-    ///                 Hit(从 idle 触发)
-    ///   idle(站姿) ─────────────────▶ hurt_enter(站姿→护姿) ──▶ hurt_body(受击+回位到护姿)
-    ///     ▲                                                          │
-    ///     └──────────────── hurt_exit(护姿→站姿) ◀────────────────────┘
+    ///                  Hit(从 idle 触发)
+    ///   idle(站姿) ─────────────────▶ hurt_enter(站姿→护姿)
+    ///      ▲                              │
+    ///      │                              ▼
+    ///      │                        hurt_impact(护架→后倾峰值)
+    ///      │                              │            ▲
+    ///      │                              ▼            │ Hit(回正途中挨打 ⇒ 退回后倾)
+    ///      │                        hurt_recover(峰值→护架,慢)
+    ///      │                              │
+    ///      │                              ▼
+    ///      │                     hurt_guard(静态护架,等 HurtHoldSeconds)
+    ///      │                              │ HurtExit(计时器)
+    ///      └──── hurt_exit(护姿→站姿) ◀───┘
     /// </code>
+    /// ═══【2026-09-27 受击主体拆成 impact / recover / guard 三段】═══
+    /// 旧写法 `hurt_body --WithNext--> hurt_exit`：**每挨一次打就走完整个"举起护架→后仰→回正→放下护架"**。
+    /// 用户实测「因为完全回正、高频，看起来很不自然」—— 挨打密集时护架被反复举起放下、身体每次弹回中立位 ✗。
+    ///
+    /// 改成（**与 AoE 的 `cut_* → hold_*` 完全同构**）：
+    ///   * `hurt_impact` 每次挨打都从它起播（首帧 = 护架）；
+    ///   * **回正途中再挨打 ⇒ 切回 `hurt_impact`** —— 出程首帧就是护架，观感上等于"从回正半途倒放回后倾状态"，
+    ///     然后回正再走一遍 ⇒ 挨打密集时身体停在后倾附近，**不再每次都回到中立位** ✓；
+    ///   * 只有回正**完整走完**才进 `hurt_guard`（静态护架）并起 `HurtHoldSeconds` 计时器；
+    ///     计时器期间再挨打 ⇒ 又回 `hurt_impact`（重进 `hurt_guard` 时会有新计时器，旧的按代际号丢弃）✓。
+    ///
     /// **连击的关键**：<c>Hit</c> 先走 any-state 分支，它的谓词是"当前不在 idle"——
-    /// 于是在 hurt_enter/hurt_body/hurt_exit 期间再挨打，会**直接重播 hurt_body**（立刻出受击瞬间），
-    /// 而不会退回 hurt_enter 的"从站姿抬手"（那会看起来像闪回站姿）；只有在 idle 时才走
-    /// idle 自己的分支去播 hurt_enter。RitsuLib 的 <c>SetTrigger</c> 正是"先 any-state、再当前状态"，
-    /// 且谓词为 false 时会继续匹配当前状态的分支（ModAnimState.CallTrigger）。
+    /// 于是在三个 hurt 状态期间再挨打都会走 any-state（回 `hurt_impact`），而不会退回
+    /// `hurt_enter` 的"从站姿抬手"；只有在 idle 时才走 idle 自己的分支去播 `hurt_enter`。
+    /// RitsuLib 的 <c>SetTrigger</c> 正是"先 any-state、再当前状态"，且谓词为 false 时会继续匹配
+    /// 当前状态的分支（ModAnimState.CallTrigger）。
     /// </summary>
     /// <summary>
     /// 战斗视觉的 cue 表（按设置页「角色形象」决定给多少）：
@@ -137,7 +157,8 @@ public sealed class GaoshouCharacter : ModCharacterTemplate<GaoshouCardPool, Gao
     ///   <item><b>静态图模式</b>（<see cref="GaoshouVisualSettings.UseFrameSequences" /> = false）：只给
     ///     idle / dead 两张静态图 —— 受击、出拳、横扫都不播帧动画，状态机也相应只建"站姿 + 死亡"两个状态；</item>
     ///   <item><b>帧序列模式</b>：idle 常驻；dead 播完定格（RitsuLib 的 dead 状态既不循环也不回 idle）；
-    ///     受击三段（hurt_enter 站姿→护姿 / hurt_body 受击+回位到护姿 / hurt_exit 护姿→站姿）；
+    ///     受击四段（hurt_enter 站姿→护姿 / hurt_impact 护架→后倾峰值 / hurt_recover 峰值→护架 /
+    ///     hurt_guard 静态护架等计时器 / hurt_exit 护姿→站姿）；
     ///     死亡两套（die_idle 站姿起手 / die_hurt 受击途中被打死，先垫一帧受击瞬间）；
     ///     攻击 atk_ready→atk_punch_r/_l 左右交替→atk_guard 停在架势→atk_retract_* 收拳；
     ///     AoE 横扫 atk_aoe_*（起手 / 两刀 / 落点停留 / 收刀）；
@@ -188,7 +209,8 @@ public sealed class GaoshouCharacter : ModCharacterTemplate<GaoshouCardPool, Gao
         //   两处必须严格一致：若分支注册了而 cue 没注册，EnterState 会因为 HasAnimation=false
         //   直接 return（ModAnimStateMachine.cs:167），画面停在上一帧、且永远出不来 ✗。
         //   ⚠️ 入场与稳态是**同一个判定的两个消费点**，绝不允许只挂其中一条 ✗。
-        // ⚠️ wait 循环素材已就位但暂未接入，理由见 GaoshouVisualSettings.AttackLoopWaitSequence。
+        // ⚠️ wait 循环素材已于 2026-09-27 **连同 50 张帧一起删除**（死素材，从未接入）。
+        //    理由见 GaoshouVisualSettings.BuildAttackLoopSequence 的注释。
         if (GaoshouVisualSettings.UseAttackLoop)
         {
             // **入场前的干等**（一次性，1 帧）：把"左拳出手"整体推迟 AttackLoopEntryPreHoldSeconds 秒，
@@ -232,7 +254,11 @@ public sealed class GaoshouCharacter : ModCharacterTemplate<GaoshouCardPool, Gao
             // 攻击后的"停在架势"：静态贴图 cue（不会播完 ⇒ 一直保持到计时器发 GuardEnd）
             .Single("atk_guard", GaoshouVisualSettings.AttackGuardTexturePath)
             .Sequence("hurt_enter", sequence => AddFrames(sequence, GaoshouVisualSettings.HurtEnterSequence))
-            .Sequence("hurt_body", sequence => AddFrames(sequence, GaoshouVisualSettings.HurtBodySequence))
+            // ⚠️ 受击主体**拆成三段**（2026-09-27，见 SetupCustomCombatAnimationStateMachine 里 hurt 的注释）：
+            //   hurt_impact（护架→后倾峰值）/ hurt_recover（峰值→护架）/ hurt_guard（静态护架，等计时器）
+            .Sequence("hurt_impact", sequence => AddFrames(sequence, GaoshouVisualSettings.HurtImpactSequence))
+            .Sequence("hurt_recover", sequence => AddFrames(sequence, GaoshouVisualSettings.HurtRecoverSequence))
+            .Single("hurt_guard", GaoshouVisualSettings.HurtGuardTexturePath)
             .Sequence("hurt_exit", sequence => AddFrames(sequence, GaoshouVisualSettings.HurtExitSequence))
             .Sequence("die_idle", sequence => AddFrames(sequence, GaoshouVisualSettings.DieFromIdleSequence))
             .Sequence("die_hurt", sequence => AddFrames(sequence, GaoshouVisualSettings.DieFromHurtSequence))
@@ -267,7 +293,9 @@ public sealed class GaoshouCharacter : ModCharacterTemplate<GaoshouCardPool, Gao
         const string cueIdle = "idle";
         const string cueDead = "dead";
         const string cueHurtEnter = "hurt_enter";
-        const string cueHurtBody = "hurt_body";
+        const string cueHurtImpact = "hurt_impact";
+        const string cueHurtRecover = "hurt_recover";
+        const string cueHurtGuard = "hurt_guard";
         const string cueHurtExit = "hurt_exit";
         const string cueDieIdle = "die_idle";
         const string cueDieHurt = "die_hurt";
@@ -343,6 +371,11 @@ public sealed class GaoshouCharacter : ModCharacterTemplate<GaoshouCardPool, Gao
         // 计时器到点时若代际落后 ⇒ 它已被后续进入顶替 ⇒ 丢进垃圾桶、不发 GuardEnd ✓。
         // 这样"旧计时器穿越到下一拳里到点收拳"（= 闪回 stance）从根上不可能再发生 ✓。
         var guardTimerGeneration = 0;
+
+        // ── 「受击保持护架」计时器的代际号（同 guardTimerGeneration 那套，**互不干扰**）──
+        // 每次进入 hurt_guard 就 +1；到点时若代际落后 ⇒ 说明中途又挨过打、已重进过 hurt_guard
+        // ⇒ 本计时器是僵尸，丢弃、不发 HurtExit ✓。
+        var hurtGuardTimerGeneration = 0;
 
         // ── AoE 横扫的「待办刀数」（见分支处的三轮排查注释）──
         // 游戏的命中流（每 ~0.065s 一段）与动画进度（每刀 0.33s）是**两个时间尺度**，
@@ -436,8 +469,10 @@ public sealed class GaoshouCharacter : ModCharacterTemplate<GaoshouCardPool, Gao
 
         var builder = ModAnimStateMachineBuilder.Create()
             .AddState(cueIdle, true).AsInitial().Done()
-            .AddState(cueHurtEnter, false).WithNext(cueHurtBody).Done()
-            .AddState(cueHurtBody, false).WithNext(cueHurtExit).Done()
+            .AddState(cueHurtEnter, false).WithNext(cueHurtImpact).Done()
+            .AddState(cueHurtImpact, false).WithNext(cueHurtRecover).Done()
+            .AddState(cueHurtRecover, false).WithNext(cueHurtGuard).Done()
+            .AddState(cueHurtGuard, false).Done()                 // 静态 cue，不会播完 ⇒ 一直保持护架
             .AddState(cueHurtExit, false).WithNext(cueIdle).Done()
             .AddState(cueDead, false).Done()                      // 终止状态：不设 Next，播完定格
             .AddState(cueDieIdle, false).Done()                   // 死亡（从待机切入），同样终止
@@ -507,7 +542,7 @@ public sealed class GaoshouCharacter : ModCharacterTemplate<GaoshouCardPool, Gao
         builder
             // 受击
             .AddBranch(cueIdle, "Hit", cueHurtEnter)              // 待机时挨打 → 先播进入段
-            .AddAnyState("Hit", cueHurtBody,                      // 受击过程中再挨打 → 直接重播主体
+            .AddAnyState("Hit", cueHurtImpact,                    // 受击过程中再挨打 → 退回后倾（出程首帧=护架）
                 () => machine?.Current?.Id != cueIdle)
             // ── AoE 横扫（打全体）：优先级高于拳 ──
             // RitsuLib 的 ModAnimState.CallTrigger 是"**按注册顺序**取第一个谓词通过的分支"
@@ -525,7 +560,9 @@ public sealed class GaoshouCharacter : ModCharacterTemplate<GaoshouCardPool, Gao
             .AddBranch(cueRetractR, "Attack", cueAoeDraw, () => GaoshouAttackStyle.IsAoe)
             .AddBranch(cueRetractL, "Attack", cueAoeDraw, () => GaoshouAttackStyle.IsAoe)
             .AddBranch(cueHurtEnter, "Attack", cueAoeDraw, () => GaoshouAttackStyle.IsAoe)
-            .AddBranch(cueHurtBody, "Attack", cueAoeDraw, () => GaoshouAttackStyle.IsAoe)
+            .AddBranch(cueHurtImpact, "Attack", cueAoeDraw, () => GaoshouAttackStyle.IsAoe)
+            .AddBranch(cueHurtRecover, "Attack", cueAoeDraw, () => GaoshouAttackStyle.IsAoe)
+            .AddBranch(cueHurtGuard, "Attack", cueAoeDraw, () => GaoshouAttackStyle.IsAoe)
             .AddBranch(cueHurtExit, "Attack", cueAoeDraw, () => GaoshouAttackStyle.IsAoe)
             .AddBranch(cueAoeSheathe, "Attack", cueAoeDraw, () => GaoshouAttackStyle.IsAoe)
             // 横扫链内部再来一段 ⇒ 由**待办计数器**（aoePendingHits / aoeCutInFlight）决定
@@ -745,9 +782,17 @@ public sealed class GaoshouCharacter : ModCharacterTemplate<GaoshouCardPool, Gao
                     GaoshouAttackStyle.IsMultihit && !punchSideFlip)
                 .AddBranch(cueHurtEnter, "Attack", cueVideoPunchL, () =>
                     GaoshouAttackStyle.IsMultihit && punchSideFlip)
-                .AddBranch(cueHurtBody, "Attack", cueVideoPunchR, () =>
+                .AddBranch(cueHurtImpact, "Attack", cueVideoPunchR, () =>
                     GaoshouAttackStyle.IsMultihit && !punchSideFlip)
-                .AddBranch(cueHurtBody, "Attack", cueVideoPunchL, () =>
+                .AddBranch(cueHurtImpact, "Attack", cueVideoPunchL, () =>
+                    GaoshouAttackStyle.IsMultihit && punchSideFlip)
+                .AddBranch(cueHurtRecover, "Attack", cueVideoPunchR, () =>
+                    GaoshouAttackStyle.IsMultihit && !punchSideFlip)
+                .AddBranch(cueHurtRecover, "Attack", cueVideoPunchL, () =>
+                    GaoshouAttackStyle.IsMultihit && punchSideFlip)
+                .AddBranch(cueHurtGuard, "Attack", cueVideoPunchR, () =>
+                    GaoshouAttackStyle.IsMultihit && !punchSideFlip)
+                .AddBranch(cueHurtGuard, "Attack", cueVideoPunchL, () =>
                     GaoshouAttackStyle.IsMultihit && punchSideFlip)
                 .AddBranch(cueHurtExit, "Attack", cueVideoPunchR, () =>
                     GaoshouAttackStyle.IsMultihit && !punchSideFlip)
@@ -836,11 +881,17 @@ public sealed class GaoshouCharacter : ModCharacterTemplate<GaoshouCardPool, Gao
             // 架势停留结束（计时器）→ 收拳回站姿；仍按"上一拳"选收拳方向
             .AddBranch(cueGuard, GaoshouVisualSettings.GuardEndTrigger, cueRetractR, () => lastWasRight)
             .AddBranch(cueGuard, GaoshouVisualSettings.GuardEndTrigger, cueRetractL, () => !lastWasRight)
+            // 护架保持结束（计时器）→ 放下护架回站姿。语义与上面正好同构（见 hurt 状态图注释）
+            .AddBranch(cueHurtGuard, GaoshouVisualSettings.HurtExitTrigger, cueHurtExit)
             // 受击途中出拳（少见，例如反伤牌）：同样按"上一拳"选边，别让攻击动画被吞掉
             .AddBranch(cueHurtEnter, "Attack", cuePunchR, () => !lastWasRight)
             .AddBranch(cueHurtEnter, "Attack", cuePunchL, () => lastWasRight)
-            .AddBranch(cueHurtBody, "Attack", cuePunchR, () => !lastWasRight)
-            .AddBranch(cueHurtBody, "Attack", cuePunchL, () => lastWasRight)
+            .AddBranch(cueHurtImpact, "Attack", cuePunchR, () => !lastWasRight)
+            .AddBranch(cueHurtImpact, "Attack", cuePunchL, () => lastWasRight)
+            .AddBranch(cueHurtRecover, "Attack", cuePunchR, () => !lastWasRight)
+            .AddBranch(cueHurtRecover, "Attack", cuePunchL, () => lastWasRight)
+            .AddBranch(cueHurtGuard, "Attack", cuePunchR, () => !lastWasRight)
+            .AddBranch(cueHurtGuard, "Attack", cuePunchL, () => lastWasRight)
             .AddBranch(cueHurtExit, "Attack", cuePunchR, () => !lastWasRight)
             .AddBranch(cueHurtExit, "Attack", cuePunchL, () => lastWasRight)
             // 死亡：先匹配"当前在待机"（走站姿起手的死亡），否则（受击/出拳途中被打死）走受击版。
@@ -878,11 +929,6 @@ public sealed class GaoshouCharacter : ModCharacterTemplate<GaoshouCardPool, Gao
         };
         machine.AnimationStarted += state =>
         {
-            // 临时诊断（GaoshouAttackStyle.LogDiagnostics）：看清每次触发落在哪个状态、当时的风格判定值。
-            if (GaoshouAttackStyle.LogDiagnostics)
-                Entry.Logger.Info(
-                    $"[Gaoshou][AoE] 动画状态 -> {state.Id}（IsAoe={GaoshouAttackStyle.IsAoe}）");
-
             // 回到站姿 = 这一次攻击的动画真的结束了 ⇒ 关掉"攻击会话"，
             // 免得紧接着打出的下一张牌被当成上一次攻击的嵌套命令（沿用了错的一档风格）。
             if (string.Equals(state.Id, cueIdle, StringComparison.Ordinal))
@@ -916,14 +962,12 @@ public sealed class GaoshouCharacter : ModCharacterTemplate<GaoshouCardPool, Gao
                 lastWasRight = true;     // 刚才出的是右拳 ⇒ 收拳用右手的收拳帧
                 punchSideFlip = true;    // 下一拳出左
                 guardTimerGeneration++;  // 作废上一拳留下的收拳计时器（见代际号声明处）
-                GaoshouAttackStyle.Trace("  👊 出拳 → 右");
             }
             else if (string.Equals(state.Id, cueVideoPunchL, StringComparison.Ordinal))
             {
                 lastWasRight = false;    // 刚才出的是左拳
                 punchSideFlip = false;   // 下一拳出右
                 guardTimerGeneration++;  // 作废上一拳留下的收拳计时器（见代际号声明处）
-                GaoshouAttackStyle.Trace("  👊 出拳 → 左");
             }
             else if (string.Equals(state.Id, cueGuard, StringComparison.Ordinal) && tree != null)
             {
@@ -958,18 +1002,34 @@ public sealed class GaoshouCharacter : ModCharacterTemplate<GaoshouCardPool, Gao
 
                     if (myGeneration != guardTimerGeneration)
                     {
-                        GaoshouAttackStyle.Trace(
-                            $"  🗑 僵尸架势计时器到点，丢弃（代际 {myGeneration} < {guardTimerGeneration}）");
                         return;
                     }
 
-                    GaoshouAttackStyle.Trace(
-                        $"  ⏰ 架势计时器到点 ⇒ GuardEnd（当前状态 {m.Current?.Id}，"
-                        + $"IsMultihit={GaoshouAttackStyle.IsMultihit}）");
                     m.SetTrigger(GaoshouVisualSettings.GuardEndTrigger);
                 };
-                GaoshouAttackStyle.Trace(
-                    $"  ⏳ 进入架势 ⇒ 起 {GaoshouVisualSettings.GuardHoldSeconds:F2}s 收拳计时器（代际 {myGeneration}）");
+            }
+            else if (string.Equals(state.Id, cueHurtGuard, StringComparison.Ordinal) && tree != null)
+            {
+                // 【2026-09-27 新增：受击后的「保持护架」计时器】
+                // 语义与上面的架势计时器**完全同构**，只是换了一个代际号与一个触发词：
+                //   * 进入 hurt_guard（= 受击回正**完整走完**）时起表；
+                //   * 期间再挨打 ⇒ any-state Hit 把状态切到 hurt_impact（不再进 hurt_guard），
+                //     回正走完时会**再次**进入本状态 ⇒ 代际 +1、旧计时器到点即被丢弃 ✓；
+                //   * 到点时当前仍是 hurt_guard ⇒ 发 HurtExit ⇒ hurt_exit 放下护架回站姿 ✓。
+                var myGeneration = ++hurtGuardTimerGeneration;
+                var hold = tree.CreateTimer(GaoshouVisualSettings.HurtHoldSeconds);
+                hold.Timeout += () =>
+                {
+                    if (disposed || machine is not { } m)
+                        return;
+
+                    if (myGeneration != hurtGuardTimerGeneration)
+                    {
+                        return;
+                    }
+
+                    m.SetTrigger(GaoshouVisualSettings.HurtExitTrigger);
+                };
             }
             // ── AoE 横扫的「待办刀数」记账（见 aoePendingHits 声明处）──
             //
@@ -982,8 +1042,6 @@ public sealed class GaoshouCharacter : ModCharacterTemplate<GaoshouCardPool, Gao
             {
                 // 又播出一刀 ⇒ 已播刀数 +1。欠账 = pending − cutsPlayed（见声明处）✓。
                 aoeCutsPlayed++;
-                GaoshouAttackStyle.Trace(
-                    $"  🗡 出刀 {state.Id}（已播 {aoeCutsPlayed} / 命中 {aoePendingHits}）");
 
                 // 【关键：**进刀即预约下一刀**，不等这刀播完】
                 //   用户实测「第三刀结束早于出伤」—— 根因是"伤害并行、动画串行"，
@@ -995,7 +1053,6 @@ public sealed class GaoshouCharacter : ModCharacterTemplate<GaoshouCardPool, Gao
                 var stillOwed = aoePendingHits - aoeCutsPlayed;
                 if (stillOwed > 0 && machine is { } m2)
                 {
-                    GaoshouAttackStyle.Trace($"  ⏭ 预约下一刀（还欠 {stillOwed}）");
                     m2.SetTrigger(GaoshouVisualSettings.AoeNextCutTrigger);
                 }
             }
@@ -1007,8 +1064,6 @@ public sealed class GaoshouCharacter : ModCharacterTemplate<GaoshouCardPool, Gao
                 //    见声明处的日志实证（2 段牌只收到 1 次命中派发）✓。
                 aoeCutsPlayed = 0;
                 aoePendingHits = Math.Max(1, GaoshouAttackStyle.EffectiveHitCount);
-                GaoshouAttackStyle.Trace(
-                    $"  🎬 取刀：横扫连击开始（该砍 {aoePendingHits} 刀）");
             }
             else if (string.Equals(state.Id, cueAoeHoldR, StringComparison.Ordinal) ||
                      string.Equals(state.Id, cueAoeHoldL, StringComparison.Ordinal))
@@ -1046,13 +1101,15 @@ public sealed class GaoshouCharacter : ModCharacterTemplate<GaoshouCardPool, Gao
                     //    因此这里的重复 SetTrigger 是**幂等安全**的：
                     //    多入队一次最多让下一刀早一帧开始，不会多砍一刀
                     //    （刀数由 `aoeCutsPlayed` 计数决定，与入队次数无关）✓。
-                    GaoshouAttackStyle.Trace($"  ➕ 补刀（命中 {aoePendingHits} > 已播 {aoeCutsPlayed}）");
                     mm.SetTrigger(GaoshouVisualSettings.AoeNextCutTrigger);
                 }
                 else if (tree != null)
                 {
-                    // 不欠账 ⇒ 停在落点上等 AoeHoldSeconds，到点收刀回站姿 ✓。
-                    var timer = tree.CreateTimer(GaoshouVisualSettings.AoeHoldSeconds);
+                    // 不欠账 ⇒ 停在落点上等一会儿，到点收刀回站姿 ✓。
+                    // ⚠️【2026-09-27】必须用 **ScaledAoeHoldSeconds**（已按游戏加速模式折算），
+                    //    不能用 AoeHoldSeconds —— SceneTreeTimer 只受 Engine.time_scale 影响，
+                    //    而游戏的加速模式**不是 time_scale**（见 GaoshouVisualSettings.GameFastModeScale）✗。
+                    var timer = tree.CreateTimer(GaoshouVisualSettings.ScaledAoeHoldSeconds);
                     timer.Timeout += () =>
                     {
                         // 节点已离树 ⇒ 不推进动画、也不碰 machine（见 disposed 闩锁声明处）。
@@ -1212,8 +1269,6 @@ public sealed class GaoshouCharacter : ModCharacterTemplate<GaoshouCardPool, Gao
                 if (aoePendingHits < cap)
                 {
                     aoePendingHits++;
-                    GaoshouAttackStyle.Trace(
-                        $"  📌 命中兜底 +1（欠账 {aoePendingHits}/{cap}，当前 {id}）");
                 }
             }
 

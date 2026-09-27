@@ -115,10 +115,57 @@ public sealed class GaoshouEventSettings : SingletonModel
                     section.AddParagraph(
                         "vanilla_intro",
                         T(
-                            "本模组新增事件会稀释原版事件池；如只想保留喜欢的原版事件，可在此逐个禁用。\n" +
+                            "本模组新增事件会稀释原版事件池；如只想保留喜欢的原版事件，可在此逐个禁用，或用下面两个按钮一键操作。\n" +
                             "改动在进入新的章节/新的一局时生效（本局已生成的事件池不会回滚）。",
-                            "Mod events dilute the vanilla event pool. Disable any vanilla events you do not want.\n" +
+                            "Mod events dilute the vanilla event pool. Disable any vanilla events you do not want, " +
+                            "one by one or with the two buttons below.\n" +
                             "Changes apply when a new act starts or a new run begins."));
+                    // ── 一键全开 / 全关 ──
+                    // 说明：这个列表有十几个开关，逐个点很烦 ⇒ 提供两个批量按钮。
+                    // ⚠️ 写值必须走 **binding 的写入通道**（而不是直接改 data 字典），
+                    //    否则不会触发 RitsuLib 的 ValueWritten 事件 ⇒ 缓存不失效、联机不同步 ✗。
+                    //    所以这里用 VanillaEventBinding(...).Write(...) 逐个写 ✓（幂等、且每条都会广播）。
+                    // ⚠️【批量写完之后必须请求刷新，否则界面上那一排开关要等下次进页面才更新】
+                    //    这是 RitsuLib 专门为"一次改多个字段"提供的入口
+                    //    （`RequestRefreshAfterDataModelBatchChange`，见 ModSettingsUiActions.cs）：
+                    //    它会把当前页每个已注册的刷新回调都跑一次 ⇒ 开关状态**当场**跟着变 ✓。
+                    //    （只用 `RequestRefresh()` 也能重建，但那个不保证回调被调用；
+                    //      批量场景应当用这个更专用的方法 ✓。）
+                    section.AddButton(
+                        "vanilla_all_off",
+                        T("一键禁用全部原版事件", "Disable all vanilla events"),
+                        T("全部禁用", "Disable all"),
+                        host =>
+                        {
+                            foreach (var (className, _e, _zh, _en) in VanillaEvents)
+                            {
+                                var binding = VanillaEventBinding(className);
+                                binding.Write(true);
+                                // 标记为已改动 ⇒ 参与下一次持久化落盘（否则可能只在内存里改）✓
+                                host.MarkDirty(binding);
+                            }
+
+                            host.RequestRefreshAfterDataModelBatchChange();
+                        },
+                        ModSettingsButtonTone.Normal,
+                        T("把下列全部原版事件都设为「禁用」。", "Turn every vanilla event below off."));
+                    section.AddButton(
+                        "vanilla_all_on",
+                        T("一键恢复全部原版事件", "Re-enable all vanilla events"),
+                        T("全部启用", "Enable all"),
+                        host =>
+                        {
+                            foreach (var (className, _e, _zh, _en) in VanillaEvents)
+                            {
+                                var binding = VanillaEventBinding(className);
+                                binding.Write(false);
+                                host.MarkDirty(binding);
+                            }
+
+                            host.RequestRefreshAfterDataModelBatchChange();
+                        },
+                        ModSettingsButtonTone.Normal,
+                        T("把下列全部原版事件都恢复为「不禁用」。", "Turn every vanilla event below back on."));
                     foreach (var (className, _entry, zh, en) in VanillaEvents)
                         section.AddToggle(
                             "disable_vanilla_" + className,

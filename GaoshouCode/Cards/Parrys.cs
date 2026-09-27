@@ -31,9 +31,7 @@ public sealed class Parrys : ModCardTemplate
     public override CardAssetProfile AssetProfile => new(
         PortraitPath: $"{Entry.ResPath}/images/cards/{GetType().Name}.png");
 
-    // 打点：高亮评估入口（临时诊断，验收后删除）。
     // 高亮条件：奇迹可触发（非回合开始抽牌进手）且存在意图攻击的敌人。
-    // 高亮：奇迹可触发（非回合开始抽牌进手）且存在意图攻击的敌人。
     protected override bool ShouldGlowGoldInternal
     {
         get
