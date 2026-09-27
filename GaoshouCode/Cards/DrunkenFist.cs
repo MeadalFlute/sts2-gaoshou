@@ -26,7 +26,7 @@ public sealed class DrunkenFist : ModCardTemplate
     private const TargetType CardTarget = TargetType.AllEnemies;
     private const bool ShowInCardLibrary = true;
 
-    public GaoshouCardColor CardColor => GaoshouCardColor.RedPurple;
+    public GaoshouCardColor CardColor => GaoshouCardColor.RedBlue;
 
     public override CardAssetProfile AssetProfile => new(
         PortraitPath: $"{Entry.ResPath}/images/cards/{GetType().Name}.png");
