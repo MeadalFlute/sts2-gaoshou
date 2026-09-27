@@ -55,10 +55,10 @@ public sealed class GaoshouVisualSettings : SingletonModel
 
     // ---- 动画素材集（站姿 / 死亡两套帧序列的来源）----
 
-    /// <summary>动画素材集：**旧版**（H3 之前的静帧版站姿 6 帧 + 官方原版死亡 7 帧）。**默认值**。</summary>
+    /// <summary>动画素材集：**旧版**（H3 之前的静帧版站姿 6 帧 + 官方原版死亡 7 帧）。</summary>
     public const string AnimSetLegacy = "legacy";
 
-    /// <summary>动画素材集：**新版**（H3 视频生成的站姿 39 帧 + 死亡 16 帧）。</summary>
+    /// <summary>动画素材集：**新版（H3）**（H3 视频生成的站姿 39 帧 + 死亡 16 帧）。**默认值**。</summary>
     public const string AnimSetNew = "new";
 
     // ---- 静态图资源路径（全部在 PCK 的 res://Gaoshou 下）----
@@ -1512,6 +1512,7 @@ public sealed class GaoshouVisualSettings : SingletonModel
     {
         RegisterDataStore();
         MigrateLegacyVisualMode();
+        MigrateAnimSetDefault();
 
         RitsuLibFramework.RegisterModSettings(
             Entry.ModId,
@@ -1546,18 +1547,19 @@ public sealed class GaoshouVisualSettings : SingletonModel
                 .AddSection("anim_set", section =>
                 {
                     section.WithTitle(T("动画素材集", "Animation Asset Set"));
-                    // ⚠️【2026-09-27 描述精简】用户要求：**删除描述，只标注「开发中」**。
-                    //   原因：旧描述里有 39 帧 / 3.24 秒 / 官方 7 帧 等实现细节，
-                    //   对玩家没有意义；而且新版仍在迭代 ⇒ 标「开发中」更诚实 ✓。
+                    // ⚠️【2026-09-27 默认值切到「新版」】动画全部验收通过，H3 那套已是主用素材。
+                    //   文案相应改成「旧版」/「新版（默认）」，并把原来的「开发中」说明换成
+                    //   "切换后下一场战斗生效"（这句对玩家才是有用信息）。
+                    //   ⚠️ 老配置里**显式存了** legacy 的玩家不会被默认值覆盖（那是他自己选的）✓。
                     section.AddChoice(
                         "anim_set",
                         T("素材版本", "Asset version"),
                         AnimSetBinding(),
                         [
-                            new(AnimSetLegacy, T("旧版（默认）", "Legacy (default)")),
-                            new(AnimSetNew, T("新版（开发中）", "New (work in progress)")),
+                            new(AnimSetLegacy, T("旧版", "Legacy")),
+                            new(AnimSetNew, T("新版（默认）", "New (default)")),
                         ],
-                        T("开发中。", "Work in progress."),
+                        T("切换后下一场战斗生效。", "Applies from the next combat."),
                         ModSettingsChoicePresentation.Dropdown);
                 })
                 .AddSection("frame_sequence", section =>
@@ -1759,6 +1761,49 @@ public sealed class GaoshouVisualSettings : SingletonModel
         }
     }
 
+    /// <summary>
+    /// 一次性迁移：默认动画素材集从 legacy 切到 new（H3）时，把**老存档里已经显式存成 "legacy" 的**一起切过来。
+    ///
+    /// ═══【为什么只改初始化器不够】═══
+    /// RitsuLib 的 ModDataStore 只要**保存过一次**就会把整个数据模型写盘 ⇒ 玩家哪怕只动过一个滑条，
+    /// `AnimSet` 也会以当时的默认值 "legacy" 落进 visual_settings.json，之后无论初始化器怎么改，
+    /// 他读到的都是文件里那个 "legacy" ✗（初始化器只在"字段不存在"时生效）。
+    ///
+    /// ⚠️ **取舍**：老版本没有记录"这个字段有没有被玩家主动改过"，所以**无法区分
+    ///    "从没动过"与"主动选了旧版"**。这里按"迁移一次"处理，与 <see cref="MigrateLegacyVisualMode" />
+    ///    同一个取舍：想让老玩家也拿到新的默认体验，就得接受"少数主动选旧版的人被改回去"。
+    ///    想用旧版的玩家在设置页改一下即可（只是不能靠默认值拿到）。
+    ///    见 <see cref="GaoshouVisualSettingsData.AnimSetDefaultMigrated" />。
+    /// </summary>
+    private static void MigrateAnimSetDefault()
+    {
+        try
+        {
+            var store = RitsuLibFramework.GetDataStore(Entry.ModId);
+            if (store.Get<GaoshouVisualSettingsData>(DataKey).AnimSetDefaultMigrated)
+                return;
+
+            store.Modify<GaoshouVisualSettingsData>(DataKey, data =>
+            {
+                if (!data.AnimSetDefaultMigrated &&
+                    !string.Equals(data.AnimSet, AnimSetNew, StringComparison.OrdinalIgnoreCase))
+                {
+                    data.AnimSet = AnimSetNew;
+                }
+
+                data.AnimSetDefaultMigrated = true;
+            });
+            store.Save(DataKey);          // Modify 只改内存 + 广播，落盘要显式 Save
+            InvalidateCache();
+            Entry.Logger.Info(
+                $"[GaoshouVisualSettings] anim set default migrated -> {Current().AnimSet}");
+        }
+        catch (Exception e)
+        {
+            Entry.Logger.Error($"[GaoshouVisualSettings] anim set default migration failed: {e.Message}");
+        }
+    }
+
     private static GaoshouVisualSettingsData Current()
     {
         try
@@ -1912,13 +1957,24 @@ public sealed class GaoshouVisualSettingsData
     public string SelectBg { get; set; } = GaoshouVisualSettings.BgBattle;
 
     /// <summary>
-    /// 动画素材集：<see cref="GaoshouVisualSettings.AnimSetLegacy" />（**默认**：站姿用静态立绘
+    /// 动画素材集：<see cref="GaoshouVisualSettings.AnimSetLegacy" />（**旧版**：站姿用静态立绘
     /// Gaoshou_char_idle.png 不做帧动画 + 官方原版死亡 7 帧）
-    /// 或 <see cref="GaoshouVisualSettings.AnimSetNew" />（H3 站姿 39 帧 + 死亡 16 帧）。
+    /// 或 <see cref="GaoshouVisualSettings.AnimSetNew" />（**默认**：H3 站姿 39 帧 + 死亡 16 帧）。
     ///
-    /// **默认 legacy**，并且这里就是向后兼容的兜底：老配置文件里没有 `AnimSet` 这个字段时，
-    /// System.Text.Json 反序列化不会碰这个属性 ⇒ 保留初始化器的 "legacy" ✓（已核实 RitsuLib 的
-    /// ModDataStore 用的是标准 JsonSerializerOptions，没有 MissingMemberHandling.Error）。
+    /// ⚠️【2026-09-27 默认值从 legacy 改成 new】动画全部验收通过，H3 那套（站姿循环 / 死亡 / 出拳 /
+    /// 连续攻击 / 横扫 / 受击）已经是主用素材，故把默认档切到 new。
+    ///
+    /// 这里同时是向后兼容的兜底：老配置文件里**没有** `AnimSet` 这个字段时，
+    /// System.Text.Json 反序列化不会碰这个属性 ⇒ 保留初始化器的 "new" ✓
+    ///（已核实 RitsuLib 的 ModDataStore 用的是标准 JsonSerializerOptions，没有 MissingMemberHandling.Error）。
+    /// 反过来，老配置里**显式存了** "legacy" 的玩家会继续用旧版 —— 那是他自己选的，不该被默认值覆盖 ✓。
     /// </summary>
-    public string AnimSet { get; set; } = GaoshouVisualSettings.AnimSetLegacy;
+    public string AnimSet { get; set; } = GaoshouVisualSettings.AnimSetNew;
+
+    /// <summary>
+    /// 一次性迁移标记：默认动画素材集由 legacy 切到 new（H3）时已经迁移过。
+    /// 见 <see cref="GaoshouVisualSettings.MigrateAnimSetDefault" />。
+    /// 迁移过一次就置 true，之后玩家再主动选 legacy 才不会被改回去 ✓。
+    /// </summary>
+    public bool AnimSetDefaultMigrated { get; set; }
 }
