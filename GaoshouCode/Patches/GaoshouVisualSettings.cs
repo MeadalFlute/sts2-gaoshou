@@ -2,6 +2,8 @@ using System;
 using Godot;
 using MegaCrit.Sts2.Core.Localization;
 using MegaCrit.Sts2.Core.Models;
+using MegaCrit.Sts2.Core.Saves;
+using MegaCrit.Sts2.Core.Settings;
 using STS2RitsuLib;
 using STS2RitsuLib.Interop.AutoRegistration;
 using STS2RitsuLib.Scaffolding.Visuals.Definition;
@@ -123,57 +125,138 @@ public sealed class GaoshouVisualSettings : SingletonModel
 
     // ---- 战斗「受击」帧序列（RitsuLib 帧序列 cue；**分三段**，见 GaoshouCharacter 的状态图）----
     //
-    // 贴图由 _workspace 的 _imgwork 产线生成（同一张基准图 img2img，脚底锚点/缩放共用 char_frame_geom）：
-    //   gen_hurt_frames.py + assemble_hurt_anim.py + make_hurt_game_frames.py        → Gaoshou_char_hurt_1..8
-    //   gen_transition_frames.py + make_transition_game_frames.py                     → Gaoshou_char_hurt_{enter,exit}_1..3
+    // ═══【2026-09-27 全量重做：H3 图生视频 + Fibo 抠像】═══
+    // 旧版是程序生成的 8+3+3 帧（gen_hurt_frames.py / gen_transition_frames.py），实机看后仰几乎出不来。
+    // 新版产线（全部在 `_imgwork`，prompt/输入图/装配脚本都留档）：
+    //   ① H3 图生视频 480p/5s（$0.20/段）：
+    //        enter = 站姿→护姿、loop = 护姿→后仰→回护姿、exit = 护姿→站姿
+    //        —— 输入图必须**同尺度同脚底**，见 `tools\video\make_guard_input.py`；
+    //   ② 三段按"动作真正完成的帧"拼成**一条**视频 → **只提交一次** Fibo 抠像（$0.05/s）；
+    //   ③ `tools\anim\assemble_hurt_v5.py`：逐帧把脚底钉回 y=456 → 切成三段。
     //
-    // 受击主体帧号 → 画面：
-    //   1 直立高位防御（基准，也是回位终点）  2 受击瞬间（后仰 6~8°）  3 后仰最深（10~12°，披风惯性最大）
-    //   4 回弹（拳略前顶，披风滞后仍上扬）    5 受击段收尾（护姿基本恢复）  6 回位 1  7 回位 2（轻微向前过冲）  8 回位 3
+    // 素材：`Gaoshou_char_hurt_enter_1..14` / `Gaoshou_char_hurt_1..39` / `Gaoshou_char_hurt_exit_1..31`
+    // （enter 源 42 帧 → 隔 3 抽成 14 帧；见下面"时长"那段的理由）
     //
-    // 三段序列（逐帧时长，秒）：
-    //   * <see cref="HurtEnterSequence" />：站姿 → 护姿 的过渡（+末尾接护姿帧）——只在"从待机挨第一下"时播；
-    //   * <see cref="HurtBodySequence" />：受击瞬间 → 后仰 → 回位到护姿 ——**从第 2 帧起播**（立刻有反应），
-    //     连续挨打时每次都从这里重放（RitsuLib 的 CueFrameSequencePlayer.TryStart 第一句就是 StopAndReset）；
-    //   * <see cref="HurtExitSequence" />：护姿 → 站姿 的过渡 —— 收招用，播完由状态机切回待机贴图。
+    // ⚠️【为什么必须逐帧钉脚底】Fibo 那次用 `--fixed-anchor`（全片唯一变换）来保证**尺度**稳定，
+    //   但 H3 在三段里把人物画在了**不同高度**（护姿那段整体低约 19px，而轮廓高度不变 ⇒ 是纯位移）。
+    //   实测最低几行永远是"两只鞋"（两个独立的 x 段）⇒ 最低点就是脚，
+    //   钉回 456 等于"脚踩在地面上"，而头/肩的高低变化（真正的重心后仰）全部保留 ✓。
     //
-    /// <summary>进入段：站姿→护姿（1~3 为 Gaoshou_char_hurt_enter_N.png，末尾接护姿帧）。</summary>
-    public static readonly (string Path, float Seconds)[] HurtEnterSequence =
-    [
-        (HurtTransitionFramePath("enter", 1), 0.05f),
-        (HurtTransitionFramePath("enter", 2), 0.05f),
-        (HurtTransitionFramePath("enter", 3), 0.06f),
-        (HurtFramePath(1), 0.06f),
-    ];
+    // ⚠️【帧号语义变了】新版 `hurt_1` = **护姿**（三段衔接的公共姿势），`hurt_2..39` = 往复过程；
+    //   旧版那套"跳过会过冲的第 7 帧"的讲究**不再适用**（源视频本身已是平滑往复）。
+    //
+    // 序列（2026-09-27 起受击主体**拆成 impact / recover**，配合状态机的静态 hurt_guard）：
+    //   * <see cref="HurtEnterSequence" />：站姿 → 护姿，只在"从待机挨第一下"时播；
+    //   * <see cref="HurtImpactSequence" />：护架 → 后倾峰值，**每次挨打都从它起播**；
+    //   * <see cref="HurtRecoverSequence" />：峰值 → 护架（回正，放慢）；
+    //     回正途中再挨打 ⇒ 状态机切回 impact（= 倒放回后倾状态），回正再走一遍；
+    //   * <see cref="HurtGuardTexturePath" />：静态护架，回正**完整走完**才进它并开始计时；
+    //   * <see cref="HurtExitSequence" />：护姿 → 站姿，由 <see cref="HurtExitTrigger" /> 触发。
+    //
+    // ⚠️【时长是"压"出来的，不是源的 24fps】源素材每段 1.3~1.8 秒（H3 固定出 5 秒，我们只取运动区间），
+    //   实机要的是"挨打的瞬间反应" ⇒ 重映射到 **enter 0.13s / 出程 0.22s / 回正 0.40s / exit 0.70s**。
+    //   用户实机反馈迭代过两轮：① "enter/loop 前半段偏慢" ⇒ 裁掉源里**纯静止的起手帧**
+    //   （enter 从 f009 起、loop 从 f019 起）并整体加速；② "enter 还要更快，压到 30% 以下" ⇒
+    //   enter 从 0.46s 再压到 **0.13s**，同时把源帧隔 3 抽到 14 帧（0.13s 内在 60fps 下只显示得到约 8 帧）。
+    //   要再调就改三个 *TotalSeconds 常量（改完重新 `dotnet build` 即可，不用重做素材）。
+    /// <summary>进入段帧数：<c>Gaoshou_char_hurt_enter_1..N.png</c>（站姿→护姿）。</summary>
+    public const int HurtEnterFrameCount = 14;
+
+    /// <summary>受击主体**素材总帧数**：<c>Gaoshou_char_hurt_1..N.png</c>（1 = 护姿，末帧 = 护姿）。</summary>
+    public const int HurtFrameCount = 39;
 
     /// <summary>
-    /// 受击主体：从"受击瞬间"起播，回位到护姿（护姿帧 = 第 1 帧）。
+    /// **后倾峰值帧**（实测轮廓质心 cx 最小的那一帧：39 帧里第 25 帧，cx 208.9；护架 cx 246.7）。
     ///
-    /// ⚠️ 2026-09-24 实机反馈"衔接不自然、像是回正时过倾"⇒ **去掉了第 7 帧（回位2 的向前过冲）**。
-    /// 量化依据（头顶相对腰带扣的横向偏移，正值=前倾；站姿基线 +2.7、护姿 +2.4）：
-    ///   6 = +1.9 → **7 = +13.1** → 8 = +0.2，在 0.10s/帧 里来回甩 12px ⇒ 短时长下就是"顿一下"。
-    /// 去掉后回位变成 6(+1.9) → 8(+0.2) → 1(+2.4)，单调平滑；同时把回位段放慢（0.10/0.12/0.12）。
-    /// 第 7 帧贴图仍然保留（Gaoshou_char_hurt_7.png），需要"更冲"的版本时可以再挂回来。
+    /// 受击主体以它为界**拆成两段**（见 <see cref="HurtImpactSequence" /> / <see cref="HurtRecoverSequence" />），
+    /// 这样才能做到用户要的「回正途中挨打 ⇒ 退回后倾、回正再来一遍」（见 GaoshouCharacter 的 hurt 状态图）。
+    /// 换素材后要重新量：`assemble_hurt_v5.py` 会打印每帧的 (宽, cx) 轨迹。
     /// </summary>
-    public static readonly (string Path, float Seconds)[] HurtBodySequence =
-    [
-        (HurtFramePath(2), 0.05f),   // 受击瞬间（立刻有反应）
-        (HurtFramePath(3), 0.06f),   // 后仰最深
-        (HurtFramePath(4), 0.07f),   // 回弹（披风滞后）
-        (HurtFramePath(5), 0.08f),   // 受击段收尾
-        (HurtFramePath(6), 0.10f),   // 回位 1
-        (HurtFramePath(8), 0.12f),   // 回位 3（跳过会过冲的第 7 帧）
-        (HurtFramePath(1), 0.12f),   // 回到护姿，交给 hurt_exit
-    ];
+    public const int HurtPeakFrame = 25;
 
-    /// <summary>退出段：护姿→站姿（起点为护姿帧，之后 1~3 为 Gaoshou_char_hurt_exit_N.png）。</summary>
+    /// <summary>退出段帧数：<c>Gaoshou_char_hurt_exit_1..N.png</c>（护姿→站姿）。</summary>
+    public const int HurtExitFrameCount = 31;
+
+    /// <summary>
+    /// 进入段**整段**时长（秒）。源 1.75s → **0.13s**（用户实机要求"压到原来的 30% 以下"）。
+    /// 源帧也同步隔 3 抽到 14 帧：60fps 下 0.13s 只显示得到约 8 帧，留 42 帧纯属白占体积。
+    /// </summary>
+    public const float HurtEnterTotalSeconds = 0.13f;
+
+    /// <summary>被推向后倾的**出程**时长（秒）：护架→峰值，25 帧。要"挨打反应快"就压这个。</summary>
+    public const float HurtImpactSeconds = 0.22f;
+
+    /// <summary>
+    /// **回正**时长（秒）：峰值→护架，15 帧。
+    /// 用户要求"回正放慢一点" ⇒ 出程 0.22s / 回正 0.40s 的不对称配速（回正比出程慢近一倍）。
+    /// 回正越慢，"回正途中挨打就退回后倾"这一步越看得清 ✓。
+    /// </summary>
+    public const float HurtRecoverSeconds = 0.40f;
+
+    /// <summary>退出段**整段**时长（秒）。源 1.29s（已隔帧抽过一轮）→ **0.70s**（用户要求"exit 放慢一点"，原 0.48s）。</summary>
+    public const float HurtExitTotalSeconds = 0.70f;
+
+    /// <summary>受击后**保持护架**的等待时长上限，见属性 <see cref="HurtHoldSeconds" />。</summary>
+    public const double HurtHoldSecondsDefault = 0.8;
+
+    /// <summary>进入段：站姿→护姿（<c>Gaoshou_char_hurt_enter_1..<see cref="HurtEnterFrameCount" /></c>）。</summary>
+    public static readonly (string Path, float Seconds)[] HurtEnterSequence =
+        BuildHurtSegment(static f => HurtTransitionFramePath("enter", f),
+            1, HurtEnterFrameCount, HurtEnterTotalSeconds);
+
+    /// <summary>
+    /// 受击**出程**：护架（第 1 帧）→ 后倾峰值（第 <see cref="HurtPeakFrame" /> 帧）。
+    /// **每次挨打都从这里起播**（首帧就是护架，见 GaoshouCharacter 的 any-state Hit 分支）。
+    /// </summary>
+    public static readonly (string Path, float Seconds)[] HurtImpactSequence =
+        BuildHurtSegment(HurtFramePath, 1, HurtPeakFrame, HurtImpactSeconds);
+
+    /// <summary>
+    /// 受击**回程（回正）**：后倾峰值 → 护架。
+    ///
+    /// 关键用法：**回正途中再次挨打 ⇒ 状态机切回 <see cref="HurtImpactSequence" />**
+    /// （出程的首帧就是护架，所以这一步在观感上就是"从回正半途倒放回后倾状态"），
+    /// 然后回正再走一遍 ⇒ 挨打密集时身体一直停在后倾附近、不会每次都弹回中立位 ✓。
+    /// 只有回正**完整走完**才进静态护架状态开始计时等待。
+    /// </summary>
+    public static readonly (string Path, float Seconds)[] HurtRecoverSequence =
+        BuildHurtSegment(HurtFramePath, HurtPeakFrame, HurtFrameCount, HurtRecoverSeconds);
+
+    /// <summary>静态护架贴图 = 受击主体的第 1 帧（回正走完就停在这里等,直到 HurtExit 触发）。</summary>
+    public static string HurtGuardTexturePath => HurtFramePath(1);
+
+    /// <summary>
+    /// 「受击保持护架」的收招触发器名（由 GaoshouCharacter 用 SceneTree 计时器发出）。
+    /// 语义与 AoE 的 <see cref="AoeEndTrigger" />、出拳的 <c>GuardEndTrigger</c> 完全同构。
+    /// </summary>
+    public const string HurtExitTrigger = "HurtExit";
+
+    /// <summary>退出段：护姿→站姿（第 1 帧即护姿，末帧回到站姿）。</summary>
     public static readonly (string Path, float Seconds)[] HurtExitSequence =
-    [
-        (HurtFramePath(1), 0.06f),
-        (HurtTransitionFramePath("exit", 1), 0.08f),
-        (HurtTransitionFramePath("exit", 2), 0.09f),
-        (HurtTransitionFramePath("exit", 3), 0.10f),
-    ];
+        BuildHurtSegment(static f => HurtTransitionFramePath("exit", f),
+            1, HurtExitFrameCount, HurtExitTotalSeconds);
+
+    /// <summary>
+    /// 把 <paramref name="firstFrame" />..<paramref name="lastFrame" />（1 基、含两端）的帧路径
+    /// 按**整段时长等分**成序列（与 AoE 的 <c>BuildAoeSegment</c>、出拳那套同一思路）。
+    ///
+    /// ⚠️ 等分出来的每帧时长可能短到 10ms 量级，这是**故意**的：RitsuLib 的
+    /// <c>CueFrameSequencePlayer</c> 用 `_carry` 累加 delta 再 `while` 追帧，
+    /// 所以每帧 < 1/60 秒不会卡住，只是在一个渲染 tick 里推进多帧 ✓（它不是"每帧必须 ≥1/60"的钳位）。
+    /// </summary>
+    private static (string Path, float Seconds)[] BuildHurtSegment(
+        Func<int, string> pathOf, int firstFrame, int lastFrame, float totalSeconds)
+    {
+        if (lastFrame < firstFrame || firstFrame < 1)
+            return [];
+
+        var count = lastFrame - firstFrame + 1;
+        var per = totalSeconds / count;
+        var frames = new (string, float)[count];
+        for (var i = 0; i < count; i++)
+            frames[i] = (pathOf(firstFrame + i), per);
+        return frames;
+    }
 
     /// <summary>
     /// 受击主体帧贴图路径。规格与 <see cref="IdleTexturePath" /> 完全一致（512×512 透明画布、
@@ -186,8 +269,10 @@ public sealed class GaoshouVisualSettings : SingletonModel
     }
 
     /// <summary>
-    /// 过渡帧贴图路径：<paramref name="phase" /> 传 "enter" 或 "exit"，<paramref name="index" /> 为 1~3。
-    /// 规格与受击帧共用（同一套换算），所以可以混在同一段帧序列里播。
+    /// 过渡帧贴图路径：<paramref name="phase" /> 传 "enter" 或 "exit"，
+    /// <paramref name="index" /> 为 1..<see cref="HurtEnterFrameCount" />（enter）
+    /// 或 1..<see cref="HurtExitFrameCount" />（exit）。
+    /// 规格与受击主体帧完全共用（512×512、脚底 y=456），所以可混在同一段帧序列里播。
     /// </summary>
     public static string HurtTransitionFramePath(string phase, int index)
     {
@@ -554,8 +639,9 @@ public sealed class GaoshouVisualSettings : SingletonModel
     /// <summary>连续攻击（快速连击）循环帧数：Gaoshou_char_atkloop_fast_1..N.png。</summary>
     public const int AttackLoopFastFrameCount = 43;
 
-    /// <summary>连续攻击（带等待连击）循环帧数：Gaoshou_char_atkloop_wait_1..N.png。</summary>
-    public const int AttackLoopWaitFrameCount = 50;
+    // ⚠️【2026-09-27 已删除】原 `AttackLoopWaitFrameCount = 50` 与对应的
+    //   `Gaoshou_char_atkloop_wait_1..50.png`（50 张、≈4 MB 源码 / 约 3 MB 进包）。
+    //   那是**从未接到任何 cue 上**的死素材（理由见 BuildAttackLoopSequence 的注释）。
 
     /// <summary>
     /// 「快速连击」循环的**入场点偏移**（单位：源序列帧）。
@@ -678,39 +764,38 @@ public sealed class GaoshouVisualSettings : SingletonModel
     /// ⚠️ 序列**不是**从源 f1 开始：按 <see cref="AttackLoopFastStartFrameOffset" /> 循环左移后，
     ///    第 1 项 = 源 f12（左拳出拳第 1 帧），末项 = 源 f11（Ready 段末帧），帧数仍为 43 ✓。
     /// </summary>
-    public static (string Path, float Seconds)[] AttackLoopFastSequence => BuildAttackLoopSequence("fast");
+    public static (string Path, float Seconds)[] AttackLoopFastSequence => BuildAttackLoopSequence();
 
     /// <summary>
-    /// 连续攻击「带等待连击」循环（50 帧；默认连击速度 0.5 下 ≈4.17 秒/圈、1.0 下 ≈2.08 秒/圈，Loop(true)）。
+    /// 构造「连续攻击」循环序列（43 帧，按 <see cref="AttackLoopFastStartFrameOffset" /> 循环左移）。
     ///
-    /// ⚠️ **素材已就位，但暂未接到任何 cue 上**，原因（2026-09-26 复核）：
-    /// 用来判定连击的信号是 <see cref="GaoshouAttackStyle.IsMultihit" />，它来自游戏开打前算出的
-    /// **实际段数**（<c>Hook.ModifyAttackHitCount</c>），是**整次攻击的常数** —— 在一次连击全过程中
-    /// 恒为 true，**无法区分"正在出招"与"打完了在等下一段"** ✗。而 wait 循环的语义恰恰是
-    /// "左拳保持击出的等待"（源视频 f67~f83），只有能区分这两者才有意义。
-    /// 按任务要求**不为了区分而硬猜 / 大改连段主干**，故此处只留素材与接口，
-    /// 等状态机能拿到"本段之后还有没有下一段"的信号时再接（与 <see cref="AttackLoopFastSequence" /> 同构）。
+    /// ═══【2026-09-27 删除「带等待连击」wait 序列与其 50 张素材】═══
+    /// 原先还有一条 `AttackLoopWaitSequence`（50 帧，`atkloop_wait_1..50.png`），
+    /// 但**它从未接到任何 cue 上** —— 原因：判定连击的信号 `IsMultihit` 来自
+    /// 游戏开打前算出的**实际段数**，是**整次攻击的常数**，无法区分
+    /// 「正在出招」与「打完了在等下一段」，而 wait 循环的语义恰恰需要这个区分 ✗。
+    ///
+    /// 用户要求控制 mod 体积 ⇒ **删掉这 50 张死素材（≈4 MB 源码 / 约 3 MB 进包）**。
+    /// 连带删除了 <c>AttackLoopWaitFrameCount</c> 常量与 <c>AttackLoopWaitSequence</c> 属性；
+    /// 本方法也从"按名字切换"简化为只构造 fast 一条 ✓。
+    ///
+    /// ⚠️ 若将来真要接 wait 循环：重新生成素材并把 `--name` 参数加回来即可，
+    ///    相关设计说明在交接文档 §12 里仍有记录。
     /// </summary>
-    public static (string Path, float Seconds)[] AttackLoopWaitSequence => BuildAttackLoopSequence("wait");
-
-    private static (string Path, float Seconds)[] BuildAttackLoopSequence(string name)
+    private static (string Path, float Seconds)[] BuildAttackLoopSequence()
     {
-        var fast = !string.Equals(name, "wait", StringComparison.Ordinal);
-        var count = fast ? AttackLoopFastFrameCount : AttackLoopWaitFrameCount;
-        // 入场点旋转**只对 fast（快速连击）生效**：wait 循环语义是"左拳保持击出的等待"，
-        // 入场点尚未定义（且它还没接到任何 cue 上）⇒ 原样输出，不做旋转 ✓。
-        var offset = fast ? AttackLoopFastStartFrameOffset : 0;
+        const int count = AttackLoopFastFrameCount;
+        var offset = AttackLoopFastStartFrameOffset;
 
         var frames = new (string, float)[count];
-        // ⚠️ 每帧时长走缩放后的 AttackLoopLoopFrameSeconds（= 基准 / 连击速度滑条），
-        //    不是基准 AttackLoopFrameSeconds —— 入场序列是照这条序列构造的，所以两边同步缩放 ✓。
+        // ⚠️ 每帧时长走缩放后的 AttackLoopLoopFrameSeconds（= 基准 / 连击速度滑条）。
         var seconds = AttackLoopLoopFrameSeconds;
         for (var i = 0; i < count; i++)
         {
             // 循环左移 offset：序列第 1 项 = 源第 (offset+1) 帧，其余按原顺序环绕；
             // 序列长度、帧顺序、循环闭合性都与旋转前完全一致，只是换了个起点 ✓。
             var sourceIndex = (i + offset) % count;
-            frames[i] = (AttackLoopFramePath(name, sourceIndex + 1), seconds);
+            frames[i] = (AttackLoopFramePath("fast", sourceIndex + 1), seconds);
         }
         return frames;
     }
@@ -799,7 +884,7 @@ public sealed class GaoshouVisualSettings : SingletonModel
         //    AttackLoopLoopFrameSeconds）⇒ 入场与稳态**同步缩放** ✓；
         //    被覆盖的过渡帧也用同一个 scale 折算（AttackLoopEntryBridgeFrameSeconds）
         //    ⇒ 压缩比例恒定、相对关系不变（见那个属性的推导）✓。
-        var frames = BuildAttackLoopSequence("fast");
+        var frames = BuildAttackLoopSequence();
         var bridgeSeconds = AttackLoopEntryBridgeFrameSeconds;
         for (var i = AttackLoopEntryBridgeStartIndex;
              i < AttackLoopEntryBridgeStartIndex + AttackLoopEntryBridgeFrameCount && i < frames.Length;
@@ -1088,9 +1173,80 @@ public sealed class GaoshouVisualSettings : SingletonModel
     public const float AoeCutSeconds = 0.27f;
     public const float AoeSheatheSeconds = 8f / 24f;    // 15 帧 → 0.333s（收刀）
 
+    // ═══════════════════════════════════════════════════════════════════════════════
+    //  ⏩ 游戏「加速模式」（FastModeType）支持 —— 2026-09-27 新增
+    //
+    //  ═══【为什么必须自己接，RitsuLib 不会替我们接】═══
+    //  用户实测：「出拳在加速模式 on/off 都正常，但**挥刀在加速 on 下慢了**」。
+    //  查清了两件事：
+    //   1. 游戏的加速**不是倍率**。`sts2.xml` 里 FastModeType 的原话：
+    //        "Enum used for changing how fast the game runs. **This is NOT a multiplier-based speed setting.**"
+    //      它在**每个等待点**用不同时长实现 —— 即 `Cmd.CustomScaledWait(普通秒, 加速秒)`；
+    //      枚举取值 <c>None=0 / Normal=1 / Fast=2 / Instant=3</c>，开关存在
+    //      `SaveManager.Instance.PrefsSave.FastMode`。
+    //   2. RitsuLib 的 `CueFrameSequencePlayer` **完全不读加速模式**（已读源码确认）：
+    //        _Process(delta) { _carry += delta; while (_carry >= _frameDurationSeconds) Advance(); }
+    //        ClampFrameDuration(s) => s <= 0 ? 1f/60f : s;      // 只兜底 ≤0，不是速度钳位
+    //      它只吃 `_Process` 的 delta（受 Engine.time_scale 影响，而加速模式与 time_scale 无关）
+    //      ⇒ **任何 mod 的帧序列在加速模式下都不会变快**。
+    //
+    //  ═══【为什么"挥刀慢"而不是"出拳慢"】═══
+    //  `AoeCutSeconds = 0.27s` 是上一轮**反解**出来的：让最后一刀正好在出伤时收尾。
+    //  加速模式下游戏出伤间隔缩短，而我们的刀仍是 0.27s ⇒ 动画**落后于出伤**，看起来"慢了"。
+    //  按同一倍率一起缩，正好把上一轮算出来的对齐关系在加速模式下重新成立 ✓。
+    //  （出拳段的每帧时长本来就短、且由 `MultiHitWaitSeconds` 主导，观感上没暴露问题，
+    //    所以这里**只动 AoE**，不去碰用户已确认正常的出拳路径。）
+    //
+    //  ═══【生效时机】═══
+    //  序列属性是在 `GaoshouCharacter.BuildCombatCues()` 里读的，而它**每场战斗重建 cue 表**
+    //  ⇒ 改设置后**下一场战斗**生效（与 anim_set 同一个 UX，无需重启游戏）✓。
+    //  `SweepHoldSeconds` 那条计时器是每次进入落点现读，**当次战斗内立即生效**。
+    // ═══════════════════════════════════════════════════════════════════════════════
+
+    /// <summary>加速模式下的动画时长倍率默认值（0.5 = 时长减半 = 两倍速）。</summary>
+    public const double FastModeAnimScaleDefault = 0.5;
+    public const double FastModeAnimScaleMin = 0.2;
+    public const double FastModeAnimScaleMax = 1.0;
+
+    /// <summary>
+    /// 当前**游戏加速模式**折算出的时长倍率（1.0 = 原速）。
+    ///
+    /// * <c>None</c> / <c>Normal</c> → 1.0
+    /// * <c>Fast</c>                 → <see cref="FastModeAnimScale" />（设置项，默认 0.5）
+    /// * <c>Instant</c>              → 再乘 0.4（比 Fast 更狠；UI 上一般到不了这一档，但不留坑）
+    ///
+    /// ⚠️ 必须容忍"存档还没加载"：`SaveManager.Instance` / `PrefsSave` 在启动早期可能是 null，
+    ///    这里任何异常都退回 1.0（= 原速），**绝不能让动画因为读设置失败而卡住**。
+    /// </summary>
+    public static float GameFastModeScale
+    {
+        get
+        {
+            try
+            {
+                var prefs = SaveManager.Instance?.PrefsSave;
+                if (prefs == null)
+                    return 1f;
+
+                var scale = (float)Clamp(Current().FastModeAnimScale,
+                                         FastModeAnimScaleMin, FastModeAnimScaleMax);
+                return prefs.FastMode switch
+                {
+                    FastModeType.Fast => scale,
+                    FastModeType.Instant => scale * 0.4f,
+                    _ => 1f,
+                };
+            }
+            catch
+            {
+                return 1f;
+            }
+        }
+    }
+
     /// <summary>起手段（视频版）：手伸向腰后 → 拔刀 → 举刀准备（源 f013~f032，20 帧）。</summary>
     public static (string Path, float Seconds)[] AoeDrawSequence =>
-        BuildAoeSegment("draw", 1, 20, AoeDrawSeconds);
+        BuildAoeSegment("draw", 1, 20, AoeDrawSeconds * GameFastModeScale);
 
     /// <summary>
     /// 第一刀（视频版）：**单程**（右起手 → 挥砍到左 → 停在左），与原版出拳**逐条同构**。
@@ -1112,15 +1268,15 @@ public sealed class GaoshouVisualSettings : SingletonModel
     /// ═══════════════════════════════════════════════════════════════════
     /// </summary>
     public static (string Path, float Seconds)[] AoeCutRightSequence =>
-        BuildAoeSegment("cutR", 1, AoeCutRLastSourceFrame, AoeCutSeconds);
+        BuildAoeSegment("cutR", 1, AoeCutRLastSourceFrame, AoeCutSeconds * GameFastModeScale);
 
     /// <summary>第二刀（视频版）：单程（左起手 → 挥砍到右 → 停在右），理由同 <see cref="AoeCutRightSequence" />。</summary>
     public static (string Path, float Seconds)[] AoeCutLeftSequence =>
-        BuildAoeSegment("cutL", 1, AoeCutLLastSourceFrame, AoeCutSeconds);
+        BuildAoeSegment("cutL", 1, AoeCutLLastSourceFrame, AoeCutSeconds * GameFastModeScale);
 
     /// <summary>收刀（视频版）：刀收回腰间，末帧≈站姿（源 f093~f107，15 帧）。</summary>
     public static (string Path, float Seconds)[] AoeSheatheSequence =>
-        BuildAoeSegment("sheathe", 1, 15, AoeSheatheSeconds);
+        BuildAoeSegment("sheathe", 1, 15, AoeSheatheSeconds * GameFastModeScale);
 
     /// <summary>
     /// 每刀参与往返的**挥砍帧数**（相对该段第 1 帧的序号）—— 取"刀扫到最远处"那一帧。
@@ -1137,6 +1293,29 @@ public sealed class GaoshouVisualSettings : SingletonModel
 
     /// <inheritdoc cref="AoeCutRLastSourceFrame" />
     public const int AoeCutLLastSourceFrame = 12;
+
+    /// <summary>视频版横扫 cutR / cutL 的**源帧总数**（两段都是 22 帧）。</summary>
+    public const int AoeCutSourceFrameCount = 22;
+
+    /// <summary>
+    /// **落点停留帧**（`hold_*` 用的静止姿势）—— 比挥砍末帧晚一帧，取"刀已经停住、残影已散"的那一帧。
+    ///
+    /// ═══【2026-09-27：用户实测「等下一刀时停住的那一帧还带着残影」】═══
+    /// 旧写法 <c>AoeHold*TexturePath</c> 取的是**挥砍序列的末帧**（= 12）。把 12→13 的合成差异标红后看得很清楚：
+    ///   * <c>cutR_11</c> / <c>cutR_12</c>：刀的**左下方各挂着一团白色残影**（11 更大、12 更小）；
+    ///   * <c>cutR_13</c>：**残影完全消失**，刀停住、披风也收住了；
+    ///   * <c>cutL</c> 同理：12→13 的差异是披风铺开定型（残影在 11 之前就散完了）。
+    ///
+    /// 视频源本来就有 <see cref="AoeCutSourceFrameCount" /> 帧、我们只播 1..<see cref="AoeCutRLastSourceFrame" />，
+    /// 所以这一帧**一直躺在磁盘上** —— 不需要重新生成素材，只是把 hold 的指针往后挪一帧 ✓。
+    ///
+    /// ⚠️ 必须 > 挥砍末帧（否则 hold 等于末帧、残影照旧），且要落在"停住且无残影"的区间内
+    /// （实测 cutR/cutL 都是 **13~20** 安全；21-22 视频里刀又开始动了，别取）。
+    /// </summary>
+    public const int AoeHoldRSourceFrame = 13;
+
+    /// <inheritdoc cref="AoeHoldRSourceFrame" />
+    public const int AoeHoldLSourceFrame = 13;
 
     /// <summary>视频版段落贴图路径（抠图后的 RGBA 帧，832×512）。</summary>
     public static string AoeVideoFramePath(string segment, int index)
@@ -1170,12 +1349,15 @@ public sealed class GaoshouVisualSettings : SingletonModel
         AoeDrawSequence.All(static f => !string.IsNullOrWhiteSpace(f.Path)) &&
         AoeCutRightSequence.All(static f => !string.IsNullOrWhiteSpace(f.Path)) &&
         AoeCutLeftSequence.All(static f => !string.IsNullOrWhiteSpace(f.Path)) &&
-        AoeSheatheSequence.All(static f => !string.IsNullOrWhiteSpace(f.Path));
+        AoeSheatheSequence.All(static f => !string.IsNullOrWhiteSpace(f.Path)) &&
+        // 落点帧必须晚于挥砍末帧，否则 hold_* 会退化成"还挂着残影的末帧"（即 2026-09-27 修掉的那个 bug）。
+        AoeHoldRSourceFrame > AoeCutRLastSourceFrame &&
+        AoeHoldLSourceFrame > AoeCutLLastSourceFrame;
 
     /// <summary>
-    /// 第一刀（cutR）**落点**的停留姿势 = **cutR 自己的末帧**（刀停在左侧）。
+    /// 第一刀（cutR）**落点**的停留姿势 = cutR 的**停稳帧**（刀停在左侧、残影已散）。
     ///
-    /// ═══【2026-09-27 修正：以前错误地取了"另一刀的末帧"】═══
+    /// ═══【修正一 · 2026-09-27：以前错误地取了"另一刀的末帧"】═══
     /// 用户实测「打 2 段 AoE，cutL 播放了两次，然后播放 cutR」。
     ///
     /// 根因就在这两个属性：旧写法让 `hold_r` 显示 **cutL 的末帧**。实测刀的位置：
@@ -1186,24 +1368,28 @@ public sealed class GaoshouVisualSettings : SingletonModel
     /// —— 用户看到的"cutL 播放两次"正是这个"假 cutL 姿势 + 真 cutL 序列"。
     ///
     /// 【正确的语义】`hold_*` 是"**当前这一刀砍完之后停在落点上等下一段**"
-    ///   （与出拳的 `atk_guard` 完全同构），所以它必须显示**当前这刀自己的末帧**：
-    ///   * `hold_r`（cutR 之后）= cutR 末帧（刀在左）✓；
-    ///   * `hold_l`（cutL 之后）= cutL 末帧（刀在右）✓。
-    ///   这样 `cutR 末帧 → hold_r` 是**同一个姿势**，视频上完全连续、不跳变 ✓。
+    ///   （与出拳的 `atk_guard` 完全同构），所以它必须显示**当前这刀自己的落点姿势**：
+    ///   * `hold_r`（cutR 之后）= cutR 落点（刀在左）✓；
+    ///   * `hold_l`（cutL 之后）= cutL 落点（刀在右）✓。
+    ///
+    /// ═══【修正二 · 2026-09-27：末帧 ≠ 停稳帧，末帧还挂着残影】═══
+    /// 用户实测「停在那一帧是 cutR_12（带残影），需要换成刀完全停住、无残影的帧」。
+    /// 所以这里取的不是**挥砍序列的末帧**（12），而是 <see cref="AoeHoldRSourceFrame" />（13）✓。
+    /// 详见 <see cref="AoeHoldRSourceFrame" /> 的实测记录。
     ///
     /// ⚠️ 状态名 `hold_r`/`hold_l` 里的 r/l 指的是"**这一刀是右起手刀**"（即它是 cutR 的落点），
     ///    而不是"刀停在右侧" —— 旧注释把这两件事搞混了，才写出取另一刀末帧的错误实现 ✗。
     /// </summary>
     public static string AoeHoldRightTexturePath =>
-        AoeCutRightSequence.Length > 0
-            ? AoeCutRightSequence[^1].Path
-            : AoeVideoFramePath("cutR", 22);
+        AoeVideoFramePath("cutR", ClampAoeHoldFrame(AoeHoldRSourceFrame));
 
-    /// <summary>第二刀（cutL）落点的停留姿势 = **cutL 自己的末帧**（刀停在右侧），理由同上。</summary>
+    /// <summary>第二刀（cutL）落点的停留姿势 = cutL 的**停稳帧**（刀停在右侧、残影已散），理由同上。</summary>
     public static string AoeHoldLeftTexturePath =>
-        AoeCutLeftSequence.Length > 0
-            ? AoeCutLeftSequence[^1].Path
-            : AoeVideoFramePath("cutL", 22);
+        AoeVideoFramePath("cutL", ClampAoeHoldFrame(AoeHoldLSourceFrame));
+
+    /// <summary>把落点帧夹进"源帧确实存在"的区间，避免配错常量时拿到不存在的贴图（会变成隐形精灵）。</summary>
+    private static int ClampAoeHoldFrame(int frame) =>
+        Math.Clamp(frame, 1, AoeCutSourceFrameCount);
 
     // 收刀前的"落点等待时长"已改成设置项，见属性 AoeHoldSeconds（设置页：帧序列选项 → 横扫落点等待时间）。
 
@@ -1339,77 +1525,63 @@ public sealed class GaoshouVisualSettings : SingletonModel
                 .AddSection("visual_mode", section =>
                 {
                     section.WithTitle(T("形象来源", "Visual Source"));
+                    // ⚠️【2026-09-27 描述精简】用户要求：**删除对静态图 / 帧序列的描述**。
+                    //   原因：那段说明把两个内部模式的差异讲给玩家听，但玩家只需要知道
+                    //   "用不用高手的形象"，模式细节属于实现、不该占设置页版面 ✗。
+                    //   所以这里只保留一句"影响范围"，两个选项名也已简化（见下）✓。
                     section.AddChoice(
                         "visual_mode",
                         T("角色形象", "Character visuals"),
                         VisualModeBinding(),
                         [
                             new(ModePlaceholder, T("继承储君（占位）", "Regent placeholder")),
-                            new(ModeStatic, T("使用高手静态图", "Gaoshou static images")),
-                            new(ModeFrames, T("使用高手 PNG 帧序列", "Gaoshou PNG frame sequences")),
+                            new(ModeStatic, T("使用高手形象", "Use Gaoshou visuals")),
+                            new(ModeFrames, T("使用高手形象（帧序列）", "Use Gaoshou visuals (frames)")),
                         ],
                         T(
-                            "影响范围：战斗、商店、火堆、宝箱、死亡。\n" +
-                            "「静态图」只有待机 / 死亡两张静态立绘（不做帧动画）；" +
-                            "「PNG 帧序列」才是受击、死亡、出拳、横扫全部动画。",
-                            "Affects: combat, shop, campfire, treasure, death.\n" +
-                            "Static images = idle/dead stills only (no frame animation); " +
-                            "PNG frame sequences = the full hurt/death/attack/sweep animations."),
+                            "影响范围：战斗、商店、火堆、宝箱、死亡。",
+                            "Affects: combat, shop, campfire, treasure, death."),
                         ModSettingsChoicePresentation.Dropdown);
                 })
                 .AddSection("anim_set", section =>
                 {
                     section.WithTitle(T("动画素材集", "Animation Asset Set"));
+                    // ⚠️【2026-09-27 描述精简】用户要求：**删除描述，只标注「开发中」**。
+                    //   原因：旧描述里有 39 帧 / 3.24 秒 / 官方 7 帧 等实现细节，
+                    //   对玩家没有意义；而且新版仍在迭代 ⇒ 标「开发中」更诚实 ✓。
                     section.AddChoice(
                         "anim_set",
-                        T("动画素材版本", "Animation asset version"),
+                        T("素材版本", "Asset version"),
                         AnimSetBinding(),
                         [
                             new(AnimSetLegacy, T("旧版（默认）", "Legacy (default)")),
-                            new(AnimSetNew, T("新版（H3 视频）", "New (H3 video)")),
+                            new(AnimSetNew, T("新版（开发中）", "New (work in progress)")),
                         ],
-                        T(
-                            "只影响「PNG 帧序列」模式下的站姿与死亡动画，其它动作（受击 / 出拳 / 横扫）不受影响：\n" +
-                            "· 旧版 = 静态立绘站姿（单张 Gaoshou_char_idle.png，不做帧动画）+ 官方原版死亡 7 帧；\n" +
-                            "· 新版 = H3 视频生成的站姿 39 帧（3.24 秒一圈）+ 死亡 16 帧。\n" +
-                            "改动在下一场战斗生效。",
-                            "Only affects the idle stance and death animation in PNG frame-sequence mode; " +
-                            "hurt / punch / sweep are unaffected:\n" +
-                            "- Legacy = still-image stance (single Gaoshou_char_idle.png, no frame animation) " +
-                            "+ the original 7-frame death animation.\n" +
-                            "- New = H3 video-generated 39-frame stance (3.24 s per loop) + 16-frame death " +
-                            "animation.\n" +
-                            "Changes apply in the next combat."),
+                        T("开发中。", "Work in progress."),
                         ModSettingsChoicePresentation.Dropdown);
                 })
                 .AddSection("frame_sequence", section =>
                 {
                     section.WithTitle(T("帧序列选项", "Frame-Sequence Options"));
+                    // ⚠️【2026-09-27 描述大幅精简】用户要求：
+                    //   * 段落说明只讲**核心功能**，大意 = "设置动画状态机返回 stance 前等待其他指令的时间"；
+                    //   * 每个子选项的描述**控制在一句话、一行、25 字以内**。
+                    //   原因：旧文案是一大段机制解释（"每命中一段发一次 Attack""停在落点判定"…），
+                    //   属于开发细节，玩家只想快速知道"这个滑条是干什么的"✗。
                     section.AddParagraph(
                         "frame_sequence_note",
                         T(
-                            "多段攻击（拳）与横扫（AoE）都是「每命中一段发一次 Attack」，动画靠" +
-                            "停在落点上等一小会儿来判定后面还有没有下一段：\n" +
-                            "· 等得到 → 接着挥下一刀（拳左右交替 / 横扫左右横砍）；\n" +
-                            "· 等不到 → 收招回站姿（所以这两个值也是单段攻击收招前的延迟）。\n" +
-                            "段间隔比设定值大时会出现「中途先收招再重新起手」，把这个值调大即可。",
-                            "Multi-hit attacks and AoE sweeps fire one Attack trigger per hit; the animation " +
-                            "waits at the recovery pose to see whether another segment follows:\n" +
-                            "- another segment arrives -> swing the next one (alternating);\n" +
-                            "- nothing arrives -> return to the idle stance.\n" +
-                            "If the gap between segments is longer than this value you will see the character " +
-                            "recover and wind up again mid-attack; raise the value to fix it."));
+                            "设置动画状态机返回站姿前，等待其他指令的时间。",
+                            "How long the animation waits for further input before returning to the stance."));
                     section.AddSlider(
                         "multihit_wait",
-                        T("多段攻击动画等待时间（拳）", "Multi-hit attack wait (punches)"),
+                        T("多段攻击等待时间（拳）", "Multi-hit wait (punches)"),
                         MultiHitWaitBinding(),
                         0.1,
                         2.0,
                         0.05,
                         static v => v.ToString("0.00") + " s",
-                        T(
-                            "出拳后停在架势里等下一次命中的时间；到点没有新命中就收拳回站姿。",
-                            "How long the character holds the guard pose after a punch before retracting."));
+                        T("出拳后等待下一次命中的时间。", "Wait after a punch for the next hit."));
                     section.AddSlider(
                         "sweep_wait",
                         T("横扫落点等待时间（收刀前）", "AoE sweep wait (before sheathing)"),
@@ -1418,11 +1590,7 @@ public sealed class GaoshouVisualSettings : SingletonModel
                         1.0,
                         0.05,
                         static v => v.ToString("0.00") + " s",
-                        T(
-                            "横扫每刀砍完后停在落点上等下一段的时间；单段 AoE 就是" +
-                            "「砍完这一刀 → 等这么久 → 收刀」的等待。",
-                            "How long the sweep waits at the blade's landing pose for the next segment; " +
-                            "for a single-segment AoE this is the delay before sheathing."));
+                        T("横扫砍完后等待下一段的时间。", "Wait after a sweep for the next segment."));
                     // 连击速度：只作用于"连续攻击"的循环动画（入场 + 稳态），
                     // 单击 / legacy 出拳、AoE 横扫、受击 / 死亡都不经过它。
                     section.AddSlider(
@@ -1433,19 +1601,28 @@ public sealed class GaoshouVisualSettings : SingletonModel
                         ComboSpeedScaleMax,
                         0.05,
                         static v => v.ToString("0.00") + "×",
-                        T(
-                            "连续攻击那套循环动画（入场 + 稳态，例如「完美木棍剑」的多段拳）的整体快慢：\n" +
-                            "1.00 = 改动前的原始速度（约 1.79 秒一轮两拳）；越小越慢，越大越快。\n" +
-                            "默认 0.50 ⇒ 一轮两拳约 3.58 秒，让每一次出拳都咬合一次伤害结算。\n" +
-                            "只改整体速度，不改帧数、入场相位与动作结构；单击 / 横扫 / 受击 / 死亡不受影响。\n" +
-                            "改动在下一场战斗生效。",
-                            "Overall speed of the continuous-attack loop animation (entry + steady loop, e.g. the " +
-                            "multi-hit punches of Perfect Stick Sword):\n" +
-                            "1.00 = the original speed (about 1.79 s per two-punch cycle); lower is slower, higher is faster.\n" +
-                            "Default 0.50 gives about 3.58 s per two-punch cycle, so every punch lines up with one damage tick.\n" +
-                            "Only the overall speed changes; frame count, entry phase and structure are untouched, and " +
-                            "single-hit / sweep / hurt / death are unaffected.\n" +
-                            "Changes apply in the next combat."));
+                        T("连续攻击动画的整体快慢。", "Overall speed of the continuous-attack animation."));
+                    // 加速模式动画倍率：只在**游戏自己的加速模式开启时**生效（Normal/关 时无影响）。
+                    // ⚠️ 描述必须≤一行 25 字（用户的硬要求，见上面 2026-09-27 那条注释）。
+                    section.AddSlider(
+                        "fastmode_scale",
+                        T("加速模式动画倍率（横扫）", "Fast-mode animation scale (sweep)"),
+                        FastModeAnimScaleBinding(),
+                        FastModeAnimScaleMin,
+                        FastModeAnimScaleMax,
+                        0.05,
+                        static v => v.ToString("0.00") + "×",
+                        T("开加速模式时横扫动画的时长倍率。", "Sweep duration scale while fast mode is on."));
+                    // 受击保持护架时间：受击回正走完之后才开始计时，到点才放下护架。
+                    section.AddSlider(
+                        "hurt_hold",
+                        T("受击后保持护架时间", "Guard hold after being hit"),
+                        HurtHoldBinding(),
+                        0.1,
+                        2.5,
+                        0.05,
+                        static v => v.ToString("0.00") + " s",
+                        T("回正后保持护架多久才放下。", "How long the guard is held before lowering it."));
                 })
                 .AddSection("select_bg", section =>
                 {
@@ -1489,6 +1666,19 @@ public sealed class GaoshouVisualSettings : SingletonModel
 
     /// <summary>横扫：每刀砍完后停在落点上等下一段的时间（秒）。设置页「横扫落点等待时间（收刀前）」。</summary>
     public static float AoeHoldSeconds => (float)Clamp(Current().SweepHoldSeconds, 0.05, 1.0);
+
+    /// <summary>
+    /// 落点等待时间**折算过加速模式**的版本（= <see cref="AoeHoldSeconds" /> × <see cref="GameFastModeScale" />）
+    /// —— 状态机建计时器时必须用这个，否则加速模式下这一段会明显拖长（见 <see cref="GameFastModeScale" />）。
+    /// </summary>
+    public static float ScaledAoeHoldSeconds => AoeHoldSeconds * GameFastModeScale;
+
+    /// <summary>
+    /// **受击后保持护架的时间**（秒）：受击回正**走完之后**开始计时，期间再挨打就重置；
+    /// 到点才发 <see cref="HurtExitTrigger" /> 放下护架。
+    /// 设置页「受击后保持护架时间」，范围 0.1~2.5。
+    /// </summary>
+    public static float HurtHoldSeconds => (float)Clamp(Current().HurtHoldSeconds, 0.1, 2.5);
 
     /// <summary>手改 JSON 也別让值跑到滑条范围外（滑条本身会约束，这里只是兜底）。</summary>
     private static double Clamp(double value, double min, double max)
@@ -1628,6 +1818,26 @@ public sealed class GaoshouVisualSettings : SingletonModel
             static (data, value) => data.SweepHoldSeconds = value);
     }
 
+    /// <summary>加速模式下横扫动画的时长倍率滑条的绑定。见 <see cref="GameFastModeScale" />。</summary>
+    private static IModSettingsValueBinding<double> FastModeAnimScaleBinding()
+    {
+        return ModSettingsBindings.Global<GaoshouVisualSettingsData, double>(
+            Entry.ModId,
+            DataKey,
+            static data => data.FastModeAnimScale,
+            static (data, value) => data.FastModeAnimScale = value);
+    }
+
+    /// <summary>受击后保持护架时间滑条的绑定。见 <see cref="HurtHoldSeconds" />。</summary>
+    private static IModSettingsValueBinding<double> HurtHoldBinding()
+    {
+        return ModSettingsBindings.Global<GaoshouVisualSettingsData, double>(
+            Entry.ModId,
+            DataKey,
+            static data => data.HurtHoldSeconds,
+            static (data, value) => data.HurtHoldSeconds = value);
+    }
+
     /// <summary>连击速度（连续攻击循环动画的整体快慢）滑条的绑定。见 <see cref="ComboSpeedScale" />。</summary>
     private static IModSettingsValueBinding<double> ComboSpeedBinding()
     {
@@ -1663,6 +1873,23 @@ public sealed class GaoshouVisualSettingsData
 
     /// <summary>横扫：每刀砍完后停在落点上等下一段的时间（秒）。设置页滑条「横扫落点等待时间（收刀前）」，范围 0.05~1.0。</summary>
     public double SweepHoldSeconds { get; set; } = 0.35;
+
+    /// <summary>
+    /// 受击：**护架保持时间**（秒）——受击回正走完之后开始计时，期间再挨打就重置；到点才放下护架。
+    /// 设置页滑条「受击后保持护架时间」，范围 0.1~2.5。
+    /// 与 <see cref="ComboSpeedScale" /> 同理：老配置文件里没有这个字段时反序列化不会碰它 ⇒ 保留初始化器的默认值 ✓。
+    /// </summary>
+    public double HurtHoldSeconds { get; set; } = GaoshouVisualSettings.HurtHoldSecondsDefault;
+
+    /// <summary>
+    /// 游戏「加速模式」开启时，横扫动画时长的**倍率**（0.5 = 时长减半 = 两倍速）。
+    /// 设置页滑条「加速模式动画倍率」，范围 <see cref="GaoshouVisualSettings.FastModeAnimScaleMin" />~<see cref="GaoshouVisualSettings.FastModeAnimScaleMax" />。
+    /// 见 <see cref="GaoshouVisualSettings.GameFastModeScale" />（那里有"为什么 RitsuLib 不会替我们接加速"的完整记录）。
+    ///
+    /// 与 <see cref="ComboSpeedScale" /> 同理：老配置文件里没有这个字段时反序列化不会碰它
+    /// ⇒ 保留初始化器的默认值 ✓。
+    /// </summary>
+    public double FastModeAnimScale { get; set; } = GaoshouVisualSettings.FastModeAnimScaleDefault;
 
     /// <summary>
     /// 连击速度：**连续攻击**循环动画（入场 + 稳态）的整体快慢倍数。
