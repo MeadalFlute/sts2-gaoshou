@@ -87,8 +87,6 @@ public sealed class RockItLauncherReload : ModCardTemplate
             .ToList();
 
         // 【临时调试日志】确认"打出了/消耗了"用（定位完可删）：
-        Entry.Logger.Warn($"[Gaoshou][RockItLauncherReload] 找到临时牌(DeckVersion==null, 已排除自己/Play/Exhaust) {temporary.Count} 张: "
-            + string.Join(", ", temporary.Select(c => $"{c.Id.Entry}@{c.Pile?.Type}")));
 
         // 2) 【2026-09-29 用户要求调整顺序，第二版】**先获得格挡**，再处理这些临时牌。
         //    格挡按**最终数量**算 ⇒ 数量必须在上面先快照确定（这里用 planned）✓。
@@ -97,7 +95,6 @@ public sealed class RockItLauncherReload : ModCardTemplate
         {
             var per = DynamicVars.GetRequired<BlockVar>("BlockPer").BaseValue;
             await CreatureCmd.GainBlock(Owner.Creature, new BlockVar(planned * per, ValueProp.Move), cardPlay);
-            Entry.Logger.Warn($"[Gaoshou][RockItLauncherReload] 先给格挡: {planned} 张 x {per} = {planned * per}");
         }
 
         // 3) 【2026-09-29 用户要求：照十三幺的结构】**先把所有临时牌一次性移入结算区（Play）**，
@@ -111,7 +108,6 @@ public sealed class RockItLauncherReload : ModCardTemplate
         {
             if (CombatManager.Instance.IsOverOrEnding)
             {
-                Entry.Logger.Warn("[Gaoshou][RockItLauncherReload] 战斗已结束/收尾，停止移入剩余临时牌");
                 break;
             }
 
@@ -119,8 +115,6 @@ public sealed class RockItLauncherReload : ModCardTemplate
                 await CardPileCmd.Add(card, PileType.Play);
         }
 
-        Entry.Logger.Warn($"[Gaoshou][RockItLauncherReload] 已整批移入结算区: "
-            + string.Join(", ", temporary.Select(c => $"{c.Id.Entry}@{c.Pile?.Type}")));
 
         // 4) 逐张结算（顺序不变：设 ExhaustOnNextPlay → AutoPlay 完整结算 → 兜底 Exhaust）。
         var consumed = 0;
@@ -128,7 +122,6 @@ public sealed class RockItLauncherReload : ModCardTemplate
         {
             if (CombatManager.Instance.IsOverOrEnding)
             {
-                Entry.Logger.Warn("[Gaoshou][RockItLauncherReload] 战斗已结束/收尾，停止结算剩余临时牌");
                 break;
             }
 
@@ -140,10 +133,8 @@ public sealed class RockItLauncherReload : ModCardTemplate
                 await CardCmd.Exhaust(choiceContext, card);
 
             consumed++;
-            Entry.Logger.Warn($"[Gaoshou][RockItLauncherReload] 第 {consumed} 张处理完: {card.Id.Entry} -> pile={card.Pile?.Type}");
         }
 
-        Entry.Logger.Warn($"[Gaoshou][RockItLauncherReload] 本次打出并消耗 {consumed}/{planned} 张临时牌");
 
         // 5) 生成一张「垃圾喷射器」加入手牌：次数 = 本次消耗数量，并双向写 PairId（供它把本卡拿回手牌）。
         var launcher = Owner.Creature.CombatState?.CreateCard(ModelDb.Card<RockItLauncher>(), Owner);
