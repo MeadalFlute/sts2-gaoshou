@@ -70,5 +70,8 @@
   "GAOSHOU_POWER_COUNTER_HELIX_POWER.smartDescription": "本回合你每次受到攻击时，反击对所有敌人造成[blue]{Amount}[/blue]点伤害。",
   "GAOSHOU_POWER_TIRED_OUT_POWER.title": "累坏了",
   "GAOSHOU_POWER_TIRED_OUT_POWER.description": "你这回合已经打出过限制牌了。",
-  "GAOSHOU_POWER_TIRED_OUT_POWER.smartDescription": "你这回合已经打出过限制牌了。"
+  "GAOSHOU_POWER_TIRED_OUT_POWER.smartDescription": "你这回合已经打出过限制牌了。",
+  "GAOSHOU_POWER_MYTHICAL_MAN_MONTH_POWER.title": "人月神话",
+  "GAOSHOU_POWER_MYTHICAL_MAN_MONTH_POWER.description": "本场战斗中临时加入你牌组的牌将被升级。",
+  "GAOSHOU_POWER_MYTHICAL_MAN_MONTH_POWER.smartDescription": "本场战斗中临时加入你牌组的牌将被升级。"
 }

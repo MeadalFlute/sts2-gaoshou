@@ -70,5 +70,8 @@
   "GAOSHOU_POWER_COUNTER_HELIX_POWER.smartDescription": "Whenever you are attacked this turn, deal [blue]{Amount}[/blue] damage back to all enemies.",
   "GAOSHOU_POWER_TIRED_OUT_POWER.title": "Worn Out",
   "GAOSHOU_POWER_TIRED_OUT_POWER.description": "You already played a Limited card this turn.",
-  "GAOSHOU_POWER_TIRED_OUT_POWER.smartDescription": "You already played a Limited card this turn."
+  "GAOSHOU_POWER_TIRED_OUT_POWER.smartDescription": "You already played a Limited card this turn.",
+  "GAOSHOU_POWER_MYTHICAL_MAN_MONTH_POWER.title": "The Mythical Man-Month",
+  "GAOSHOU_POWER_MYTHICAL_MAN_MONTH_POWER.description": "Cards added to your deck during this combat are upgraded.",
+  "GAOSHOU_POWER_MYTHICAL_MAN_MONTH_POWER.smartDescription": "Cards added to your deck during this combat are upgraded."
 }

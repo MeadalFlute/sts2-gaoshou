@@ -49,7 +49,29 @@ public sealed class GaoshouCharacter : ModCharacterTemplate<GaoshouCardPool, Gao
             var ui = new CharacterUiAssetSet(
                 IconTexturePath: $"{Entry.ResPath}/images/characters/Gaoshou_character_icon.png",
                 IconOutlineTexturePath: $"{Entry.ResPath}/images/characters/Gaoshou_character_icon_outline.png",
-                IconPath: $"{Entry.ResPath}/images/characters/Gaoshou_top_portrait.png",
+                // ⚠️⚠️【2026-09-29 修「多人队友头像叠着铁甲战士的阴影」—— 参照 LexNinja2 的做法】
+                //   这一槽位**必须是 PackedScene（.tscn），不能给 PNG** ✗✗ 我们原来给的是
+                //   `Gaoshou_top_portrait.png` ⇒ 出事了：
+                //     * 原版语义（反编译 `CharacterModel.cs:127-129`）：
+                //       `IconPath => SceneHelper.GetScenePath("ui/character_icons/<id>_icon")`、
+                //       `Icon => PreloadManager.Cache.GetScene(IconPath).Instantiate<Control>()`
+                //       ⇒ **它期望一个场景**（实测原版 `res://scenes/ui/character_icons/ironclad_icon.tscn`
+                //         就是一个 TextureRect，贴 `images/ui/top_panel/character_icon_ironclad.png`）。
+                //     * RitsuLib 侧对这个槽位有**类型校验**（`CharacterAssetOverridePatches.cs:114-131`
+                //       `IsLoadableAsAny(..., nameof(PackedScene), typeof(PackedScene), …)`）
+                //       ⇒ 我们给的 PNG 校验不过 ⇒ **回退到占位角色的 icon 场景**，
+                //         而 RitsuLib 的默认占位是 **ironclad**（`CharacterAssetProfiles.cs:21`
+                //         `DefaultPlaceholderCharacterId = "ironclad"`）⇒ 于是 `Icon`（顶部栏/多人队友头像
+                //         那条路径用的就是它）变成了**铁甲战士的头像**（原版那张图自带一层阴影 ✓ 正是用户看到的）
+                //         ⇒ 多人里就表现为"我们的头像下面/周围压着铁甲战士的阴影" ✗。
+                //   修法（= LexNinja2 的做法，见 `LexNinja2Code/Character/LexNinja2.cs:39`
+                //   `IconPath: "res://LexNinja2/scenes/Ninja_icon.tscn"` ⇒ 它给的是**自己的场景** ✓）：
+                //   我们新建 `res://Gaoshou/scenes/ui/Gaoshou_top_icon.tscn`（结构照抄原版那个 icon 场景：
+                //   TextureRect + anchors_preset=15 + expand_mode=1 + stretch_mode=5 + mouse_filter=2），
+                //   里面只贴**我们自己的** `Gaoshou_top_portrait.png` ⇒ 类型正确、且场景里没有任何原版图 ✓。
+                //   ⚠️ 其余 Ui 槽位本就与"原版期望类型"一致（IconTexture/IconOutline/CharacterSelect*、
+                //      MapMarker 原版都是 PNG ✓），所以**只有这一条**需要改 ✓。
+                IconPath: $"{Entry.ResPath}/scenes/ui/Gaoshou_top_icon.tscn",
                 CharacterSelectBgPath: GaoshouVisualSettings.CharacterSelectBgPath,
                 CharacterSelectIconPath: $"{Entry.ResPath}/images/characters/Gaoshou_character_select.png",
                 // ⚠️【2026-09-29 止血：原本误用了**原版铁甲战士**的资源】

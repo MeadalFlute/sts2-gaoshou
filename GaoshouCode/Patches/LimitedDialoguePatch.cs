@@ -38,5 +38,11 @@ public sealed class LimitedDialoguePatch : IPatchMethod
     {
         if (preventer is Gaoshou.Keywords.LimitedPlayRule)
             __result = new LocString("card_keywords", "GAOSHOU_KEYWORD_LIMITED.dialogue");
+
+        // 「正午」用同一套机制：它的可打出规则（Gaoshou.Keywords.HighNoonRule）同样不是原版认得的那五种模型，
+        // 挡住时角色改说这张卡自己的台词（localization/*/cards.json 的 GAOSHOU_CARD_HIGH_NOON.dialogue
+        // =「我手牌不止一种颜色。」），不动原版其它任何情况 ✓。
+        if (preventer is Gaoshou.Keywords.HighNoonRule)
+            __result = new LocString("cards", "GAOSHOU_CARD_HIGH_NOON.dialogue");
     }
 }
