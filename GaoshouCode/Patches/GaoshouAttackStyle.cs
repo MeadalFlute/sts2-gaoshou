@@ -1,6 +1,8 @@
 using Godot;   // Time.GetTicksMsec()（会话兜底超时用）
+using Gaoshou.Cards;                              // DualSMG（「双持冲锋枪」风格判定）
 using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.Commands.Builders;
+using MegaCrit.Sts2.Core.Entities.Cards;          // CardPlay（区分"一次出牌"）
 using MegaCrit.Sts2.Core.Entities.Creatures;
 using MegaCrit.Sts2.Core.Hooks;
 using STS2RitsuLib.Patching.Models;
@@ -87,6 +89,72 @@ public static class GaoshouAttackStyle
     ///   `段数已算定 = 2/3` ✓。所以 AoE 的"该砍几刀"直接用这个值 ✓。
     /// </summary>
     public static int EffectiveHitCount => _hitCountKnown ? _hitCount : 1;
+
+    // ───────────────────── 「双持冲锋枪」风格 + 开火序号 ─────────────────────
+    //
+    // 【为什么需要新的一档风格（与 IsAoe 并列）】DualSMG 是"对全体敌人各打 3(4) 段、风暴满足时整套再来一轮"
+    // 的连射牌，观感上应该**每段命中打一枪**、而且上/下两把枪交替开火（用户交付的素材正好是
+    // "上枪开火 / 下枪开火"各 2 帧）。现有两档风格都不适用：
+    //   * <see cref="IsMultihit" /> → 徒手左右拳（atk_punch_r/_l 那套视频版出拳），与持枪姿势完全不是一套素材；
+    //   * <see cref="IsAoe" /> 在这张牌上**为假** —— DualSMG 虽然卡面写 `TargetType.AllEnemies`，
+    //     但它在 `OnPlay` 里**逐个敌人** `Targeting(enemy)`（单目标），而
+    //     `AttackCommand.IsMultiTargeted => _combatState != null`（反编译 AttackCommand.cs:137），
+    //     `Targeting()` 只设 `_singleTarget` ⇒ 每一条命令都是"单体" ✓。
+    // 所以这里加一条**只认这一张卡**的判定：显式**类型**判定（不是标记接口，免得动 DualSMG.cs 本身），
+    // 对其它任何卡恒为 false ⇒ 其它卡的行为一个字节都没变 ✓。
+
+    /// <summary>本次攻击是否来自「双持冲锋枪」（<see cref="DualSMG" />）。纯读取，可在状态机谓词/回调里用。</summary>
+    public static bool IsDualSmg => _dualSmg;
+
+    private static bool _dualSmg;
+
+    /// <summary>
+    /// 「双持冲锋枪」**这一次出牌**里已经开火的次数（上/下枪交替的序号）。
+    ///
+    /// ⚠️ 语义是"**一次出牌**共用一串序号"，**不是"一条 AttackCommand 一串"**：
+    ///   * DualSMG 是**逐敌**循环发命令（`PlayOnce` 对每个敌人各一条 `AttackCommand`），
+    ///     风暴满足时还在**同一个 OnPlay 里**再 `await PlayOnce` 一次 ⇒ 一次出牌最多有
+    ///     "敌人数 × 2" 条命令；若在 <see cref="Enter" /> 里归零，交替就会在每个敌人 /
+    ///     每一轮的开头重来（又被拉回"上枪"）✗ —— 这正是用户明确禁止的；
+    ///   * 但这一次出牌的所有命令**共用同一个 <see cref="CardPlay" /> 实例**
+    ///     （DualSMG 把同一个 `cardPlay` 传给它自己那两轮 PlayOnce）
+    ///     ⇒ 用 `CardPlay` 的**引用身份**区分"新的一次出牌"最可靠：换实例才归零 ✓。
+    /// </summary>
+    private static int _smgShotIndex;
+
+    /// <summary>上一次（任意）出牌用过的 CardPlay 实例；换实例 = 新的一次出牌 ⇒ 开火序号归零。</summary>
+    private static CardPlay? _smgCardPlay;
+
+    /// <summary>
+    /// 取下一个开火序号，并返回"这一发用**上枪**"（true）/ "**下枪**"（false）。
+    ///
+    /// 由状态机订阅 <see cref="AttackHitTriggered" /> 时调用 —— **每次命中恰好调用一次**，
+    /// 奇偶交替 ⇒ 上、下、上、下……；序号只在"换了一次出牌"时归零（见 <see cref="_smgShotIndex" />），
+    /// 所以敌人切换、风暴第二轮都不会把它打回"上枪" ✓。
+    ///
+    /// ⚠️ 本事件是**不去重**的（TriggerAnim 是 async、去重门会把合法命中整段吞掉，教训见类注释）
+    ///    ⇒ 同一段命中的重复派发会让交替**多翻一格**（整串顺序错位一位，不会漏枪、更不会卡住）。
+    ///    这是"按命中事件交替"这一方案的固有上限，用户已知悉并选择它（想彻底免疫就得改成
+    ///    "由状态机进入开火状态时自己记账"，但那样就失去"每段命中必然对应一次交替"的保证）。
+    /// </summary>
+    public static bool NextSmgShotIsUpper()
+    {
+        var upper = _smgShotIndex % 2 == 0;
+        _smgShotIndex++;
+        return upper;
+    }
+
+    /// <summary>
+    /// 「双持冲锋枪」**这一次出牌还没有开过火**（= 开火序号还是 0）。**纯读取、无副作用**。
+    ///
+    /// 状态机用它决定"这一下要不要先播掏枪（`smg_draw`）"（见 GaoshouCharacter 的 `FireSmgShot`）：
+    /// 一次出牌的**第一段命中**先掏枪，后续段照旧每段一枪。
+    ///
+    /// ⚠️ 掏枪**不占号**（那里只读本属性、**不**调 <see cref="NextSmgShotIsUpper" />）⇒
+    ///    第一发实弹仍然是"上枪"，交替序列与加掏枪之前**逐段一致** ✓
+    ///    （这也是"交替逻辑不要动"的具体兑现：本属性只是加了一个只读观察点）。
+    /// </summary>
+    public static bool IsFirstSmgShotOfPlay => _smgShotIndex == 0;
 
     // ───────────────────── 每段命中的通知（**不去重**） ─────────────────────
     //
@@ -194,48 +262,118 @@ public static class GaoshouAttackStyle
     /// </summary>
     public static void RecordHitCount(AttackCommand command, int result)
     {
-        // 与 Enter 相同的过滤：只关心玩家自己发起的攻击（敌人 / 宠物不该影响我的动画风格）。
-        if (command.Attacker is not { IsPlayer: true })
-            return;
+        // ⚠️【F1：整段包 try/catch（2026-09-29）】本方法是挂在 `Hook.ModifyAttackHitCount` 上的 Harmony
+        //   **Postfix**，跟着攻击结算一起跑 ⇒ **一旦抛异常就会顺着 Hook 往上冒、把这次攻击结算整个打断** ✗
+        //   （客户端日志里已出现过同类事故：`AttackCommand.Execute` 的 prefix 抛 NRE ⇒ 那次 `PlayCardAction`
+        //     直接 "completed with exception"，牌留在 Play 堆、伤害不完整 ⇒ 联机分叉）。
+        //   原则：**动画风格跟踪永远不许影响游戏流程** —— 出任何意外只记一条日志，然后退回安全值 ✓。
+        try
+        {
+            // 与 Enter 相同的过滤：只关心玩家自己发起的攻击（敌人 / 宠物不该影响我的动画风格）。
+            if (command.Attacker is not { IsPlayer: true })
+                return;
 
-        _hitCount = result;
-        _hitCountKnown = true;
+            _hitCount = result;
+            _hitCountKnown = true;
+        }
+        catch (Exception e)
+        {
+            // 补救：退回"段数未知"（`IsMultihit` 因此为 false ⇒ 走最保守的兜底路径），
+            // 绝不让一个半写的段数去决定动画风格 ✓。
+            _hitCount = 1;
+            _hitCountKnown = false;
+            Entry.Logger.Warn($"[Gaoshou] GaoshouAttackStyle.RecordHitCount 异常（已忽略，避免中断攻击结算）: {e}");
+        }
     }
 
     /// <summary>进入 <c>AttackCommand.Execute</c>：只有最外层那次攻击才决定风格。</summary>
     public static void Enter(AttackCommand command)
     {
-        // 只认玩家自己发起的攻击：敌人攻击、宠物攻击不该改写玩家动画的风格，
-        // 也不该占住会话（否则玩家下一张牌会被误判成"嵌套"）。
-        if (command.Attacker is not { IsPlayer: true })
-            return;
+        // ⚠️【F1：整段包 try/catch（2026-09-29）—— 四处里最要紧的一处】
+        //   本方法是挂在 `AttackCommand.Execute` 上的 Harmony **Prefix** ⇒
+        //   **抛异常会直接把这一次游戏行动打断** ✗，真实事故（客户端日志）：
+        //     `Gaoshou.Patches.GaoshouAttackStyle.Enter` NRE → `SetAoeAttackStylePatch.Prefix`
+        //     → `AttackCommand.Execute` → `LinkedStrike.OnPlay` ⇒ 那次 `PlayCardAction` 以异常结束
+        //     ⇒ 牌留在 Play 堆、伤害结算不完整 ⇒ 两端状态分叉。
+        //   原则：**动画风格跟踪只准读、不准砸坏游戏流程** ⇒ 出意外只记日志 + 退回最保守的风格 ✓。
+        try
+        {
+            // 只认玩家自己发起的攻击：敌人攻击、宠物攻击不该改写玩家动画的风格，
+            // 也不该占住会话（否则玩家下一张牌会被误判成"嵌套"）。
+            if (command.Attacker is not { IsPlayer: true })
+                return;
 
-        var now = Time.GetTicksMsec() / 1000.0;
-        var stale = _session == null || now - _sessionStartedAt > StaleSessionSeconds;
-        // 同一张牌的后续段（完美棍剑：先单体多段、再全体一段）**要**能改写风格；
-        // 而出处不同的命令（反伤 / 亡语 / 追击打出来的攻击）是嵌套，不能改写。
-        var samePlay = !stale && command.CardPlay != null &&
-                       ReferenceEquals(command.CardPlay, _session!.CardPlay);
+            var now = Time.GetTicksMsec() / 1000.0;
+            var stale = _session == null || now - _sessionStartedAt > StaleSessionSeconds;
+            // 同一张牌的后续段（完美棍剑：先单体多段、再全体一段）**要**能改写风格；
+            // 而出处不同的命令（反伤 / 亡语 / 追击打出来的攻击）是嵌套，不能改写。
+            var samePlay = !stale && command.CardPlay != null &&
+                           ReferenceEquals(command.CardPlay, _session!.CardPlay);
 
-        if (!stale && !samePlay)
-            return;
+            if (!stale && !samePlay)
+                return;
 
-        _session = command;
-        _sessionStartedAt = now;
-        _aoe = command.IsMultiTargeted && !command.IsRandomlyTargeted;
-        // 新会话 = 段数还没算出来 ⇒ 先把"已知段数"清掉，免得上一张牌的多段判定渗到这一张
-        //（ModifyAttackHitCount 紧随其后就会把它设成真实值 ✓）。
-        _hitCount = 1;
-        _hitCountKnown = false;
+            _session = command;
+            _sessionStartedAt = now;
+            _aoe = command.IsMultiTargeted && !command.IsRandomlyTargeted;
+            // 新会话 = 段数还没算出来 ⇒ 先把"已知段数"清掉，免得上一张牌的多段判定渗到这一张
+            //（ModifyAttackHitCount 紧随其后就会把它设成真实值 ✓）。
+            _hitCount = 1;
+            _hitCountKnown = false;
+            // 「双持冲锋枪」风格（见 IsDualSmg）：只在**最外层会话**里改写，
+            // 嵌套命令（反伤 / 亡语 / 追击打出来的攻击）不改写 ⇒ 它们打断时风格依旧是外层这张牌的 ✓。
+            _dualSmg = command.CardPlay?.Card is DualSMG;
+            // 【开火序号】只在"换了一次出牌"时归零：同一次 DualSMG 出牌的逐敌循环 + 风暴第二轮
+            // 共用同一个 CardPlay 实例 ⇒ 不会在这里被重置（见 _smgShotIndex 的注释）✓。
+            if (command.CardPlay is { } smgPlay && !ReferenceEquals(smgPlay, _smgCardPlay))
+            {
+                _smgCardPlay = smgPlay;
+                _smgShotIndex = 0;
+            }
+        }
+        catch (Exception e)
+        {
+            // 【补救取舍：整体退回"没有会话 + 最保守风格"】（异常只可能来自上面那些读取/判定）
+            //   * `_session = null`：半写的会话**作废** —— 否则 `samePlay` 与 `Exit` 会拿着一个不完整的会话去
+            //     比较，可能把后面的嵌套/下一张牌长期误判成"同一张牌"；作废后下一次攻击会重新建立会话，
+            //     绝不会卡在半写状态 ✓（这就是"一致地回到未进入会话"那一档）。
+            //   * `_hitCountKnown = false`：`IsMultihit` 为 false ⇒ 不拿半写的段数去选动画 ✓。
+            //   * `_aoe = false` / `_dualSmg = false`：退回**原版徒手出拳**那条最通用的兜底路径 ——
+            //     宁可播普通出拳，也绝不要错误地播"横扫"或"双持开火" ✓。
+            //   * **不动** `_smgCardPlay` / `_smgShotIndex`：那是纯视觉序号（与游戏状态无关，只被视觉订阅读），
+            //     保留原值不会影响任何判定，也不会把交替逻辑搅乱 ✓。
+            _session = null;
+            _sessionStartedAt = 0;
+            _aoe = false;
+            _hitCount = 1;
+            _hitCountKnown = false;
+            _dualSmg = false;
+            // ⚠️ 日志打**整个异常**（含堆栈）而不是只打 Message：这一处正是"客户端 NRE 到底在哪一行"
+            //    的唯一线索来源，打全了下次才能定位 ✓。
+            Entry.Logger.Warn($"[Gaoshou] GaoshouAttackStyle.Enter 异常（已忽略，避免中断攻击行动）: {e}");
+        }
     }
 
     /// <summary>该命令执行完（挂在 <c>__result.ContinueWith</c>）：只有会话主人能收尾，且不清风格。</summary>
     public static void Exit(AttackCommand command)
     {
-        if (!ReferenceEquals(_session, command))
-            return;
+        // ⚠️【F1：包 try/catch（2026-09-29）】本方法挂在 `__result.ContinueWith(...)` 上：
+        //   它抛异常**不会**打断已经跑完的那次攻击（只会变成一条没被观察的 Task 异常），
+        //   但仍然一律包住 —— 免得异常在日志里伪装成"游戏 bug"，也保证会话一定收干净 ✓。
+        try
+        {
+            if (!ReferenceEquals(_session, command))
+                return;
 
-        _session = null;
+            _session = null;
+        }
+        catch (Exception e)
+        {
+            // 补救：会话引用本身出问题时，直接当作"没有会话"（下一次 Enter 会重建；
+            // 比留着一个脏引用安全 —— 脏引用会让后面的攻击被误判成"嵌套"）✓。
+            _session = null;
+            Entry.Logger.Warn($"[Gaoshou] GaoshouAttackStyle.Exit 异常（已忽略）: {e}");
+        }
     }
 
     /// <summary>
@@ -244,10 +382,31 @@ public static class GaoshouAttackStyle
     /// </summary>
     public static void CloseSession()
     {
-        _session = null;
-        // 攻击真的结束了 ⇒ 段数判定也一起作废，避免"上一串连击是多段"渗给下一张单击牌。
-        _hitCount = 1;
-        _hitCountKnown = false;
+        // ⚠️【F1：包 try/catch（2026-09-29）】本方法由状态机的 `AnimationStarted(idle)` 回调（视觉层）调用，
+        //   抛异常会直接冒进 Godot 的信号回调里；而它本身是"把跟踪状态清成固定值"的收尾动作
+        //   ⇒ 必须保证一定执行完 ✓。
+        try
+        {
+            _session = null;
+            // 攻击真的结束了 ⇒ 段数判定也一起作废，避免"上一串连击是多段"渗给下一张单击牌。
+            _hitCount = 1;
+            _hitCountKnown = false;
+            // 「双持冲锋枪」风格同理作废：视觉回到站姿之后就不该再有"开枪"命中被认成这张牌。
+            // ⚠️ 只清**风格**，**不动开火序号**：DualSMG 的逐敌循环之间/风暴第二轮之前，
+            //    视觉有可能先回一趟 idle（用户的"多段攻击等待时间"调得很短时），
+            //    那时序号必须继续往下走（用户明确要求交替不许归零）✓。
+            _dualSmg = false;
+        }
+        catch (Exception e)
+        {
+            // 补救：本方法自己就是"重置"，所以 catch 里**把同样的值再写一遍**兜底 ——
+            // 这几个都是纯字段写入（不会抛），目的只是保证绝不留下"清了一半"的状态 ✓。
+            _session = null;
+            _hitCount = 1;
+            _hitCountKnown = false;
+            _dualSmg = false;
+            Entry.Logger.Warn($"[Gaoshou] GaoshouAttackStyle.CloseSession 异常（已忽略）: {e}");
+        }
     }
 }
 

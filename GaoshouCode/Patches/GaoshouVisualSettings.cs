@@ -625,6 +625,338 @@ public sealed class GaoshouVisualSettings : SingletonModel
     public static (string Path, float Seconds)[] AttackVideoRightEffectiveSequence =>
         UseVideoPunch ? AttackVideoPunchRightSequence : AttackPunchRightSequence;
 
+    // ═══════════════ 战斗「双持冲锋枪」开火序列（上枪 / 下枪交替，2026-09-28 新增） ═══════════════
+    //
+    // 【素材】用户交付的 4 张**已抠像、已落位**的 PNG（源在 `_imgwork/_out/smg/flash/`）：
+    //   同一个持枪姿态下「上枪开火」(B_U_1/2) 与「下枪开火」(B_L_1/2) 各 2 帧（枪口火光 + 枪口上扬）。
+    //   进工程后沿用家族命名：Gaoshou_char_smg_u_1/2.png、Gaoshou_char_smg_l_1/2.png。
+    //
+    // 【画布与落位是**实测**出来的，别照抄别的家族】脚本量 alpha>8 的 bbox、底盘最下几行的
+    //   "两只鞋"分段中点（本文件里的注释只留结论，量法与数据同批记在 `_imgwork` 的交付说明里）：
+    //     * 画布 **640×512** —— 比站姿/出拳家族的 512 宽：枪管与火光往右伸，512 画布会把火光裁掉；
+    //     * 人物高 **332px**（同口径量站姿 Gaoshou_char_idle_1 = 333、出拳 Gaoshou_char_atk_ready1 = 332）
+    //       ⇒ **同一世界尺度，不要缩放**。（B_U_2 的 bbox 顶是 118、比别的帧高 8px，那是枪口火光多冒出来
+    //       一截，人物本体与脚底位置完全一致，别被它骗去改 scale ✗。）
+    //     * 两只鞋的底边 **y=457**（站姿 / 出拳同为 457）⇒ **不要纵向位移**；
+    //     * 鞋底中点 x ≈ **309~313**（实测 309.2 / 309.2 / 310.8 / 312.5），画布中心是 x=320。
+    //       作为对照，站姿家族本身是 253.8 / 250.2 对画布中心 256（即家族内部就有 −2~−6px 的抖动）
+    //       ⇒ 本次再偏 −5px 左右，0.8 倍后约 3~4px（人物显示高约 200px 的 2%），
+    //       **不补**（为什么不能补见下面的 Offset 警告）。
+    //
+    // 【为什么仍要写 DefaultStyle】Sprite2D 是**按贴图中心对齐**画的（战斗场景 gaoshou_visuals.tscn 里
+    //   Centered=true、position=(0,−160)、scale=0.8），512 与 640 两套画布"脚底 y=457 + 画布水平中心"
+    //   的约定相同 ⇒ 直接贴上去位置就是对的 ✓。但 RitsuLib 的帧序列播放器**只换 Sprite2D.Texture**
+    //   （CueFrameSequencePlayer.ApplyFrame），**不做任何尺寸/锚点归一化**，而样式是**绝对写死**的：
+    //   ApplyTo 里 `Position` 直接赋值、`Offset` 是 `Position += Offset`，且 `StopAndReset()`
+    //   **只清自己的播放状态、从不还原 Sprite2D 的变换**。所以这里显式把节点钉回**场景的规范变换**
+    //   （position=(0,−160)、scale=0.8、centered=true）——**幂等**：每帧写同一个值，
+    //   既保证与站姿一致，又不会把任何偏移漏给后面没有样式的 cue ✓。
+    //
+    // ⚠️【绝对不要用 Offset 做水平微调】两个理由，都是真会出事的：
+    //   ① `Offset` 是 `Position += Offset`，而 `ApplyFrame` **每换一帧就套一次样式**
+    //      ⇒ 只写 Offset（不写 Position）会让 Sprite **每帧往同一方向挪一次**（逐帧漂移）✗；
+    //   ② 就算配着 Position 一起写（每次都先赋值再加，所以不漂），偏移也会**留在节点上**：
+    //      开火 cue 播完之后，所有没写样式的 cue（idle / atk_guard / 受击 / 死亡）都会带着它
+    //      ⇒ 等于拿"整场战斗人物永久偏 3~4px"换"开火时准 3~4px"，只会更糟 ✗。
+
+    /// <summary>上枪开火的 cue / 状态 id（与 <see cref="SmgLowerCue" /> 按命中事件交替）。</summary>
+    public const string SmgUpperCue = "smg_u";
+
+    /// <summary>下枪开火的 cue / 状态 id。</summary>
+    public const string SmgLowerCue = "smg_l";
+
+    /// <summary>
+    /// 驱动 <see cref="SmgUpperCue" /> 的**专属触发器**（状态机在每次命中时 <c>SetTrigger</c> 它）。
+    ///
+    /// ⚠️ 必须是专属名字、**不能复用 `"Attack"`**：`"Attack"` 上还挂着出拳 / 横扫 / 连击的十几条分支，
+    ///    RitsuLib 取的是"注册顺序里第一个谓词通过的分支"（ModAnimState.CallTrigger）
+    ///    ⇒ 复用一定会被它们抢走（AoE 的「补刀」就踩过这个坑，见 <see cref="AoeNextCutTrigger" /> 的长注释）✗。
+    /// </summary>
+    public const string SmgUpperTrigger = "SmgShotUpper";
+
+    /// <inheritdoc cref="SmgUpperTrigger" />
+    public const string SmgLowerTrigger = "SmgShotLower";
+
+    /// <summary>每条开火序列的帧数（上/下枪各 2 帧：火光 → 枪口上扬）。</summary>
+    public const int SmgShotFrameCount = 2;
+
+    /// <summary>
+    /// 一次开火的**总时长**（秒）。
+    ///
+    /// 取 <c>0.13</c> 的依据：游戏每段命中都是"先派发 `Attack` 触发器（CreatureCmd.cs:995），
+    /// 再等 `CustomScaledWait(min(AttackAnimDelay*0.5, 0.25), AttackAnimDelay)`（:996）才结算伤害"，
+    /// 而 <c>AttackAnimDelay</c> = 0.13s（<c>GaoshouCharacter.AttackAnimDelay</c>）
+    /// ⇒ 序列正好在"这一发的伤害到账"时播完 ✓（与出拳路径"每拳 0.33s 对上出伤"同一个思路）。
+    /// 🎚️ 想更慢就调大（但注意 DualSMG 的段间隔 ≈0.13s，调太大会让每发的第 2 帧总被下一段打断）。
+    /// </summary>
+    public const float SmgShotTotalSeconds = 0.13f;
+
+    /// <summary>开火帧贴图路径：<paramref name="variant" /> 传 <c>"u"</c>（上枪）或 <c>"l"</c>（下枪）。</summary>
+    public static string SmgFramePath(string variant, int frame)
+    {
+        return Entry.ResPath + "/images/characters/Gaoshou_char_smg_" + variant + "_" + frame + ".png";
+    }
+
+    /// <summary>上枪开火序列（2 帧、一次性；每帧时长 = <see cref="SmgShotTotalSeconds" /> ÷ 帧数，再按加速模式折算）。</summary>
+    public static (string Path, float Seconds)[] SmgUpperSequence => BuildSmgShotSequence("u");
+
+    /// <inheritdoc cref="SmgUpperSequence" />
+    public static (string Path, float Seconds)[] SmgLowerSequence => BuildSmgShotSequence("l");
+
+    /// <summary>
+    /// 构造一条开火序列（帧序原样、时长等分 —— 与视频版出拳 / AoE 同一思路）。
+    ///
+    /// ⚠️ 与 AoE 一样乘 <see cref="GameFastModeScale" />：加速模式下每段命中的间隔**减半**
+    ///    （`CustomScaledWait` 的 fast 参数），开火序列不跟着缩短的话，
+    ///    每一发的第 2 帧（枪口上扬）都会被下一段命中截断、只剩火光那一帧 ✗。
+    /// </summary>
+    private static (string Path, float Seconds)[] BuildSmgShotSequence(string variant)
+    {
+        // 帧数是常量（= 2），所以这里不做"帧数 < 1"的兜底分支（那会被编译器判成不可达代码 CS0162 ✗）。
+        // 若哪天有人把它改成 0：数组长度为 0 ⇒ 返回空序列 ⇒ SmgShotMaterialAvailable 判为不可用
+        // ⇒ cue / 状态 / 分支**一条都不会挂**，绝不会出现"空序列 cue"
+        //（空序列会让 CueFrameSequencePlayer.TryStart 返回 false ⇒ 状态卡在"进了等于没进" ✗）。
+        var per = SmgShotTotalSeconds * GameFastModeScale / SmgShotFrameCount;
+        var frames = new (string, float)[SmgShotFrameCount];
+        for (var i = 0; i < SmgShotFrameCount; i++)
+            frames[i] = (SmgFramePath(variant, i + 1), per);
+        return frames;
+    }
+
+    /// <summary>
+    /// 开火素材是否**真的可用**（上/下两条序列都非空且路径非空）。
+    ///
+    /// 【为什么必须有这个闸门】与 <see cref="AttackLoopMaterialAvailable" /> 同一个理由：
+    /// <c>ModAnimStateMachine.EnterState</c> 第一句就是
+    /// <c>if (!Backend.HasAnimation(state.Id)) { Warn; return; }</c>（ModAnimStateMachine.cs:167-172）
+    /// —— cue 不存在时它既不进状态也不播任何 cue，画面停在上一帧且**永远等不到 Completed** ✗。
+    /// 所以"要不要挂开火路径"必须在**注册分支之前**按素材可用性决定。
+    ///
+    /// ⚠️ 持枪待机（smg_hold）**不在本判定里**：它是**独立的第二个闸门**
+    ///    <see cref="UseSmgHold" />（见那段注释）—— hold 素材缺失时开火照旧、只是收尾退回 atk_guard ✓。
+    /// </summary>
+    public static bool SmgShotMaterialAvailable =>
+        SmgUpperSequence.Length > 0 &&
+        SmgLowerSequence.Length > 0 &&
+        SmgUpperSequence.All(static frame => !string.IsNullOrWhiteSpace(frame.Path)) &&
+        SmgLowerSequence.All(static frame => !string.IsNullOrWhiteSpace(frame.Path));
+
+    /// <summary>
+    /// 是否启用「双持冲锋枪」开火序列：**anim_set = new** 且素材可用。
+    ///
+    /// ⚠️ 状态机侧的 **cue 注册 / 状态声明 / 分支注册** 三处**必须共用这一个判定**
+    ///    （两处不一致就会出现"注册了分支、没注册 cue"的死状态，见 <see cref="UseAttackLoop" /> 的教训）。
+    ///    legacy 素材档（<see cref="UseLegacyAnimSet" /> = true）时为 false ⇒ 两条 cue / 两个状态 /
+    ///    所有分支**一条都不挂**，行为与改动前逐条完全一致 ✓；
+    ///    静态图档（<see cref="UseFrameSequences" /> = false）更早就在 BuildCombatCues 里返回了，也碰不到 ✓。
+    ///
+    /// ⚠️【2026-09-28 改动的门控范围】现在 smg 这条路径是**两个门控**串起来的：
+    ///    <see cref="UseSmgShots" />（开火素材）⇒ 两条开火 cue / 两个开火状态 / 两个 any-state 触发器；
+    ///    <see cref="UseSmgHold" />（= 本属性 **且** hold 素材可用）⇒ 持枪待机那条 cue / 那个状态 / 那几条边。
+    ///    本属性**仍然只为开火那三处服务**（smg_hold 一律走 <see cref="UseSmgHold" />）：
+    ///    hold 素材缺失时开火照旧、收尾退回 atk_guard（上一版行为），不会造出指向不存在 cue 的边 ✓。
+    /// </summary>
+    public static bool UseSmgShots => !UseLegacyAnimSet && SmgShotMaterialAvailable;
+
+    /// <summary>
+    /// 开火帧的显示样式：把 Sprite2D **钉回战斗视觉场景的规范变换**（见本节开头的大段实测与推演）。
+    /// ⚠️ 只能写 <c>Position</c> / <c>Scale</c> / <c>Centered</c> 这类**幂等**的值，
+    ///    **绝不能写 <c>Offset</c>**（会逐帧漂移，并且播完还留在节点上漏给别的 cue）。
+    /// </summary>
+    public static readonly VisualNodeStyle SmgShotStyle = VisualNodeStyle.Create(
+        position: new Vector2(0f, -160f),
+        scale: new Vector2(0.8f, 0.8f),
+        centered: true);
+
+    // ═══════════ 战斗「双持冲锋枪」**持枪待机**（smg_hold，2026-09-28 新增） ═══════════
+    //
+    // 【要解决的问题】上一版把 smg_u / smg_l 直接 `WithNext(atk_guard)` —— 2 帧火光播完就落进
+    //   **徒手架势**那张图（ready2），实机两个症状：
+    //     ① 打完之后看到的是**徒手**架势（这一档明明是持枪，姿势不对）✗；
+    //     ② 一发打完之后走 guard → retract → idle 退回站姿，下一发再进来就**又带一次入场过渡**
+    //        ⇒ "普通目标每次攻击之间插入一段攻击等待 / 入场动画" ✗。
+    //   根因是同一个：**把"两次命中之间的停留"也交给了收拳链去处理**。
+    //
+    // 【做法】新增一条**持枪待机**静态 cue（`smg_hold`），让 smg_u / smg_l 播完落到它上面、
+    //   并在**整串攻击会话期间一直停在它上面**（后续命中只是 any-state 换个 smg_u / smg_l 的火光，
+    //   落点仍是 smg_hold）⇒ 既不再回徒手、也不会在两次命中之间插进收拳/入场 ✗→✓。
+    //   只有"这一串攻击真的打完了"（= 最近一次命中之后过了 GuardHoldSeconds）才发 GuardEnd
+    //   ⇒ 走**原来那条** atk_guard 同款的收尾链 atk_retract_* → idle ✓。
+    //
+    // 【素材】`_imgwork/_out/smg/flash/HOLD_1.png`（HOLD_2 / HOLD_3 是同一姿态的其它帧）。
+    //   已实测与交付的 smg_u/l **同画布 640×512、同脚底 y=457、同行高 333**（鞋底 y=457、
+    //   底盘最低几行两只鞋的中点 x≈220 / 400 —— 与 B_U_1 完全一致）⇒ **无需缩放、无需位移**，
+    //   原样入库即可 ✓。
+
+    /// <summary>「持枪待机」的 cue / 状态 id：smg_u / smg_l 播完落到它上面，整串攻击期间一直保持。</summary>
+    public const string SmgHoldCue = "smg_hold";
+
+    /// <summary>
+    /// 「持枪待机」静态贴图（640×512、脚底 y=457、人物高 333，与 <see cref="SmgUpperSequence" /> 同尺度同脚底线）。
+    ///
+    /// ⚠️ **不是** smg_u/l 序列的某一帧：那两帧都带枪口火光，停在火光上会像"一直在开枪" ✗。
+    ///    本图是**枪口已复位**的持枪待机姿态，正是"两次命中之间 / 一整串打完之后"该有的样子 ✓。
+    /// </summary>
+    public const string SmgHoldTexturePath =
+        Entry.ResPath + "/images/characters/Gaoshou_char_smg_hold.png";
+
+    /// <summary>
+    /// 持枪待机素材是否可用（路径非空）。
+    ///
+    /// 【为什么也要这个闸门】与 <see cref="SmgShotMaterialAvailable" /> 完全同一个理由：
+    ///   <c>ModAnimStateMachine.EnterState</c> 第一句就是
+    ///   <c>if (!Backend.HasAnimation(state.Id)) { Warn; return; }</c>（ModAnimStateMachine.cs:167-172）
+    ///   —— cue 不存在时它既不进状态也不播任何 cue，画面停在上一帧且**永远等不到 Completed** ✗。
+    ///   所以"要不要把 smg_u/l 接到 smg_hold"必须在**注册分支之前**按素材可用性决定。
+    ///
+    /// ⚠️ 这是**独立于 <see cref="SmgShotMaterialAvailable" /> 的第二个闸门**：
+    ///    在 <see cref="UseSmgShots" /> 已为真的前提下，万一将来有人只删了 hold 贴图，
+    ///    状态图会自动退回"smg_u/l → atk_guard"（上一版行为）而不是造出一条**指向不存在 cue 的边** ✗。
+    /// </summary>
+    public static bool SmgHoldMaterialAvailable => !string.IsNullOrWhiteSpace(SmgHoldTexturePath);
+
+    /// <summary>
+    /// 是否启用「持枪待机」：<see cref="UseSmgShots" /> 且 hold 素材可用。
+    ///
+    /// ⚠️ 状态机侧 **cue 注册 / 状态声明 / 分支注册** 三处**必须共用这一个判定**
+    ///    （与 <see cref="UseSmgShots" /> 同一个纪律；两处不一致就会出现"注册了分支、没注册 cue"的死状态）。
+    ///    为 false 时 hold 那条 cue / 那个状态 / 那几条分支**一条都不挂**，
+    ///    smg_u / smg_l 的 `WithNext` 退回 atk_guard ⇒ 状态图与"加 hold 之前"**逐条完全一致** ✓
+    ///    （legacy 档、静态图档自然也碰不到：<see cref="UseSmgShots" /> 已是它们的前置条件）。
+    /// </summary>
+    public static bool UseSmgHold => UseSmgShots && SmgHoldMaterialAvailable;
+
+    // ═════════ 战斗「双持冲锋枪」**掏枪 / 收枪**（smg_draw / smg_exit，2026-09-29 新增） ═════════
+    //
+    // 【要解决的问题】有了 hold 之后，整串连击是"从徒手站姿**直接蹦到**持枪开火"、打完又从持枪
+    //   **直接蹦回**站姿 —— 两头都缺过渡 ⇒ 观感上枪是"凭空出现 / 凭空消失"的。这里补上掏枪与收枪。
+    //
+    // 【掏枪素材】`_imgwork/_out/smg/draw5/D_01..D_06.png`，**6 帧**：站姿 → 探手进腰侧 → 亮枪 →
+    //   举枪 → 单枪端起 → **双持**。实测 **640×512、脚底 y=456、人物高 327~333**，
+    //   与 smg_u / smg_l / smg_hold **同画布同尺度**（脚底比那三张低 1px、鞋底中点 x≈305~310 vs 310，
+    //   都是素材自身的抖动；居中贴图下 0.8 倍后不足 1px ⇒ **不补**，理由同 <see cref="SmgShotStyle" />）✓。
+    //   **末帧 D_06 与 hold 的轮廓 IoU = 0.965** ⇒ 掏枪的落点与 <see cref="SmgHoldCue" /> 对齐、零跳变 ✓。
+    //
+    // 【掏枪时长：**总时长不变、帧数变密**（2026-09-29 用户实机反馈）】
+    //   实机反馈进入"有点闪回（太快）" ⇒ 用户要求**保持总时长、只增加帧数**：
+    //   4 帧 × 33ms  →  **6 帧 × 22ms**，合计仍是 **0.132 秒** ✓。
+    //   这个总时长不是随手取的：它正好是现有出拳起手的预算
+    //   （`atk_ready1` 0.06 + `atk_ready2` 0.07 = 0.13 = <c>AttackAnimDelay</c>）
+    //   ⇒ 掏枪与"第一段伤害结算"同源同节奏，不会把第一发实弹往后推 ✓。
+    //
+    // 【收枪素材：**独立的一套 16 帧**（不再是掏枪倒放，2026-09-29 三轮用户实机反馈）】
+    //   * 第一轮"离开那一下太快、不舒服" ⇒ 从"掏枪倒放"换成独立 8 帧（exit5，0.36s）；
+    //   * 第二轮"枪回斗篷那段一闪而过"（8 帧只覆盖到 2 帧）⇒ 加到 12 帧（exit6，0.48s）；
+    //   * 第三轮"收枪后**回 stance 那一段有点短**" ⇒ 加到 **16 帧**（多出的后 8 帧专补"回站姿"段），
+    //     每帧仍 40ms ⇒ **16 帧 × 40ms = 0.64 秒** ✓。
+    //     素材：`_imgwork/_out/smg/DELIVER/Gaoshou_char_smg_exit_1..16.png`；
+    //     exit_2..15 是 **Fibo 正式抠像**（mov_proresks + despill，直通 alpha），
+    //     其中 4 帧（exit_2 / 9 / 10 / 11）因 Fibo 在画面上方留了一块约 65×40 的残留，
+    //     **回退到本地带容差边缘抠像**（与其它已验收素材同一条管线）✓。
+    //   * 两端对齐（实测轮廓 IoU vs hold）：首帧 exit_1 = **0.965**（= `draw_6` 的同一张图 ⇒
+    //     从 `smg_hold` 切进去零跳变 ✓）、末帧 exit_16 = **0.801**（= `draw_1` 的同一张图 = 站姿 ⇒
+    //     落回 idle 零跳变 ✓；两张都与对应 draw 帧**逐字节相同**，已核对）。
+    //     ⚠️ 那 4 张"本地抠像回退"帧我另外查过**画面上方 y<110 的 alpha 像素 = 0** ⇒ 没有残留 ✓。
+    //   ⚠️ 因此**两条序列不共用贴图**：掏枪 6 张（`..._smg_draw_N`）/ 收枪 16 张（`..._smg_exit_N`），
+    //      各自独立、可以单独调时长与张数（这正是用户要的"进入保持时长只加帧数、离开单独放慢"）✓。
+
+    /// <summary>掏枪的 cue / 状态 id（会话开始、且此刻在 idle 时进入；播完落到 <see cref="SmgHoldCue" />）。</summary>
+    public const string SmgDrawCue = "smg_draw";
+
+    /// <summary>收枪的 cue / 状态 id（<see cref="SmgHoldCue" /> 的 GuardEnd 出口；播完回 idle）。</summary>
+    public const string SmgExitCue = "smg_exit";
+
+    /// <summary>
+    /// 驱动 <see cref="SmgDrawCue" /> 的**专属触发器**（状态机在"一次出牌的第一段命中、且当前在 idle"时发出）。
+    /// 专属名字的理由同 <see cref="SmgUpperTrigger" />：不能复用 `"Attack"`，否则会被别的分支按注册顺序抢走 ✗。
+    /// </summary>
+    public const string SmgDrawTrigger = "SmgDraw";
+
+    /// <summary>掏枪序列的帧数（Gaoshou_char_smg_draw_1..N.png，N = 6）。</summary>
+    public const int SmgDrawFrameCount = 6;
+
+    /// <summary>
+    /// 掏枪**每帧**时长（秒）：用户 2026-09-29 反馈"进入有点闪回（太快）" ⇒ 按"**总时长不变、帧数变密**"
+    /// 的要求从 33ms 改成 **22ms**（4 帧 × 33ms = 6 帧 × 22ms = **0.132s**，与出拳起手预算对齐）✓。
+    /// </summary>
+    public const float SmgDrawFrameSeconds = 0.022f;
+
+    /// <summary>收枪序列的帧数（Gaoshou_char_smg_exit_1..N.png，N = 16，**独立素材、不是掏枪倒放**）。</summary>
+    public const int SmgExitFrameCount = 16;
+
+    /// <summary>
+    /// 收枪**每帧**时长（秒）。三轮迭代都是用户实机反馈驱动的：
+    ///   * 第一次："离开那一下太快、不舒服" ⇒ 从"掏枪倒放（0.132s）"改成**独立 8 帧** × 45ms = 0.36s；
+    ///   * 第二次："枪回斗篷那段一闪而过"（8 帧里只覆盖到 2 帧）⇒ 加到 12 帧、每帧 40ms = 0.48s；
+    ///   * 第三次："收枪后回 stance 那一段有点短" ⇒ 加到 **16 帧**（后 8 帧专补"回站姿"段），
+    ///     每帧仍 **40ms** ⇒ 合计 **0.64 秒**（比 12 帧那版更长，且回站姿段帧数翻倍）✓。
+    /// </summary>
+    public const float SmgExitFrameSeconds = 0.040f;
+
+    /// <summary>掏枪帧贴图路径（序号 = D_01..D_06 的序号）。</summary>
+    public static string SmgDrawFramePath(int frame)
+    {
+        return Entry.ResPath + "/images/characters/Gaoshou_char_smg_draw_" + frame + ".png";
+    }
+
+    /// <summary>收枪帧贴图路径（序号 = exit_1..exit_16）。</summary>
+    public static string SmgExitFramePath(int frame)
+    {
+        return Entry.ResPath + "/images/characters/Gaoshou_char_smg_exit_" + frame + ".png";
+    }
+
+    /// <summary>掏枪序列（D_01 → D_06，6 帧 × 22ms，一次性；播完由状态机 `WithNext` 落到 <see cref="SmgHoldCue" />）。</summary>
+    public static (string Path, float Seconds)[] SmgDrawSequence =>
+        BuildSmgSegment(SmgDrawFramePath, SmgDrawFrameCount, SmgDrawFrameSeconds);
+
+    /// <summary>收枪序列（E_01 → E_12，12 帧 × 40ms，一次性；播完由 `WithNext` 回 idle）。</summary>
+    public static (string Path, float Seconds)[] SmgExitSequence =>
+        BuildSmgSegment(SmgExitFramePath, SmgExitFrameCount, SmgExitFrameSeconds);
+
+    /// <summary>
+    /// 构造一条"定长帧、等时长"的序列（掏枪 / 收枪共用；与出拳 / AoE / 开火那几套同一思路）。
+    ///
+    /// ⚠️ 与 AoE / 开火**不同：这里不乘 <see cref="GameFastModeScale" />**。理由：
+    ///    * 掏枪的 0.132s 是用户按"出拳起手预算"指定的**对齐量**（对齐 `AttackAnimDelay`）；
+    ///    * 而 `AttackAnimDelay` 在加速模式下**并不减半** —— `CustomScaledWait(min(delay*0.5, 0.25), delay)`
+    ///      只是把**等待**取小（伤害提前结算），动画本身的时长没有变；
+    ///   ⇒ 两条序列都保持固定每帧时长，"掏枪刚好在第一次伤害结算时完成"这条对齐在两种档位下都成立 ✓。
+    ///   （开火序列要乘 scale 是因为那里对齐的是"**段间隔**"，而段间隔在加速模式下确实减半。）
+    /// </summary>
+    private static (string Path, float Seconds)[] BuildSmgSegment(
+        Func<int, string> pathOf, int frameCount, float frameSeconds)
+    {
+        var frames = new (string, float)[frameCount];
+        for (var i = 0; i < frameCount; i++)
+            frames[i] = (pathOf(i + 1), frameSeconds);
+        return frames;
+    }
+
+    /// <summary>掏枪素材是否可用（序列非空且路径非空）。理由同 <see cref="SmgShotMaterialAvailable" />。</summary>
+    public static bool SmgDrawMaterialAvailable =>
+        SmgDrawSequence.Length > 0 &&
+        SmgDrawSequence.All(static frame => !string.IsNullOrWhiteSpace(frame.Path));
+
+    /// <summary>收枪素材是否可用（序列非空且路径非空）—— 与掏枪**各自独立**判定（两套素材已分开）。</summary>
+    public static bool SmgExitMaterialAvailable =>
+        SmgExitSequence.Length > 0 &&
+        SmgExitSequence.All(static frame => !string.IsNullOrWhiteSpace(frame.Path));
+
+    /// <summary>
+    /// 是否启用「掏枪 / 收枪」：<see cref="UseSmgHold" /> 且**两套**素材都可用
+    /// （<see cref="SmgDrawMaterialAvailable" /> / <see cref="SmgExitMaterialAvailable" />）。
+    ///
+    /// ⚠️ 这是**第三个独立闸门**（与 <see cref="UseSmgShots" /> / <see cref="UseSmgHold" /> 同一个纪律：
+    ///    状态机侧 cue 注册 / 状态声明 / 分支注册三处必须共用它）：
+    ///    为 false 时这两条 cue / 两个状态 / 那几条边**一条都不挂** ⇒ 行为**精确退回"加掏枪之前"**那一层
+    ///    （首击直接从 idle 开火、`GuardEnd` 直接去 `atk_retract_*`）✓。
+    ///    ⚠️ 这里刻意**两套一起判**（而不是各判各的）：`smg_draw` 与 `smg_exit` 是一条链的两端，
+    ///       只挂一半会出现"掏了枪收不回去 / 收枪但没掏过枪"的半截状态 ✗。
+    /// ⚠️ 必须挂在 <see cref="UseSmgHold" /> **之下**：掏枪的落点就是 hold、收枪的起点也是 hold，
+    ///    hold 都不在时这两条序列没有可接的地方（会造出指向不存在 cue 的边 ✗）。
+    /// </summary>
+    public static bool UseSmgDraw => UseSmgHold && SmgDrawMaterialAvailable && SmgExitMaterialAvailable;
+
     // 收拳前的"架势停留时长"已改成设置项，见属性 GuardHoldSeconds（设置页：帧序列选项 → 多段攻击动画等待时间（拳））。
 
     // ---- 战斗「连续攻击」循环帧序列（H3 视频 → Bria Fibo 抠像 → 切环，2026-09-26 新增）----
