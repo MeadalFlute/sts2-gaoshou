@@ -14,10 +14,12 @@ using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Entities.Relics;
 using MegaCrit.Sts2.Core.Events;
 using MegaCrit.Sts2.Core.Factories;
+using MegaCrit.Sts2.Core.GameActions.Multiplayer;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Models.Acts;
 using MegaCrit.Sts2.Core.Rewards;
 using MegaCrit.Sts2.Core.Runs;
+using MegaCrit.Sts2.Core.Runs.History;
 using STS2RitsuLib.Interop.AutoRegistration;
 using STS2RitsuLib.Scaffolding.Content;
 
@@ -28,8 +30,12 @@ namespace Gaoshou.Events;
 public sealed class GrandLibrary : ModEventTemplate
 {
     // 网格里给几张候选、最多能拿几张。
-    private const int OfferedCardCount = 20;
-    private const int MaxSelectCount = 2;
+    // 【2026-09-30 调整】候选 20 -> 50、至多 2 -> 至多 3（用户要求，扩大大书库的牌组整形力度）。
+    // 说明：NCardGrid 自带滚动（`_scrollingEnabled = true` 默认值，NCardGrid.cs:339）且有列数重排
+    // `ReflowColumns`，原版 SealedDeck 就在同一个网格里给 30 张（最多选 10 张），所以 50 张不会溢出、
+    // 只是需要滚动查看（比原版任何一次性给牌都多，但机制上是同一套）。
+    private const int OfferedCardCount = 50;
+    private const int MaxSelectCount = 3;
 
     // 本模组「神秘」的卡牌 Id（升级与否都是同一个 Id）。
     private const string CrypticCardId = "GAOSHOU_CARD_CRYPTIC";
@@ -58,7 +64,7 @@ public sealed class GrandLibrary : ModEventTemplate
     private bool DeckHasCryptic()
         => Owner!.Deck.Cards.Any(c => c.Id.Entry == CrypticCardId);
 
-    /// <summary>借阅：从 20 张任意角色的牌里选至多 2 张加入牌组。</summary>
+    /// <summary>借阅：从 50 张任意角色的牌里选至多 3 张加入牌组。</summary>
     private async Task Borrow()
     {
         // 多池：所有已解锁角色的卡池（和原版「色彩哲学家」一个路子）。
@@ -79,8 +85,34 @@ public sealed class GrandLibrary : ModEventTemplate
         // 所以这里退回用「借阅」选项自己的 .description。
         var prompt = GetOptionDescription(InitialOptionKey("BORROW")) ?? PageDescription("INITIAL");
 
-        // base 方法会自动把选中的牌加进牌组；MinSelect=0 允许「一张都不拿」直接确认。
-        await SelectCardsToAddToDeckFromGrid(cards, new CardSelectorPrefs(prompt, 0, MaxSelectCount));
+        // 【2026-09-30 双版本兼容】这里原本调游戏的基类辅助方法
+        //     await SelectCardsToAddToDeckFromGrid(cards, prefs);        // EventModel.cs:648
+        // 该方法只存在于当前安装的 0.111.0 里；另一个要兼容的版本分支（用户实测的「正式版」）
+        // 的 EventModel 里**整个方法都不存在**，导致那个版本上点击「借阅」直接抛
+        // MissingMethodException 并卡死事件（CVC 也修不了：重定向表无法凭空造基类方法）。
+        //
+        // 注意：候选牌 cards 的**来源完全不动**（仍是上面 69-74 行那套「所有已解锁角色卡池」的
+        // 逻辑，与 RoomFullOfCheese/BrainLeech 那种"只从玩家自己角色池抽"完全不同）；这里只把
+        // 「选牌这一步」就地展开。展开内容与 0.111.0 的基类方法 EventModel.cs:648-660 逐行等价：
+        //     :650  FromSimpleGridForRewards(new BlockingPlayerChoiceContext(), cards, Owner, prefs)
+        //     :652-655  对选中的每张 PreviewCardPileAdd(await CardPileCmd.Add(card, PileType.Deck))
+        //     :656-659  把未选中的记入地图历史 CardChoices(wasPicked: false)   -> 供 RunMetrics/历史悬浮
+        // 其中用到的 API 经核对在两棵树里都存在（含 Runs.History.CardChoiceHistoryEntry）。
+        var prefs = new CardSelectorPrefs(prompt, 0, MaxSelectCount);
+        var selected = (await CardSelectCmd.FromSimpleGridForRewards(
+            new BlockingPlayerChoiceContext(), cards, Owner!, prefs)).ToList();
+        var unselected = cards.Where(c => !selected.Contains(c.Card)).ToList();
+
+        foreach (var card in selected)
+        {
+            CardCmd.PreviewCardPileAdd(await CardPileCmd.Add(card, PileType.Deck));
+        }
+
+        foreach (var u in unselected)
+        {
+            Owner!.RunState.CurrentMapPointHistoryEntry.GetEntry(Owner!.NetId)
+                .CardChoices.Add(new CardChoiceHistoryEntry(u.Card, wasPicked: false));
+        }
 
         GoToAfterPage();
     }

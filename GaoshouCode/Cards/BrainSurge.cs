@@ -77,7 +77,13 @@ public sealed class BrainSurge : ModCardTemplate
         var pickCount = System.Math.Min(DynamicVars.GetRequired<IntVar>("PickCount").IntValue, available);
         var pickPrefs = new CardSelectorPrefs(
             new LocString("cards", "GAOSHOU_BRAIN_SURGE_PICK_PROMPT"), 0, pickCount);
-        var picked = (await CardSelectCmd.FromCombatPile(choiceContext, discardPile, player, pickPrefs, null)).ToList();
+        // [2026-09-30 双版本兼容] 原本这里传显式 null 过滤器（5 参重载）。当前安装的 0.111.0 里
+        // 该 5 参重载参数可空、内部判空（null = 整堆不过滤）；但另一个要兼容的版本分支里它
+        // 参数不可空、直接 pile.Cards.Where(filter)（CardSelectCmd.cs:380/390），
+        // 在那个版本上会抛 ArgumentNullException 导致选牌失败。
+        // 改用 4 参重载：它在两棵树里都存在，实现都是 FromCombatPile(..., (CardModel _) => true)，
+        // 语义与原先传 null 完全相同（原版 Graveblast.cs:31 也是用 4 参这个形态）。
+        var picked = (await CardSelectCmd.FromCombatPile(choiceContext, discardPile, player, pickPrefs)).ToList();
         if (picked.Count != 0)
             await CardPileCmd.Add(picked, PileType.Hand);
     }
