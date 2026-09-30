@@ -150,6 +150,7 @@ public sealed class WastePreviewPatch : IPatchMethod
             "ConsumePendingRefresh", "ProcessPendingScan", "Collect", "ApplyCurrent", "EnsurePreviewNodes",
             "IsOurSet", "PruneSets", "PreviewCardsIn", "RefreshVisiblePreviews", "HasVisiblePreview",
             "RequestRefresh", "get_PreviewRegistered", "WarmUp",
+            "LooksLikeScreen", "GetTypeName", "IsOurCardNameInSubtree",
         };
 
         var flags = System.Reflection.BindingFlags.Static
@@ -228,7 +229,13 @@ public sealed class WastePreviewPatch : IPatchMethod
         var startUsec = Time.GetTicksUsec();
 
         if (!EnsurePreviewNodes(__instance))
+        {
+            PreviewActive = false;
             return;
+        }
+
+        // 预览确实在屏幕上 ⇒ 供滚轮补丁做"独占"判定（纯字段写 ✓，不产生任何调用 ✓）
+        PreviewActive = CachedPreviewNodes.Count > 0;
 
         // 滚轮那条补丁只写"纯数据"（WastePreview.Step + RequestRefresh），真正的节点更新在这里做
         //（这个 _Process 上下文做节点操作是**已被实证可用**的 ✓）。
@@ -273,6 +280,12 @@ public sealed class WastePreviewPatch : IPatchMethod
 
     /// <summary>是否已经有"我们的"悬浮窗被登记（**纯 C# 数据**，不做任何节点操作）。</summary>
     internal static bool PreviewRegistered => OurSets.Count > 0;
+
+    /// <summary>
+    /// **废品牌预览此刻是否真的显示着**（由 `_Process` 这个安全上下文里算好，滚轮补丁只**读字段** ✓）。
+    /// 独占判定就用它 ⇒ 滚轮回调里零节点操作、零我们方法的首次 JIT ✓
+    /// </summary>
+    internal static bool PreviewActive;
 
     /// <summary>请求刷新（滚轮补丁调用）：只置一个 bool，真正的节点更新交给已实证可用的 <c>_Process</c> 补丁。</summary>
     internal static void RequestRefresh()
@@ -348,7 +361,64 @@ public sealed class WastePreviewPatch : IPatchMethod
         if (grand != null && IsOurCardNodeName(SafeName(grand)))
             return true;
 
+        // ③ 详情页（"查看卡牌"）这类**包装屏幕**：owner 是屏幕本身、卡片在它**下面** ⇒ 需要**下溯**找名字。
+        //    仅当 owner 的类型名像"屏幕/容器"时才做（避免对每个悬停节点都扫子树 ✗），且限深限量 ✓。
+        if (LooksLikeScreen(node) && IsOurCardNameInSubtree(node, 0))
+            return true;
+
         return ModelCheckJitOk && IsPreviewNodeByModel(node);
+    }
+
+    /// <summary>节点类型名是否像"屏幕/容器"（**纯托管字符串**：`GetType().Name` ✓ 不涉及游戏类型句柄 ✓）。</summary>
+    private static bool LooksLikeScreen(Node node)
+    {
+        var typeName = GetTypeName(node);
+        return typeName.Contains("Screen", System.StringComparison.Ordinal)
+            || typeName.Contains("Inspect", System.StringComparison.Ordinal)
+            || typeName.Contains("Layout", System.StringComparison.Ordinal)
+            || typeName.Contains("Container", System.StringComparison.Ordinal)
+            || typeName.Contains("View", System.StringComparison.Ordinal);
+    }
+
+    /// <summary>类型名（托管调用，失败返回空串 ✓）。</summary>
+    private static string GetTypeName(Node node)
+    {
+        try
+        {
+            return node.GetType().Name;
+        }
+        catch (System.Exception)
+        {
+            return string.Empty;
+        }
+    }
+
+    /// <summary>
+    /// 在子树里按**节点名**找我们的卡（详情页路径）：限深 6 层、最多扫 200 个节点 ✓（纯字符串 ✓）。
+    /// </summary>
+    private static bool IsOurCardNameInSubtree(Node node, int depth)
+    {
+        if (depth > 6 || !GodotObject.IsInstanceValid(node))
+            return false;
+
+        var children = node.GetChildren();
+        var budget = 200;
+        foreach (var child in children)
+        {
+            if (budget-- <= 0)
+                break;
+
+            if (child == null || !GodotObject.IsInstanceValid(child))
+                continue;
+
+            if (IsOurCardNodeName(SafeName(child)))
+                return true;
+
+            if (IsOurCardNameInSubtree(child, depth + 1))
+                return true;
+        }
+
+        return false;
     }
 
     /// <summary>模型判据版（含游戏类型 `is` 与游戏成员读取 ✗）——只在 PrepareMethod 成功时才使用 ✓。</summary>
@@ -449,10 +519,10 @@ public sealed class WastePreviewPatch : IPatchMethod
         Diag($"[WasteDiag] registered #{_diagRegister} owner={Describe(owner)} set={SafeName(set)} ourSets={OurSets.Count}");
     }
 
-    /// <summary>owner 判定为 false 一行：证明"登记没发生"，并给出 owner 及其父级链。</summary>
+    /// <summary>owner 判定为 false 一行：证明"登记没发生"，并给出 owner 的类型+名字+父级链（详情页排查关键 ✓）。</summary>
     internal static void DiagOwnerMiss(Node? owner)
     {
-        if (_diagMiss >= 10)
+        if (_diagMiss >= 20)                // 详情页的 owner 往往排在后面 ⇒ 放宽到 20 ✓
             return;
         _diagMiss++;
         Diag($"[WasteDiag] owner-miss #{_diagMiss} owner={Describe(owner)} chain={DescribeChain(owner)}");
@@ -581,6 +651,9 @@ public sealed class WastePreviewPatch : IPatchMethod
     private static void PruneSets()
     {
         OurSets.RemoveWhere(set => !GodotObject.IsInstanceValid(set));
+
+        if (OurSets.Count == 0)
+            PreviewActive = false;      // 悬浮窗全没了 ⇒ 独占立即失效（纯字段写 ✓）
     }
 
     /// <summary>

@@ -48,7 +48,7 @@ public sealed class WastePreviewWheelPatch : IPatchMethod
         // 调用点是原版输入回调：任何异常都会污染原版输入处理并在日志里刷 ERROR ⇒ 兜住，但**记完整栈** ✓
         try
         {
-            return PrefixCore(inputEvent);
+            return PrefixCore(__instance, inputEvent);
         }
         catch (System.Exception e)
         {
@@ -60,19 +60,25 @@ public sealed class WastePreviewWheelPatch : IPatchMethod
     private static bool _warned;
 
     /// <summary>
-    /// **纯数据版**：运行时**不碰任何 Godot 节点/工具方法** ✗（2026-09-30 正式版：MonoMod 的 JIT hook 会在
-    /// "从补丁回调里调用我方节点遍历方法"时抛 `ArgumentException` ✗ ⇒ 预热也救不了，因为失败是**上下文相关**的 ✓）。
-    /// 这里只做：纯 C# 的 `PreviewRegistered` 判断 + 纯 C# 的 delta 计算 + `WastePreview.Step`（纯数据）
-    /// + `RequestRefresh()`（置一个 bool）⇒ 真正的节点更新交给**已实证可用**的 `_Process` 补丁在下一帧执行 ✓
-    /// 代价：不再独占滚轮（底层界面可能同时滚动）；换来的是"危险上下文里零节点操作" ✓
+    /// **纯数据 + 原生独占版**：
+    ///   * 判定只用**纯字段读取**：<see cref="WastePreviewPatch.PreviewRegistered" />（我方 bool）与
+    ///     <see cref="WastePreviewPatch.PreviewActive" />（由 `_Process` 那个**已实证可用**的上下文算好的字段 ✓）
+    ///     ⇒ 滚轮回调里**零节点操作、零"我方方法首次 JIT"** ✓；
+    ///   * 独占只调**Godot 原生方法**：`__instance.GetViewport()` + `viewport.SetInputAsHandled()` ✓
+    ///     （原生 P/Invoke，不涉及我们 IL 的 JIT ⇒ 安全 ✓；同文件里 `Time.GetTicksMsec()` 一直是这么用的 ✓）；
+    ///   * 轮播数据仍走 `WastePreview.Step`（已 PrepareMethod 编译 ✓）+ `RequestRefresh()`，
+    ///     真正的节点更新交给 `_Process` 补丁下一帧执行 ✓；
+    ///   * 返回 `true` = **不跳过**原版 `NCursorManager._Input`（只把事件标记为已处理，
+    ///     使 GUI/`_UnhandledInput` 阶段收不到这个滚轮 ⇒ 底层界面不再同时滚动 ✓）
+    ///     —— 不返回 false 是为了不改变原方法的其它职责（光标更新等）✓
     /// </summary>
-    private static bool PrefixCore(InputEvent inputEvent)
+    private static bool PrefixCore(NCursorManager __instance, InputEvent inputEvent)
     {
         if (inputEvent is not InputEventMouseButton mouseButton || !mouseButton.Pressed)
             return true;
 
         if (!WastePreviewPatch.PreviewRegistered)
-            return true;                    // 屏幕上没有我们的悬浮窗 ⇒ 完全放行（纯数据判断 ✓）
+            return true;                    // 屏幕上没有我们的悬浮窗 ⇒ 完全放行（纯字段判断 ✓）
 
         var delta = mouseButton.ButtonIndex switch
         {
@@ -85,6 +91,25 @@ public sealed class WastePreviewWheelPatch : IPatchMethod
 
         WastePreview.Step(delta, Time.GetTicksMsec());
         WastePreviewPatch.RequestRefresh();
+
+        // 独占：只有"预览真的显示着"时才吃这个滚轮（否则底层界面照常滚动 ✓）
+        if (WastePreviewPatch.PreviewActive)
+        {
+            try
+            {
+                var viewport = __instance.GetViewport();
+                if (viewport != null)
+                    viewport.SetInputAsHandled();
+            }
+            catch (System.Exception e)
+            {
+                // 独占失败不影响轮播本身：记一次完整栈即可 ✓
+                WastePreviewPatch.WarnFull(ref _occupyWarned, "[WastePreview] wheel occupy skipped after an error", e);
+            }
+        }
+
         return true;                        // 不改原方法本体：滚轮本来就不走它的分支
     }
+
+    private static bool _occupyWarned;
 }
