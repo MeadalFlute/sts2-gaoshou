@@ -43,10 +43,10 @@ public sealed class RockItLauncherReload : ModCardTemplate
     public override CardAssetProfile AssetProfile => new(
         PortraitPath: $"{Entry.ResPath}/images/cards/{GetType().Name}.png");
 
-    // 悬浮释义：预览它生成的「垃圾喷射器」。
+    // 悬浮释义：预览它生成的「垃圾喷射器」（升级后预览「垃圾喷射器+」，写法照 LossAversion.cs:35）。
     protected override IEnumerable<IHoverTip> AdditionalHoverTips =>
     [
-        HoverTipFactory.FromCard<RockItLauncher>(),
+        HoverTipFactory.FromCard<RockItLauncher>(IsUpgraded),
     ];
 
     protected override IEnumerable<DynamicVar> CanonicalVars =>
@@ -140,6 +140,10 @@ public sealed class RockItLauncherReload : ModCardTemplate
         var launcher = Owner.Creature.CombatState?.CreateCard(ModelDb.Card<RockItLauncher>(), Owner);
         if (launcher != null)
         {
+            // 升级态传递（照 Cards/LossAversion.cs:62-63 的写法）：本卡升级后，生成的喷射器也应是升级版。
+            if (IsUpgraded)
+                CardCmd.Upgrade(launcher);
+
             var pairId = NextPairId();
             DynamicVars.GetRequired<IntVar>("PairId").BaseValue = pairId;
             launcher.DynamicVars.GetRequired<IntVar>("PairId").BaseValue = pairId;
