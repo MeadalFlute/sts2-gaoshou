@@ -109,8 +109,11 @@ public sealed class MiracleCounter : SingletonModel
     }
 
     // 仅用于卡牌视觉高光：奇迹提示只应显示在手牌中。实际打出时仍使用 IsMiracleReady。
+    // 选牌界面（弃牌/升级选择）下手牌仍在 Hand 堆里，因此还要用 IsHandGlowAllowed() 挡掉选择模式。
     public static bool IsMiracleGlowReady(CardModel? card)
     {
-        return card?.Pile?.Type == PileType.Hand && IsMiracleReady(card);
+        return GaoshouKeywordMechanics.IsHandGlowAllowed()
+            && card?.Pile?.Type == PileType.Hand
+            && IsMiracleReady(card);
     }
 }

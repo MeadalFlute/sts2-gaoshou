@@ -67,11 +67,9 @@ public sealed class DoalBian : ModCardTemplate
         await DamageCmd.Attack(DynamicVars.Damage.BaseValue)
             .FromCard(this, cardPlay).Targeting(cardPlay.Target).Execute(choiceContext);
 
-        var enemies = (this.CombatState?.HittableEnemies ?? []).ToList();
-        var random = Owner.RunState.Rng.CombatTargets.NextItem(enemies)!;
-        if (random != null)
-            await DamageCmd.Attack(DynamicVars.GetRequired<DamageVar>("secondHit").BaseValue + vigor)
-                .FromCard(this, cardPlay).Targeting(random).Execute(choiceContext);
+        // 第二段：独立随机索敌（与混乱打击/笨蛋拳同款原版 API；原版每次命中独立随机，且目标死光时自动中断）。
+        await DamageCmd.Attack(DynamicVars.GetRequired<DamageVar>("secondHit").BaseValue + vigor)
+            .FromCard(this, cardPlay).TargetingRandomOpponents(this.CombatState).Execute(choiceContext);
 
         // 流转（颜色与上一张牌完全不同时触发）：获得 1 能量、1 辉星。
         if (GaoshouFlowTracker.IsFlowReady(this))
