@@ -316,7 +316,18 @@ public partial class Entry
                 var compilerGenerated = type.Name.Contains("<>", StringComparison.Ordinal);
                 checkedTypes++;
 
-                foreach (var method in type.GetMethods(flags))
+                MethodInfo[] methods;
+                try
+                {
+                    methods = type.GetMethods(flags);
+                }
+                catch (System.Exception e)
+                {
+                    Logger.Warn($"[HookJit] type skipped: {type.FullName}: {e.GetType().Name}: {e.Message}");
+                    continue;
+                }
+
+                foreach (var method in methods)
                 {
                     if (method.IsAbstract || method.ContainsGenericParameters)
                         continue;
@@ -329,9 +340,17 @@ public partial class Entry
                     if (!relevant)
                         continue;
 
-                    ok += Prepare(method, failures, ref failed);
-                    if (name == "MoveNext")
-                        stateMachineMethods++;
+                    // ⚠️ 单个方法失败不能中止 sweep ✓
+                    try
+                    {
+                        ok += Prepare(method, $"{type.Name}.{name}", failures, ref failed);
+                        if (name == "MoveNext")
+                            stateMachineMethods++;
+                    }
+                    catch (System.Exception e)
+                    {
+                        Logger.Warn($"[HookJit] item skipped: {type.Name}.{name}: {e.GetType().Name}: {e.Message}\n{e.StackTrace}");
+                    }
 
                     // ③ async 方法 ⇒ 预热它生成的状态机：**不仅 MoveNext，还要预热"BCL 泛型 × 我方状态机"的实例化** ✓
                     foreach (var attribute in method.GetCustomAttributes(typeof(System.Runtime.CompilerServices.AsyncStateMachineAttribute), false))
@@ -344,10 +363,13 @@ public partial class Entry
                             continue;
 
                         stateMachineMethods++;
-                        ok += Prepare(machineType.GetMethod("MoveNext", flags), failures, ref failed);
-                        ok += Prepare(machineType.GetMethod("SetStateMachine", flags), failures, ref failed);
-                        ok += Prepare(machineType.GetMethod("SetException", flags), failures, ref failed);
-                        ok += Prepare(machineType.GetMethod("SetResult", flags), failures, ref failed);
+                        // ⚠️ 逐个判空 + 逐个 try/catch：任何一项缺失/失败都**不能**中止整个 sweep ✓
+                        //   （状态机的 SetException/SetResult 是**显式接口实现** ⇒ 反射常常取不到 ⇒ 旧版在这里 NRE ✗
+                        //     结果整个 sweep 提前中止、连 MoveNext 预热都丢了 ✗✗）
+                        PrepareByName(machineType, "MoveNext", failures, ref failed);
+                        PrepareByName(machineType, "SetStateMachine", failures, ref failed);
+                        PrepareByName(machineType, "SetException", failures, ref failed);
+                        PrepareByName(machineType, "SetResult", failures, ref failed);
 
                         // ⭐⭐ 真正被 MonoMod 拒绝的是"**BCL 泛型方法以我方状态机做类型实参**"的实例化 ✗
                         //   （栈实证：紧跟 AfterSideTurnEnd 的帧就是 `AsyncMethodBuilderCore.Start[TStateMachine]` ✓
@@ -365,7 +387,7 @@ public partial class Entry
         }
         catch (System.Exception e)
         {
-            Logger.Warn($"[HookJit] sweep failed: {e.GetType().Name}: {e.Message}");
+            Logger.Warn($"[HookJit] sweep failed: {e.GetType().Name}: {e.Message}\n{e.StackTrace}");
         }
 
         Logger.Info($"[HookJit] hooks+stateMachines: {ok} compiled, {failed} failed " +
@@ -396,7 +418,11 @@ public partial class Entry
         }
 
         if (start == null)
+        {
+            if (failures.Count < 12)
+                failures.Add($"{builderType.Name}.Start: <no 1-arg generic Start found>");
             return 0;
+        }
 
         MethodInfo instantiated;
         try
@@ -452,9 +478,16 @@ public partial class Entry
         return false;
     }
 
-    /// <summary>预热一个方法：成功返回 1，失败记一条并返回 0 ✓。</summary>
-    private static int Prepare(MethodInfo method, List<string> failures, ref int failed)
+    /// <summary>预热一个方法（**允许 null** ⇒ 找不到只记一条命名日志，绝不 NRE ✓）：成功返回 1，失败记一条并返回 0 ✓。</summary>
+    private static int Prepare(MethodInfo? method, string label, List<string> failures, ref int failed)
     {
+        if (method == null)
+        {
+            if (failures.Count < 12)
+                failures.Add($"{label}: <method not found>");
+            return 0;
+        }
+
         try
         {
             System.Runtime.CompilerServices.RuntimeHelpers.PrepareMethod(method.MethodHandle);
@@ -464,7 +497,43 @@ public partial class Entry
         {
             failed++;
             if (failures.Count < 12)
-                failures.Add($"{method.DeclaringType?.Name}.{method.Name}: {e.GetType().Name}: {e.Message}");
+                failures.Add($"{label}: {e.GetType().Name}: {e.Message}");
+            return 0;
+        }
+    }
+
+    /// <summary>按名取方法再预热：**取不到只记一条命名日志**（状态机的 SetException/SetResult 常是显式接口实现 ⇒ 取不到很正常 ✓）。</summary>
+    private static int PrepareByName(Type type, string name, List<string> failures, ref int failed)
+    {
+        const BindingFlags flags = BindingFlags.Instance | BindingFlags.Static
+                                   | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly;
+
+        MethodInfo? method = null;
+        try
+        {
+            method = type.GetMethod(name, flags);
+        }
+        catch (System.Exception e)
+        {
+            Logger.Warn($"[HookJit] lookup failed: {type.Name}.{name}: {e.GetType().Name}: {e.Message}");
+            return 0;
+        }
+
+        if (method == null)
+        {
+            // 不当作"失败"（可选方法 ✓）但要**看得见** ✓
+            if (failures.Count < 12)
+                failures.Add($"{type.Name}.{name}: <not declared>");
+            return 0;
+        }
+
+        try
+        {
+            return Prepare(method, $"{type.Name}.{name}", failures, ref failed);
+        }
+        catch (System.Exception e)
+        {
+            Logger.Warn($"[HookJit] prepare failed: {type.Name}.{name}: {e.GetType().Name}: {e.Message}\n{e.StackTrace}");
             return 0;
         }
     }
