@@ -279,17 +279,24 @@ public partial class Entry
     }
 
     /// <summary>
-    /// 回合/阶段钩子的 **JIT 自检**（2026-09-30 卡死事故复盘 ✓）：
-    /// 我们挂在引擎回合钩子上的方法一旦"编不过"（MonoMod 的 JIT hook 抛 `ArgumentException` ✗），
-    /// 引擎调用它时就会抛异常 ⇒ **回合推进停住 = 游戏卡死** ✗。
-    /// 这里在 init 时把 `Gaoshou.*` 里所有名字含 Turn / Sande / Participant 的方法逐个 `PrepareMethod`
-    /// ⇒ **启动一次**即可从日志看出有没有编不过的（并点名 ✓）。
+    /// 回合/阶段钩子的 **JIT 自检 + 预热（含 async 状态机与闭包类）** ✓
+    ///
+    /// ⚠️ 2026-09-30 卡死事故的**真正原因**（完整栈实证）：
+    /// 被 MonoMod 的 JIT hook 拒绝编译的**不是外层钩子方法**，而是编译器为 async 方法生成的
+    /// **状态机的 `MoveNext`** ✗（栈里紧跟 `AfterSideTurnEnd` 的帧是 `AsyncMethodBuilderCore.Start[TStateMachine]` ✓）。
+    /// 只预热外层方法 ⇒ 自检"0 failed"但运行时首次执行到 `MoveNext` 照样炸 ✗✗（自检盲区 ✓）。
+    /// ⇒ 这里把范围扩成三部分，**全部** `PrepareMethod`：
+    ///   ① 名字含 Turn / Sande / Participant 的我方方法（钩子链 ✓）
+    ///   ② **我方类型里的编译器生成类型**（`<>c` 闭包类 / `<>d__N` 状态机 ✓）的全部方法 —— 这正是反复出事的家族 ✗
+    ///   ③ 任何带 `AsyncStateMachineAttribute` 的方法 ⇒ 其 `StateMachineType` 的 `MoveNext` ✓（双保险 ✓）
+    /// 并逐条点名失败项（≤12 条 ✓）+ 汇总（含 stateMachines 计数 ✓）。
     /// </summary>
     private static void VerifyTurnHookJit()
     {
         var ok = 0;
         var failed = 0;
         var checkedTypes = 0;
+        var stateMachineMethods = 0;
         var failures = new List<string>();
 
         try
@@ -300,33 +307,47 @@ public partial class Entry
 
             foreach (var type in assembly.GetTypes())
             {
-                var ns = type.Namespace ?? string.Empty;
-                if (!ns.StartsWith("Gaoshou", StringComparison.Ordinal) || type.IsGenericTypeDefinition)
+                if (type.IsGenericTypeDefinition || type.ContainsGenericParameters)
+                    continue;
+                if (!IsOurType(type))
                     continue;
 
+                var compilerGenerated = type.Name.Contains("<>", StringComparison.Ordinal);
                 checkedTypes++;
+
                 foreach (var method in type.GetMethods(flags))
                 {
                     if (method.IsAbstract || method.ContainsGenericParameters)
                         continue;
 
                     var name = method.Name;
-                    var relevant = name.Contains("Turn", StringComparison.Ordinal)
+                    var relevant = compilerGenerated
+                                   || name.Contains("Turn", StringComparison.Ordinal)
                                    || name.Contains("Sande", StringComparison.Ordinal)
                                    || name.Contains("Participant", StringComparison.Ordinal);
                     if (!relevant)
                         continue;
 
-                    try
+                    ok += Prepare(method, failures, ref failed);
+                    if (name == "MoveNext")
+                        stateMachineMethods++;
+
+                    // ③ 双保险：async 方法 ⇒ 顺带预热它生成的状态机类型（含 MoveNext）
+                    foreach (var attribute in method.GetCustomAttributes(typeof(System.Runtime.CompilerServices.AsyncStateMachineAttribute), false))
                     {
-                        System.Runtime.CompilerServices.RuntimeHelpers.PrepareMethod(method.MethodHandle);
-                        ok++;
-                    }
-                    catch (System.Exception e)
-                    {
-                        failed++;
-                        if (failures.Count < 10)
-                            failures.Add($"{type.Name}.{name}: {e.GetType().Name}: {e.Message}");
+                        if (attribute is not System.Runtime.CompilerServices.AsyncStateMachineAttribute asyncAttribute)
+                            continue;
+
+                        var machineType = asyncAttribute.StateMachineType;
+                        if (machineType == null || machineType.ContainsGenericParameters)
+                            continue;
+
+                        var moveNext = machineType.GetMethod("MoveNext", flags);
+                        if (moveNext == null)
+                            continue;
+
+                        stateMachineMethods++;
+                        ok += Prepare(moveNext, failures, ref failed);
                     }
                 }
             }
@@ -336,9 +357,43 @@ public partial class Entry
             Logger.Warn($"[HookJit] sweep failed: {e.GetType().Name}: {e.Message}");
         }
 
-        Logger.Info($"[HookJit] turn/phase hooks: {ok} compiled, {failed} failed (types={checkedTypes}).");
+        Logger.Info($"[HookJit] hooks+stateMachines: {ok} compiled, {failed} failed " +
+                    $"(types={checkedTypes}, MoveNext={stateMachineMethods}).");
         foreach (var failure in failures)
             Logger.Warn($"[HookJit] FAILED: {failure}");
+    }
+
+    /// <summary>这个方法是否属于我方（含编译器生成的嵌套类型：其 Namespace 为 null，要靠 DeclaringType 往上找 ✓）。</summary>
+    private static bool IsOurType(Type type)
+    {
+        var current = type;
+        for (var depth = 0; current != null && depth < 8; depth++)
+        {
+            var ns = current.Namespace;
+            if (ns != null)
+                return ns.StartsWith("Gaoshou", StringComparison.Ordinal);
+
+            current = current.DeclaringType;
+        }
+
+        return false;
+    }
+
+    /// <summary>预热一个方法：成功返回 1，失败记一条并返回 0 ✓。</summary>
+    private static int Prepare(MethodInfo method, List<string> failures, ref int failed)
+    {
+        try
+        {
+            System.Runtime.CompilerServices.RuntimeHelpers.PrepareMethod(method.MethodHandle);
+            return 1;
+        }
+        catch (System.Exception e)
+        {
+            failed++;
+            if (failures.Count < 12)
+                failures.Add($"{method.DeclaringType?.Name}.{method.Name}: {e.GetType().Name}: {e.Message}");
+            return 0;
+        }
     }
 
     /// <summary>
