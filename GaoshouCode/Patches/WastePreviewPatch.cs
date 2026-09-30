@@ -150,7 +150,7 @@ public sealed class WastePreviewPatch : IPatchMethod
             "ConsumePendingRefresh", "ProcessPendingScan", "Collect", "ApplyCurrent", "EnsurePreviewNodes",
             "IsOurSet", "PruneSets", "PreviewCardsIn", "RefreshVisiblePreviews", "HasVisiblePreview",
             "RequestRefresh", "get_PreviewRegistered", "WarmUp",
-            "LooksLikeScreen", "GetTypeName", "IsOurCardNameInSubtree",
+            "LooksLikeScreen", "GetTypeName", "ScanSubtree", "ScanNode", "ScanOwnerAndParent", "BeginScan",
         };
 
         var flags = System.Reflection.BindingFlags.Static
@@ -362,8 +362,9 @@ public sealed class WastePreviewPatch : IPatchMethod
             return true;
 
         // ③ 详情页（"查看卡牌"）这类**包装屏幕**：owner 是屏幕本身、卡片在它**下面** ⇒ 需要**下溯**找名字。
-        //    仅当 owner 的类型名像"屏幕/容器"时才做（避免对每个悬停节点都扫子树 ✗），且限深限量 ✓。
-        if (LooksLikeScreen(node) && IsOurCardNameInSubtree(node, 0))
+        //    仅当 owner 的类型名像"屏幕/容器"时才做（避免对每个悬停节点都扫子树 ✗）；限深 16、限 5000 节点 ✓
+        //    并把搜索起点扩到 owner + 它的**直接父级**（实证父链里有 `Control(InspectionContainer)` ✓）。
+        if (LooksLikeScreen(node) && ScanOwnerAndParent(node))
             return true;
 
         return ModelCheckJitOk && IsPreviewNodeByModel(node);
@@ -393,32 +394,83 @@ public sealed class WastePreviewPatch : IPatchMethod
         }
     }
 
-    /// <summary>
-    /// 在子树里按**节点名**找我们的卡（详情页路径）：限深 6 层、最多扫 200 个节点 ✓（纯字符串 ✓）。
-    /// </summary>
-    private static bool IsOurCardNameInSubtree(Node node, int depth)
+    // ---- 详情页（"查看卡牌"）专用：按名字在子树里找我们的卡 ----
+    //
+    // 实证（2026-09-30 22:11 日志）：详情页的 owner = `NInspectCardScreen(InspectCardScreen)`，
+    // 父链 = `NInspectCardScreen <- Control(InspectionContainer) <- NGame(Game) <- Window(root)` ✓
+    // ⇒ 屏幕判据已命中、下溯也执行了，但**没找到卡 id** ⇒ 放宽范围（限深 6→16、限 200→5000）
+    //   并把搜索起点从"owner 本身"扩到"owner + 它的**直接父级**（InspectionContainer）" ✓
+    //   ⇒ 同时把"实际扫了多少节点/最深几层/含 GAOSHOU_CARD 的名字/节点名样本"打进 owner-miss 日志 ✓
+
+    /// <summary>扫描统计（纯数据 ✓ 供 owner-miss 日志使用）。</summary>
+    internal static int ScanVisited;
+    internal static int ScanMaxDepth;
+    internal static readonly List<string> ScanHits = [];
+    internal static readonly List<string> ScanSamples = [];
+
+    /// <summary>开始一次新的扫描（清空统计）。</summary>
+    internal static void BeginScan()
     {
-        if (depth > 6 || !GodotObject.IsInstanceValid(node))
+        ScanVisited = 0;
+        ScanMaxDepth = 0;
+        ScanHits.Clear();
+        ScanSamples.Clear();
+    }
+
+    /// <summary>扫描一棵子树（限深 16 层、最多 5000 个节点；**纯字符串比较** ✓ 带硬上限防卡帧 ✓）。</summary>
+    internal static bool ScanSubtree(Node root)
+    {
+        return ScanNode(root, 0);
+    }
+
+    private static bool ScanNode(Node node, int depth)
+    {
+        if (depth > 16 || !GodotObject.IsInstanceValid(node))
             return false;
 
-        var children = node.GetChildren();
-        var budget = 200;
-        foreach (var child in children)
+        if (depth > ScanMaxDepth)
+            ScanMaxDepth = depth;
+
+        foreach (var child in node.GetChildren())
         {
-            if (budget-- <= 0)
-                break;
+            if (ScanVisited >= 5000)
+                return false;
 
             if (child == null || !GodotObject.IsInstanceValid(child))
                 continue;
 
-            if (IsOurCardNodeName(SafeName(child)))
-                return true;
+            ScanVisited++;
+            var name = SafeName(child);
 
-            if (IsOurCardNameInSubtree(child, depth + 1))
+            if (ScanSamples.Count < 10)
+                ScanSamples.Add($"{GetTypeName(child)}({name})");
+
+            if (name.Contains("GAOSHOU_CARD", System.StringComparison.Ordinal))
+            {
+                if (ScanHits.Count < 10)
+                    ScanHits.Add($"{GetTypeName(child)}({name})");
+
+                if (IsOurCardNodeName(name))
+                    return true;                // 三张废品牌之一 ✓
+            }
+
+            if (ScanNode(child, depth + 1))
                 return true;
         }
 
         return false;
+    }
+
+    /// <summary>owner 及其**直接父级**两棵子树都扫（覆盖"InspectionContainer 那一层"的情况 ✓）。</summary>
+    private static bool ScanOwnerAndParent(Node node)
+    {
+        BeginScan();
+
+        if (ScanSubtree(node))
+            return true;
+
+        var parent = TryGetParent(node);
+        return parent != null && ScanSubtree(parent);
     }
 
     /// <summary>模型判据版（含游戏类型 `is` 与游戏成员读取 ✗）——只在 PrepareMethod 成功时才使用 ✓。</summary>
@@ -519,13 +571,15 @@ public sealed class WastePreviewPatch : IPatchMethod
         Diag($"[WasteDiag] registered #{_diagRegister} owner={Describe(owner)} set={SafeName(set)} ourSets={OurSets.Count}");
     }
 
-    /// <summary>owner 判定为 false 一行：证明"登记没发生"，并给出 owner 的类型+名字+父级链（详情页排查关键 ✓）。</summary>
+    /// <summary>owner 判定为 false 一行：给出 owner 的类型+名字+父链**以及下溯扫描统计**（详情页排查关键 ✓）。</summary>
     internal static void DiagOwnerMiss(Node? owner)
     {
         if (_diagMiss >= 20)                // 详情页的 owner 往往排在后面 ⇒ 放宽到 20 ✓
             return;
         _diagMiss++;
         Diag($"[WasteDiag] owner-miss #{_diagMiss} owner={Describe(owner)} chain={DescribeChain(owner)}");
+        Diag($"[WasteDiag] owner-miss #{_diagMiss} scan: visited={ScanVisited} maxDepth={ScanMaxDepth} " +
+             $"hits=[{string.Join(", ", ScanHits)}] samples=[{string.Join(", ", ScanSamples)}]");
     }
 
     /// <summary>滚轮判定一行：hover 到什么控件、命中与否。</summary>
