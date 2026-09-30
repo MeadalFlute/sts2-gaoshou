@@ -165,6 +165,9 @@ public partial class Entry
         // 手牌高光配色：流转就绪=金橙、奇迹就绪=紫罗兰、两者都就绪=品红。
         // （原版只有金/红两种预设，而红在游戏里是"不可打出"的警告语义，不适合当"奇迹就绪"。）
         patcher.RegisterPatch<GaoshouGlowColorPatch>();
+        // 「呼吸」在选牌/弃牌界面里亮**原版金色**（与奇巧同款观感）：postfix 打在
+        // NHandCardHolder.ShouldGlowGold 的 getter 上，不注入任何我们自己的委托（2026-09-30 JIT 事故复盘）。
+        patcher.RegisterPatch<BreathDiscardGlowPatch>();
         // 流转/奇迹词条的悬浮提示：按当前状态显示 on/off 图标（flow_on 蓝 / miracle_on 橙 / off 白）。
         patcher.RegisterPatch<KeywordStateIconPatch>();
         // 「限制」挡住出牌时的台词：原版对非五种模型的阻挡者取不到名字 → 显示 <Unknown>，这里换成限制自己的台词。

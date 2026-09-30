@@ -128,6 +128,14 @@ public sealed class WastePreviewPatch : IPatchMethod
     {
         for (var node = owner; node != null; node = node.GetParent())
         {
+            // ⚠️ 必须先校验原生实例（2026-09-30 正式版日志实证）：Godot 里对**已释放**的节点调
+            //    GetParent()/读属性会抛 "ArgumentException: Value does not fall within the expected range" ✗
+            //    ⇒ 上层 fail-soft 把它吞掉 ⇒ 悬浮窗永远不会被登记 ⇒ **废品牌轮播失效** ✗
+            //    （日志：`[WastePreview] owner recording skipped after an error: Value does not fall within the expected range.`
+            //      at WastePreviewPatch.IsPreviewOwner ← WastePreviewWheelPatch.IsHoveringPreviewCard）
+            if (!GodotObject.IsInstanceValid(node))
+                return false;
+
             switch (node)
             {
                 case NCardHolder holder when WastePreview.IsPreviewCard(holder.CardModel):
@@ -233,8 +241,15 @@ public sealed class WastePreviewPatch : IPatchMethod
 
     private static void Collect(Node node, List<NCard> result)
     {
+        // 同 IsPreviewOwner：已释放的节点不能碰（否则抛 ArgumentException，被 fail-soft 吞掉后轮播静默失效）。
+        if (!GodotObject.IsInstanceValid(node))
+            return;
+
         foreach (var child in node.GetChildren())
         {
+            if (!GodotObject.IsInstanceValid(child))
+                continue;
+
             if (child is NCard card && card.Model is IWasteCard)
                 result.Add(card);
 
@@ -249,6 +264,9 @@ public sealed class WastePreviewPatch : IPatchMethod
 
         foreach (var node in previews)
         {
+            if (!GodotObject.IsInstanceValid(node))
+                continue;
+
             node.Model = next;
             node.UpdateVisuals(PileType.Deck, CardPreviewMode.Normal);
         }

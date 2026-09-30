@@ -1,3 +1,4 @@
+using Gaoshou.Cards;
 using Gaoshou.Keywords;
 using Godot;
 using MegaCrit.Sts2.Core.Nodes.Cards.Holders;
@@ -99,4 +100,62 @@ public sealed class GaoshouGlowColorPatch : IPatchMethod
             _ => MiracleColor,
         };
     }
+}
+
+/// <summary>
+/// 「呼吸」在**选牌/弃牌界面**里获得与奇巧(Sly)完全相同的**原版金色高光**。
+///
+/// 为什么不沿用"给 <c>CardSelectorPrefs.ShouldGlowGold</c> 赋我们的委托"：2026-09-30 正式版事故 ——
+/// MonoMod 的 JIT hook 在编译 <c>AmplifyAsync</c> 里那个 lambda（编译器生成的 <c>&lt;&gt;c.b__0_0</c>）时
+/// 抛 <c>ArgumentException</c> ⇒ 首次进入被补丁化的 <c>NHandCardHolder.UpdateCard</c> 时整条链中断
+/// （确认键不 Enable / 幽灵卡位 / hovertip 错位）。
+/// ⇒ 现在改为 Harmony **postfix 打在原版"要不要金色高光"的判定**上
+///   （<c>NHandCardHolder.ShouldGlowGold</c> 的 getter）⇒ 原版自己走它自己的金色分支
+///   （<c>AnimShow()</c> + <c>Modulate = NCardHighlight.gold</c>）⇒ 观感与奇巧 **100% 一致** ✓
+///   而且我们的 postfix 是**普通静态方法**（与其它正常工作的补丁同形，**不是**编译器生成的 lambda ✗），
+///   不引入任何委托到 UI 回调里 ⇒ 不会再踩 MonoMod 的 JIT 失败 ✓
+///
+/// 纯观感：该 getter 只被 <c>NHandCardHolder.UpdateCard</c> 使用（已核对两版反编译），不参与玩法判定 ✓
+/// </summary>
+public sealed class BreathDiscardGlowPatch : IPatchMethod
+{
+    public static string PatchId => "gaoshou_breath_discard_glow";
+
+    public static string Description => "Breath glows gold in hand-selection screens, exactly like Sly";
+
+    public static bool IsCritical => false;
+
+    public static ModPatchTarget[] GetTargets() =>
+    [
+        // 私有属性 getter ⇒ 按名定位（Krafs.Publicizer 已把 sts2 的私有成员公开化）
+        PatchTarget.Getter(typeof(NHandCardHolder), "ShouldGlowGold"),
+    ];
+
+    public static void Postfix(NHandCardHolder __instance, ref bool __result)
+    {
+        if (__result)
+            return;   // 原版已判为金色（奇巧等）⇒ 不覆盖它自己的判定
+
+        try
+        {
+            if (__instance.CardNode?.Model is not Breath)
+                return;
+
+            // 只在"手牌选择模式"（弃牌/选牌界面）里补这层金色，与奇巧口径一致；正常出牌手牌不亮。
+            var hand = MegaCrit.Sts2.Core.Nodes.Rooms.NCombatRoom.Instance?.Ui?.Hand;
+            if (hand == null || !hand.IsInCardSelection)
+                return;
+
+            __result = true;
+        }
+        catch (System.Exception e)
+        {
+            if (_warned)
+                return;
+            _warned = true;
+            Entry.Logger.Warn($"[BreathGlow] skipped after an error: {e.Message}");
+        }
+    }
+
+    private static bool _warned;
 }
