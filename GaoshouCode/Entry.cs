@@ -22,6 +22,7 @@ using Gaoshou.Relics;
 using Gaoshou.Tutorial;
 using Logger = MegaCrit.Sts2.Core.Logging.Logger;
 
+
 namespace Gaoshou;
 
 [ModInitializer(nameof(Initialize))]
@@ -187,6 +188,15 @@ public partial class Entry
         // 让视觉状态机能区分"多段连击"与"单击"，从而决定是否进 atk_loop 视频循环。
         // 同样是 Postfix 纯旁路读取，不改游戏返回值 ✓。
         patcher.RegisterPatch<RecordAttackHitCountPatch>();
+        // 【2026-09-29】多人面板里"铁甲战士的阴影"清理：原版 multiplayer_player_state / remote_lobby_player
+        // 场景把铁甲战士头像（以及 energy_ironclad）烘进场景当默认值，原版只覆盖头像本体 ⇒ 残留一层。
+        // 这条 Postfix 在两个界面构建/刷新后遍历子树，把"路径含原版角色 id"的节点换掉或隐藏（仅限我们自己的角色面板 ✓）。
+        patcher.RegisterPatch<VanillaCharacterArtSweepPatch>();
+        // 【2026-09-30】百科大全 / 历史记录里"角色图渲染过大"：那两个界面用 IconTexture（我们是 200×200，
+        // 而该槽位规范是 88×88），且那些节点没设尺寸/缩放 ⇒ 按贴图原始尺寸渲染 ✗。
+        // 这条只在这些界面上把"显示我们头像"的 TextureRect 补上 88×88 + IgnoreSize/KeepAspectCentered ✓
+        // （不动共享贴图 ⇒ 顶部栏不受影响 ✓）。
+        patcher.RegisterPatch<CharacterIconDisplaySizePatch>();
         // 「连续攻击」循环的收尾计时器要按**每段命中**重置，而"每段"只有 TriggerAnim 能提供
         //（ModifyAttackHitCount 在命中循环之外、每张牌只调一次 ✗）⇒ 额外挂这条纯旁路通知。
         patcher.RegisterPatch<RecordAttackTriggerPatch>();
