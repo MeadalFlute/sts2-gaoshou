@@ -66,14 +66,20 @@ public sealed class WastePreviewPatch : IPatchMethod
         }
         catch (System.Exception e)
         {
-            if (_warned)
-                return;
-            _warned = true;
-            Entry.Logger.Warn($"[WastePreview] auto-cycle skipped after an error: {e.Message}");
+            WarnFull(ref _warned, "[WastePreview] auto-cycle skipped after an error", e);
         }
     }
 
     private static bool _warned;
+
+    /// <summary>一次性 Warn，**带完整类型/消息/栈**（只看 Message 会像前几轮那样"看不到抛在哪一行" ✗）。</summary>
+    internal static void WarnFull(ref bool flag, string tag, System.Exception e)
+    {
+        if (flag)
+            return;
+        flag = true;
+        Entry.Logger.Warn($"{tag}: {e.GetType().FullName}: {e.Message}\n{e.StackTrace}");
+    }
 
     private static void Step(NHoverTipSet __instance)
     {
@@ -84,6 +90,14 @@ public sealed class WastePreviewPatch : IPatchMethod
 
         if (!EnsurePreviewNodes(__instance))
             return;
+
+        // 滚轮那条补丁只写"纯数据"（WastePreview.Step + RequestRefresh），真正的节点更新在这里做
+        //（这个 _Process 上下文做节点操作是**已被实证可用**的 ✓）。
+        if (ConsumePendingRefresh())
+        {
+            ApplyCurrent(CachedPreviewNodes);
+            return;
+        }
 
         var now = Time.GetTicksMsec();
         if (WastePreview.LastAdvanceMs == 0)
@@ -114,6 +128,28 @@ public sealed class WastePreviewPatch : IPatchMethod
     }
 
     /// <summary>记录一个"我们的"悬浮窗（由 <see cref="WastePreviewOwnerPatch" /> 在创建时调用）。</summary>
+    // ---- 纯数据通道（运行时路径**不碰任何 Godot 节点/工具方法**）----
+
+    private static bool _pendingRefresh;
+
+    /// <summary>是否已经有"我们的"悬浮窗被登记（**纯 C# 数据**，不做任何节点操作）。</summary>
+    internal static bool PreviewRegistered => OurSets.Count > 0;
+
+    /// <summary>请求刷新（滚轮补丁调用）：只置一个 bool，真正的节点更新交给已实证可用的 <c>_Process</c> 补丁。</summary>
+    internal static void RequestRefresh()
+    {
+        _pendingRefresh = true;
+    }
+
+    private static bool ConsumePendingRefresh()
+    {
+        if (!_pendingRefresh)
+            return false;
+
+        _pendingRefresh = false;
+        return true;
+    }
+
     internal static void RecordSet(NHoverTipSet? set, Node? owner = null)
     {
         if (set == null)
@@ -124,39 +160,26 @@ public sealed class WastePreviewPatch : IPatchMethod
     }
 
     /// <summary>
-    /// 这个节点（通常是悬浮窗的 owner / 鼠标下的控件）是不是"那三张卡"的卡片节点。
-    /// 沿控件链向上找 <c>NCardHolder.CardModel</c> 或 <c>NCard.Model</c>；
-    /// 奖励界面（"搜刮！"）那种"owner 是奖励按钮、卡片只在悬浮窗里"的情况单独按奖励内容判断。
+    /// 悬浮窗的 owner 是不是"那三张卡"（**纯数据版**：只看 owner 自己，**不遍历父链、不做任何 Godot 工具调用** ✗）。
+    /// 依据（日志实证）：`owner` 本身就是卡片 holder/卡片节点（`owner=GridCardHolder-CARD_…`）；
+    /// 奖励界面与查看卡牌界面里 owner 也分别是奖励按钮 / 屏幕本身 ⇒ 一律"只看自身"即可 ✓
+    /// （2026-09-30：沿父链遍历的版本在正式版上被 MonoMod 的 JIT hook 卡住，反复抛 ArgumentException ✗）
     /// </summary>
     internal static bool IsPreviewOwner(Node? owner)
     {
-        // ⚠️ 只做**浅层**判断（自身 + 最多 3 层父级）：日志实证 owner 通常**就是**卡片 holder/卡片节点本身
-        //   （`owner=GridCardHolder-CARD_…`）⇒ 深层遍历既没必要、又让 IL 变复杂 ——
-        //   而 MonoMod 的 JIT hook 曾在"较复杂 IL 的方法"上编译失败（ArgumentException，与同轮增幅 lambda 同源 ✗）
-        //   ⇒ 这里刻意保持极简，且 Godot 原生调用**逐句** try/catch（失败只让那一层失败，不否掉整条链 ✓）。
-        var node = owner;
-        for (var depth = 0; depth < 4 && node != null; depth++)
-        {
-            if (IsPreviewNodeItself(node))
-                return true;
+        if (owner == null)
+            return false;
 
-            node = TryGetParent(node);
-        }
-
-        return false;
+        return IsPreviewNodeItself(owner);
     }
 
-    /// <summary>hover 控件自身或其**直接父级**是不是我们的卡（不遍历深链）。</summary>
+    /// <summary>hover 控件自身是不是我们的卡（同"只看自身"，不做父链遍历）。</summary>
     internal static bool IsPreviewControl(Control? control)
     {
         if (control == null)
             return false;
 
-        if (IsPreviewNodeItself(control))
-            return true;
-
-        var parent = TryGetParent(control);
-        return parent != null && IsPreviewNodeItself(parent);
+        return IsPreviewNodeItself(control);
     }
 
     /// <summary>单个节点是不是"我们的"废品牌预览相关节点（纯类型/模型判断：无 LINQ、无委托、无模式 when）。</summary>
@@ -214,6 +237,26 @@ public sealed class WastePreviewPatch : IPatchMethod
     private static int _diagRegister;
     private static int _diagMiss;
     private static int _diagHover;
+    private static int _diagEnterOwner;
+    private static int _diagEnterWheel;
+
+    /// <summary>悬浮窗创建补丁的**第一行**埋点（前 10 次）：证明"进到了登记路径"，以及当时 __result 是否为空。</summary>
+    internal static void DiagEnterOwner(bool hasResult, Node? owner)
+    {
+        if (_diagEnterOwner >= 10)
+            return;
+        _diagEnterOwner++;
+        Diag($"[WasteDiag] enter-owner #{_diagEnterOwner} hasResult={hasResult} owner={Describe(owner)}");
+    }
+
+    /// <summary>滚轮补丁的**第一行**埋点（前 10 次）。</summary>
+    internal static void DiagEnterWheel(bool registered)
+    {
+        if (_diagEnterWheel >= 10)
+            return;
+        _diagEnterWheel++;
+        Diag($"[WasteDiag] enter-wheel #{_diagEnterWheel} registered={registered} ourSets={OurSets.Count}");
+    }
 
     /// <summary>登记成功一行：证明 owner 判定通过、悬浮窗已进 OurSets。</summary>
     internal static void DiagRegistered(NHoverTipSet set, Node? owner)
