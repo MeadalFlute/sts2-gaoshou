@@ -1,0 +1,7 @@
+<Project>
+  <!-- beta 分支固定引用：指向 sts2files 存档的 beta 数据目录，
+       使构建结果不依赖"用户当前装的是 beta 还是正式版"（2026-09-30 事故根因）。 -->
+  <PropertyGroup>
+    <Sts2DataDir>$(MSBuildThisFileDirectory)..\sts2files\beta\data_sts2_windows_x86_64</Sts2DataDir>
+  </PropertyGroup>
+</Project>
