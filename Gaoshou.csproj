@@ -28,16 +28,34 @@
         <RunPckExport Condition="'$(RunPckExport)' == ''">false</RunPckExport>
     </PropertyGroup>
 
+    <!-- ==== 无游戏环境下的引用兜底（CI / 新机器）====
+         本机装了游戏：照旧用 $(Sts2DataDir) 下的真实程序集 + Krafs.Publicizer。
+         没有游戏时：自动改用 NuGet 引用包 Book.StS2.RefLib，版本由【各分支】的
+         Directory.Build.props 指定（main/beta = 0.111.0-beta，release = 0.107.1）。
+         可用 -p:UseSts2RefLib=true|false 强制执行其中一条路。 -->
+    <PropertyGroup>
+        <UseSts2RefLib Condition="'$(UseSts2RefLib)' == '' and !Exists('$(Sts2DataDir)\sts2.dll')">true</UseSts2RefLib>
+        <UseSts2RefLib Condition="'$(UseSts2RefLib)' == ''">false</UseSts2RefLib>
+    </PropertyGroup>
+
     <ItemGroup>
-        <PackageReference Include="Krafs.Publicizer" Version="2.2.1" PrivateAssets="all"/>
+        <!-- Publicizer 只在"用真实游戏程序集"时启用：Book.StS2.RefLib 提供的是 ref 程序集
+             （只有元数据没有 IL），它靠 IgnoresAccessChecksTo 让编译器/运行时可访问 internal，
+             不需要也无法被 publicize。 -->
+        <PackageReference Include="Krafs.Publicizer" Version="2.2.1" PrivateAssets="all" Condition="'$(UseSts2RefLib)' != 'true'"/>
         <PackageReference Include="STS2.RitsuLib" Version="0.5.17" GeneratePathProperty="true"/>
     </ItemGroup>
 
-    <ItemGroup>
+    <ItemGroup Condition="'$(UseSts2RefLib)' != 'true'">
         <Publicize Include="sts2" IncludeVirtualMembers="false" IncludeCompilerGeneratedMembers="false"/>
     </ItemGroup>
 
-    <ItemGroup>
+    <!-- NuGet 引用包兜底（仅在没有游戏程序集时生效） -->
+    <ItemGroup Condition="'$(UseSts2RefLib)' == 'true'">
+        <PackageReference Include="Book.StS2.RefLib" Version="$(Sts2RefLibVersion)"/>
+    </ItemGroup>
+
+    <ItemGroup Condition="'$(UseSts2RefLib)' != 'true'">
         <Reference Include="0Harmony" HintPath="$(Sts2DataDir)\0Harmony.dll" Private="True"/>
         <Reference Include="sts2" HintPath="$(Sts2DataDir)\sts2.dll" Private="True"/>
         <Reference Include="Steamworks.NET" HintPath="$(Sts2DataDir)\Steamworks.NET.dll" Private="True"/>
@@ -71,8 +89,15 @@
         <Folder Include="Gaoshou\scenes\characters\"/>
     </ItemGroup>
 
-    <Target Name="ValidateSts2GameInstall" BeforeTargets="ResolveAssemblyReferences">
+    <Target Name="ValidateSts2GameInstall" BeforeTargets="ResolveAssemblyReferences"
+            Condition="'$(UseSts2RefLib)' != 'true'">
         <Error Condition="!Exists('$(Sts2DataDir)\sts2.dll')" Text="Could not find sts2.dll under '$(Sts2DataDir)'. Copy local.props.template to local.props and set Sts2Dir/Sts2DataDir for your local game install."/>
+    </Target>
+
+    <Target Name="ValidateSts2RefLibVersion" BeforeTargets="ResolveAssemblyReferences"
+            Condition="'$(UseSts2RefLib)' == 'true'">
+        <Error Condition="'$(Sts2RefLibVersion)' == ''"
+               Text="UseSts2RefLib=true 但 Sts2RefLibVersion 为空。请在 Directory.Build.props 设置 Sts2RefLibVersion（beta=0.111.0-beta / release=0.107.1），或传 -p:Sts2RefLibVersion=...。" />
     </Target>
 
     <Target Name="CopyMod" AfterTargets="Build" Condition="'$(CopyModOnBuild)' != 'false'">

@@ -3,5 +3,8 @@
        使构建结果不依赖"用户当前装的是 beta 还是正式版"（2026-09-30 事故根因）。 -->
   <PropertyGroup>
     <Sts2DataDir>$(MSBuildThisFileDirectory)..\sts2files\beta\data_sts2_windows_x86_64</Sts2DataDir>
+    <!-- 无游戏环境（CI）时 Book.StS2.RefLib 的版本：main 分支 = 游戏 beta 0.111.0。
+         release 分支对应取值见 release 分支的同名文件（0.107.1）。 -->
+    <Sts2RefLibVersion Condition="'$(Sts2RefLibVersion)' == ''">0.111.0-beta</Sts2RefLibVersion>
   </PropertyGroup>
 </Project>
