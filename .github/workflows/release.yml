@@ -115,6 +115,7 @@ jobs:
           dotnet-version: '9.0.x'
 
       - name: Setup Godot (mono + export templates)
+        id: godot-setup
         uses: chickensoft-games/setup-godot@v2.4.1
         with:
           version: ${{ env.GODOT_VERSION }}
@@ -123,7 +124,13 @@ jobs:
 
       - name: Resolve Godot executable
         id: godot
-        run: echo "GODOT_EXE=$(which godot)" >> "$GITHUB_OUTPUT"
+        run: |
+          set -euo pipefail
+          EXE="$(command -v godot || true)"
+          if [ -z "$EXE" ]; then EXE="${{ steps.godot-setup.outputs.GODOT }}"; fi
+          [ -n "$EXE" ] || { echo "::error::godot executable not found"; exit 1; }
+          echo "GODOT_EXE=$EXE" >> "$GITHUB_OUTPUT"
+          "$EXE" --version
 
       - name: Assert min_game_version matches this branch
         env:
@@ -139,7 +146,9 @@ jobs:
           fi
 
       - name: Import Godot project
-        run: godot --headless --editor --quit --path . --import
+        env:
+          GODOT_EXE: ${{ steps.godot.outputs.GODOT_EXE }}
+        run: '"$GODOT_EXE" --headless --editor --quit --path . --import'
 
       # 走仓库自带的 CopyMod / ExportPCK 逻辑；所有被 git 跟踪的本机绝对路径都用 -p: 覆盖
       # （MSBuild 全局属性优先于 local.props / Directory.Build.props 的赋值）
@@ -183,7 +192,6 @@ jobs:
             cp ci/mod_preview.png dist/mod_preview.png
             SIZE=$(stat -c%s dist/mod_preview.png)
             if [ "$SIZE" -gt 1048576 ]; then echo "::error::preview image > 1MB"; exit 1; fi
-            echo "preview=dist/mod_preview.png" >> "$GITHUB_ENV"
           else
             echo "preview=<none>（保持工坊现有预览）" >> "$GITHUB_STEP_SUMMARY"
           fi
@@ -243,6 +251,18 @@ jobs:
           [ -n "$STEAM_CONFIG_VDF" ] || { echo "::error::missing secret STEAM_CONFIG_VDF"; exit 1; }
           echo "secrets OK（值不会被打印）"
 
+      - name: Resolve preview path
+        id: preview
+        run: |
+          set -euo pipefail
+          if [ -f dist/mod_preview.png ]; then
+            echo "path=dist/mod_preview.png" >> "$GITHUB_OUTPUT"
+            echo "使用预览图 dist/mod_preview.png"
+          else
+            echo "path=" >> "$GITHUB_OUTPUT"
+            echo "无预览图：保持工坊现有预览不变"
+          fi
+
       - name: Upload to Steam Workshop
         # ★ 必须 pin SHA（理由见文件头注释）
         uses: iouter/workshop-deploy@c1018ce9cdf0bb77530eec57b0bd1804abd14065
@@ -260,7 +280,7 @@ jobs:
           # 注意：这个 action 的参数名是 camelCase 的 isBeta（不是 is-beta）
           isBeta: ${{ needs.detect.outputs.is_beta }}
           # 有预览图时才传（空字符串 = 不动工坊现有预览）
-          previewFile: ${{ env.preview || '' }}
+          previewFile: ${{ steps.preview.outputs.path }}
 
       # -----------------------------------------------------------------------
       # 备选：完全不依赖第三方 action，自己写 manifest.vdf + steamcmd。
