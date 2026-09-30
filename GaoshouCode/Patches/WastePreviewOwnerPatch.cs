@@ -59,8 +59,14 @@ public sealed class WastePreviewOwnerPatch : IPatchMethod
                     $"offset=({set.OffsetLeft},{set.OffsetTop},{set.OffsetRight},{set.OffsetBottom}) children={set.GetChildCount()}");
             }
 
-            if (__result != null && WastePreviewPatch.IsPreviewOwner(owner))
-                WastePreviewPatch.RecordSet(__result);
+            if (__result != null)
+            {
+                // 一次性取证：登记成功 / 未命中各留一行 ⇒ 能区分"登记根本没发生"与"登记了但查找失败"。
+                if (WastePreviewPatch.IsPreviewOwner(owner))
+                    WastePreviewPatch.RecordSet(__result, owner);
+                else
+                    WastePreviewPatch.DiagOwnerMiss(owner);
+            }
         }
         catch (System.Exception e)
         {
