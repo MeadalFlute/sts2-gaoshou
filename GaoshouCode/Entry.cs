@@ -297,6 +297,7 @@ public partial class Entry
         var failed = 0;
         var checkedTypes = 0;
         var stateMachineMethods = 0;
+        var startInstances = 0;
         var failures = new List<string>();
 
         try
@@ -332,7 +333,7 @@ public partial class Entry
                     if (name == "MoveNext")
                         stateMachineMethods++;
 
-                    // ③ 双保险：async 方法 ⇒ 顺带预热它生成的状态机类型（含 MoveNext）
+                    // ③ async 方法 ⇒ 预热它生成的状态机：**不仅 MoveNext，还要预热"BCL 泛型 × 我方状态机"的实例化** ✓
                     foreach (var attribute in method.GetCustomAttributes(typeof(System.Runtime.CompilerServices.AsyncStateMachineAttribute), false))
                     {
                         if (attribute is not System.Runtime.CompilerServices.AsyncStateMachineAttribute asyncAttribute)
@@ -342,12 +343,22 @@ public partial class Entry
                         if (machineType == null || machineType.ContainsGenericParameters)
                             continue;
 
-                        var moveNext = machineType.GetMethod("MoveNext", flags);
-                        if (moveNext == null)
-                            continue;
-
                         stateMachineMethods++;
-                        ok += Prepare(moveNext, failures, ref failed);
+                        ok += Prepare(machineType.GetMethod("MoveNext", flags), failures, ref failed);
+                        ok += Prepare(machineType.GetMethod("SetStateMachine", flags), failures, ref failed);
+                        ok += Prepare(machineType.GetMethod("SetException", flags), failures, ref failed);
+                        ok += Prepare(machineType.GetMethod("SetResult", flags), failures, ref failed);
+
+                        // ⭐⭐ 真正被 MonoMod 拒绝的是"**BCL 泛型方法以我方状态机做类型实参**"的实例化 ✗
+                        //   （栈实证：紧跟 AfterSideTurnEnd 的帧就是 `AsyncMethodBuilderCore.Start[TStateMachine]` ✓
+                        //     所以只预热 MoveNext 永远是盲区 ✗）
+                        //   ⚠️ `AsyncMethodBuilderCore` 是 **internal** 类型 ⇒ 只能按名反射取 ✓
+                        var coreBuilder = typeof(System.Runtime.CompilerServices.AsyncTaskMethodBuilder).Assembly
+                            .GetType("System.Runtime.CompilerServices.AsyncMethodBuilderCore", throwOnError: false);
+                        if (coreBuilder != null)
+                            ok += PrepareStart(coreBuilder, machineType, failures, ref failed, ref startInstances);
+                        ok += PrepareStart(typeof(System.Runtime.CompilerServices.AsyncTaskMethodBuilder), machineType, failures, ref failed, ref startInstances);
+                        ok += PrepareStart(typeof(System.Runtime.CompilerServices.AsyncValueTaskMethodBuilder), machineType, failures, ref failed, ref startInstances);
                     }
                 }
             }
@@ -358,9 +369,71 @@ public partial class Entry
         }
 
         Logger.Info($"[HookJit] hooks+stateMachines: {ok} compiled, {failed} failed " +
-                    $"(types={checkedTypes}, MoveNext={stateMachineMethods}).");
+                    $"(types={checkedTypes}, MoveNext={stateMachineMethods}, StartInstances={startInstances}).");
         foreach (var failure in failures)
             Logger.Warn($"[HookJit] FAILED: {failure}");
+    }
+
+    /// <summary>
+    /// 预热 `builderType.Start&lt;S&gt;`（**BCL 泛型方法用我方状态机做类型实参** ✗）。
+    /// 先试无实例化数组的形式 ✓；失败（状态机是**结构体** ⇒ 需要显式实例化数组 ✓）再试带 `TypeHandle[]` 的形式 ✓；
+    /// 两种都失败 ⇒ 记一条点名日志（**这就是本轮的关键可见性** ✓）。
+    /// </summary>
+    private static int PrepareStart(Type builderType, Type stateMachine, List<string> failures, ref int failed, ref int startInstances)
+    {
+        MethodInfo? start = null;
+        foreach (var candidate in builderType.GetMethods(BindingFlags.Public | BindingFlags.Static))
+        {
+            if (candidate.Name != "Start" || !candidate.IsGenericMethodDefinition)
+                continue;
+            if (candidate.GetGenericArguments().Length != 1)
+                continue;
+            if (candidate.GetParameters().Length != 1)
+                continue;
+
+            start = candidate;
+            break;
+        }
+
+        if (start == null)
+            return 0;
+
+        MethodInfo instantiated;
+        try
+        {
+            instantiated = start.MakeGenericMethod(stateMachine);
+        }
+        catch (System.Exception e)
+        {
+            failed++;
+            if (failures.Count < 12)
+                failures.Add($"{builderType.Name}.Start<{stateMachine.Name}> (MakeGenericMethod): {e.GetType().Name}");
+            return 0;
+        }
+
+        startInstances++;
+        try
+        {
+            System.Runtime.CompilerServices.RuntimeHelpers.PrepareMethod(instantiated.MethodHandle);
+            return 1;
+        }
+        catch (System.Exception)
+        {
+            // 结构体状态机：泛型实例化需要显式给出类型句柄 ✓
+            try
+            {
+                System.Runtime.CompilerServices.RuntimeHelpers.PrepareMethod(
+                    instantiated.MethodHandle, [stateMachine.TypeHandle]);
+                return 1;
+            }
+            catch (System.Exception e2)
+            {
+                failed++;
+                if (failures.Count < 12)
+                    failures.Add($"{builderType.Name}.Start<{stateMachine.Name}>: {e2.GetType().Name}: {e2.Message}");
+                return 0;
+            }
+        }
     }
 
     /// <summary>这个方法是否属于我方（含编译器生成的嵌套类型：其 Namespace 为 null，要靠 DeclaringType 往上找 ✓）。</summary>
