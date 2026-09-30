@@ -29,8 +29,9 @@ public sealed class ThirteenOrphans : ModCardTemplate
 
     public GaoshouCardColor CardColor => GaoshouCardColor.BluePurple;
 
-    // 泛光：手牌中含有 >= 9 种不同卡牌时亮起（触发条件就绪）。
-    protected override bool ShouldGlowGoldInternal => GetDistinctHandTypeCount() >= 9;
+    // 泛光：手牌中含有 >= 9 种不同卡牌时亮起（触发条件就绪）；弃牌/选牌界面（手牌选择模式）下不亮。
+    protected override bool ShouldGlowGoldInternal =>
+        GaoshouKeywordMechanics.IsHandGlowAllowed() && GetDistinctHandTypeCount() >= 9;
 
     // 手牌中（排除十三幺自身 this）不同卡牌类型的种数，供高亮与触发判定共用。
     // 排除 this：十三幺在手牌时若算上自己会让高亮偏高；打出后它会离开手牌，两处需保持一致。

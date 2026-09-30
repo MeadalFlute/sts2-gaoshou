@@ -55,8 +55,9 @@ public sealed class HighNoon : ModCardTemplate
         // 0 辉星：不覆写 CanonicalStarCost。
     }
 
-    // 泛光：满足可打出条件（手牌颜色种数 <= 1）时亮起。
-    protected override bool ShouldGlowGoldInternal => HighNoonRule.CountHandColors(this) <= 1;
+    // 泛光：满足可打出条件（手牌颜色种数 <= 1）时亮起；弃牌/选牌界面（手牌选择模式）下不亮。
+    protected override bool ShouldGlowGoldInternal =>
+        GaoshouKeywordMechanics.IsHandGlowAllowed() && HighNoonRule.CountHandColors(this) <= 1;
 
     protected override async Task OnPlay(PlayerChoiceContext choiceContext, CardPlay cardPlay)
     {

@@ -26,9 +26,10 @@ public sealed class Execution : ModCardTemplate
     public override CardAssetProfile AssetProfile => new(
         PortraitPath: $"{Entry.ResPath}/images/cards/{GetType().Name}.png");
 
-    // 存在被击晕的敌人时泛橙光（满足条件才亮）。
+    // 存在被击晕的敌人时泛橙光（满足条件才亮）；弃牌/选牌界面（手牌选择模式）下不亮。
     protected override bool ShouldGlowGoldInternal =>
-        (this.CombatState?.HittableEnemies ?? []).Any(e => e.IsStunned);
+        GaoshouKeywordMechanics.IsHandGlowAllowed()
+        && (this.CombatState?.HittableEnemies ?? []).Any(e => e.IsStunned);
 
     // 悬浮释义：击晕。
     protected override IEnumerable<IHoverTip> AdditionalHoverTips =>
