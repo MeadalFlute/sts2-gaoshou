@@ -18,6 +18,10 @@ public static class StormGlow
 {
     public static bool Ready(CardModel card, int needEnergy, int needStars)
     {
+        // 高光只允许出现在正常手牌行：弃牌/选牌界面下手牌仍在 Hand 堆里，必须按界面状态挡掉。
+        if (!GaoshouKeywordMechanics.IsHandGlowAllowed())
+            return false;
+
         if (card.Owner?.PlayerCombatState is not { } pcs)
             return false;
 

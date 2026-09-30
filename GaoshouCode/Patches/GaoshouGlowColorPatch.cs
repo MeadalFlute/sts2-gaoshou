@@ -58,6 +58,11 @@ public sealed class GaoshouGlowColorPatch : IPatchMethod
             return;
 
         // 与卡牌的 ShouldGlowGoldInternal 用同一对判定（都只认"在手牌里"）。
+        // 但弃牌/选牌界面下手牌仍在 Hand 堆里，光靠牌堆判定挡不住（原版此时由
+        // CardSelectorPrefs.ShouldGlowGold 接管泛光）⇒ 再用界面闸门挡一层，避免改色照到选牌界面。
+        if (!GaoshouKeywordMechanics.IsHandGlowAllowed())
+            return;
+
         var flow = GaoshouFlowTracker.IsFlowGlowReady(card);
         var miracle = MiracleCounter.IsMiracleGlowReady(card);
         if (!flow && !miracle)

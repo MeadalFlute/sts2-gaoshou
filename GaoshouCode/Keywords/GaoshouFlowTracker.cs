@@ -139,10 +139,14 @@ public sealed class GaoshouFlowTracker : SingletonModel
     /// <summary>
     /// 仅用于卡牌视觉高光：流转提示只应显示在手牌中，避免弃牌堆、抽牌堆或选牌界面
     /// 被误认为原版奇巧（Sly）效果。实际打出时仍使用 IsFlowReady 进行结算判定。
+    /// 注意：选牌界面（弃牌/升级选择）下手牌**仍在 Hand 堆里**，所以还要用
+    /// IsHandGlowAllowed() 把"手牌选择模式"挡掉。
     /// </summary>
     public static bool IsFlowGlowReady(CardModel card)
     {
-        return card.Pile?.Type == PileType.Hand && IsFlowReady(card);
+        return GaoshouKeywordMechanics.IsHandGlowAllowed()
+            && card.Pile?.Type == PileType.Hand
+            && IsFlowReady(card);
     }
 
     private static bool SharesBaseColor(GaoshouCardColor a, GaoshouCardColor b)

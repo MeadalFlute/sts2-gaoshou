@@ -4,6 +4,7 @@ using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
 using MegaCrit.Sts2.Core.Localization;
+using MegaCrit.Sts2.Core.Nodes.Rooms;
 using Gaoshou.Cards;
 using STS2RitsuLib.Scaffolding.Content;
 
@@ -54,5 +55,19 @@ public static class GaoshouKeywordMechanics
 
         for (var i = 0; i < discarded.Count; i++)
             await mainOnce(choiceContext);
+    }
+
+    /// <summary>
+    /// 高光是否允许出现在当前界面：只允许出现在"正常手牌行"里。
+    /// 手牌选择模式（弃牌 / 选牌界面）下卡牌**仍然留在手牌堆里**（<c>PileType.Hand</c>），
+    /// 单靠牌堆判定挡不住；且原版此时会用 <c>CardSelectorPrefs.ShouldGlowGold</c>
+    /// （经 <c>NPlayerHand.SelectModeGoldGlowOverride</c>）接管泛光判定 ⇒ 模组必须自己让位，
+    /// 否则改色后的流转/奇迹/风暴高光会照到选牌界面上。
+    /// 房间/手牌节点还没建好时（<c>NCombatRoom.Instance</c> 为空）按"允许"处理，行为与旧版一致。
+    /// </summary>
+    public static bool IsHandGlowAllowed()
+    {
+        var hand = NCombatRoom.Instance?.Ui?.Hand;
+        return hand == null || !hand.IsInCardSelection;
     }
 }
