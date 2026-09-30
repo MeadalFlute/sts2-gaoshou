@@ -114,10 +114,13 @@ public sealed class WastePreviewPatch : IPatchMethod
     }
 
     /// <summary>记录一个"我们的"悬浮窗（由 <see cref="WastePreviewOwnerPatch" /> 在创建时调用）。</summary>
-    internal static void RecordSet(NHoverTipSet? set)
+    internal static void RecordSet(NHoverTipSet? set, Node? owner = null)
     {
-        if (set != null)
-            OurSets.Add(set);
+        if (set == null)
+            return;
+
+        OurSets.Add(set);
+        DiagRegistered(set, owner);
     }
 
     /// <summary>
@@ -127,41 +130,69 @@ public sealed class WastePreviewPatch : IPatchMethod
     /// </summary>
     internal static bool IsPreviewOwner(Node? owner)
     {
-        // ⚠️ 本方法的 IL 被**刻意写得极简**（2026-09-30 正式版事故）：
-        //   原版日志的完整栈显示异常其实是 **MonoMod 的 JIT hook 在编译本方法时抛的**
-        //   （`MonoMod.Core...JitHookDelegateHolder.CompileMethodHook` → `WastePreviewPatch.IsPreviewOwner`，
-        //    与同一轮"增幅 lambda（<>c.b__0_0）"完全同一类失败 ✗），**不是** Godot 已释放节点的问题 ✗
-        //   ⇒ 所以这里**去掉**一切"花哨 IL"：LINQ（`Any(...)` + 方法组委托 ✗）、模式 `when` 子句 ✗、
-        //     `switch` 类型模式 ✗ ⇒ 改成**普通 while 循环 + 一串 if**（IL 只有 isinst/brtrue/call ✓）。
-        //   另外 `Entry.Initialize` 里会调用 <see cref="WarmUp" />，在我们自己的上下文里先 JIT 一次 ✓。
+        // ⚠️ 只做**浅层**判断（自身 + 最多 3 层父级）：日志实证 owner 通常**就是**卡片 holder/卡片节点本身
+        //   （`owner=GridCardHolder-CARD_…`）⇒ 深层遍历既没必要、又让 IL 变复杂 ——
+        //   而 MonoMod 的 JIT hook 曾在"较复杂 IL 的方法"上编译失败（ArgumentException，与同轮增幅 lambda 同源 ✗）
+        //   ⇒ 这里刻意保持极简，且 Godot 原生调用**逐句** try/catch（失败只让那一层失败，不否掉整条链 ✓）。
         var node = owner;
-        for (var depth = 0; node != null && depth < 64; depth++)
+        for (var depth = 0; depth < 4 && node != null; depth++)
         {
-            if (!GodotObject.IsInstanceValid(node))
-                return false;
-
-            if (node is NCardHolder holder && IsPreviewCardModel(holder.CardModel))
+            if (IsPreviewNodeItself(node))
                 return true;
 
-            if (node is NCard card && IsPreviewCardModel(card.Model))
-                return true;
-
-            // 「搜刮！」奖励界面的奖励按钮：owner 就是按钮本身，而卡片只存在于悬浮窗里
-            // （CardReward 没覆写 CreateIcon ⇒ 沿控件链永远找不到卡片节点）⇒ 改判"奖励内容里有没有那三张卡"。
-            if (node is NRewardButton button && IsPreviewReward(button.Reward))
-                return true;
-
-            // 查看卡牌界面（NInspectCardScreen）：owner 是屏幕本身 ⇒ 判它正在展示的 `_card`。
-            if (node is NInspectCardScreen screen && IsPreviewCardModel(screen._card?.Model))
-                return true;
-
-            node = node.GetParent();
+            node = TryGetParent(node);
         }
 
         return false;
     }
 
-    /// <summary>奖励内容里有没有"我们的"废品牌（原先用 <c>Cards.Any(方法组)</c>，为躲 MonoMod JIT 失败改成显式循环）。</summary>
+    /// <summary>hover 控件自身或其**直接父级**是不是我们的卡（不遍历深链）。</summary>
+    internal static bool IsPreviewControl(Control? control)
+    {
+        if (control == null)
+            return false;
+
+        if (IsPreviewNodeItself(control))
+            return true;
+
+        var parent = TryGetParent(control);
+        return parent != null && IsPreviewNodeItself(parent);
+    }
+
+    /// <summary>单个节点是不是"我们的"废品牌预览相关节点（纯类型/模型判断：无 LINQ、无委托、无模式 when）。</summary>
+    private static bool IsPreviewNodeItself(Node node)
+    {
+        if (node is NCardHolder holder && IsPreviewCardModel(holder.CardModel))
+            return true;
+
+        if (node is NCard card && IsPreviewCardModel(card.Model))
+            return true;
+
+        // 「搜刮！」奖励界面的奖励按钮：owner 就是按钮本身，卡片只在悬浮窗里 ⇒ 判奖励内容。
+        if (node is NRewardButton button && IsPreviewReward(button.Reward))
+            return true;
+
+        // 查看卡牌界面（NInspectCardScreen）：owner 是屏幕本身 ⇒ 判它正在展示的 `_card`。
+        if (node is NInspectCardScreen screen && IsPreviewCardModel(screen._card?.Model))
+            return true;
+
+        return false;
+    }
+
+    /// <summary>安全取父节点：原生调用失败（对象已释放等）只让**这一层**失败，不把整条链否掉。</summary>
+    private static Node? TryGetParent(Node node)
+    {
+        try
+        {
+            return node.GetParent();
+        }
+        catch (System.Exception)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>奖励内容里有没有"我们的"废品牌（原先用 <c>Cards.Any(方法组)</c>，为躲 JIT 失败改成显式循环）。</summary>
     private static bool IsPreviewReward(Reward? reward)
     {
         if (reward is not CardReward cardReward || cardReward.Cards == null)
@@ -178,15 +209,94 @@ public sealed class WastePreviewPatch : IPatchMethod
 
     private static bool IsPreviewCardModel(CardModel? card) => WastePreview.IsPreviewCard(card);
 
+    // ---- 一次性取证（各前 10 次）：区分"登记根本没发生"与"登记了但查找失败" ----
+
+    private static int _diagRegister;
+    private static int _diagMiss;
+    private static int _diagHover;
+
+    /// <summary>登记成功一行：证明 owner 判定通过、悬浮窗已进 OurSets。</summary>
+    internal static void DiagRegistered(NHoverTipSet set, Node? owner)
+    {
+        if (_diagRegister >= 10)
+            return;
+        _diagRegister++;
+        Diag($"[WasteDiag] registered #{_diagRegister} owner={Describe(owner)} set={SafeName(set)} ourSets={OurSets.Count}");
+    }
+
+    /// <summary>owner 判定为 false 一行：证明"登记没发生"，并给出 owner 及其父级链。</summary>
+    internal static void DiagOwnerMiss(Node? owner)
+    {
+        if (_diagMiss >= 10)
+            return;
+        _diagMiss++;
+        Diag($"[WasteDiag] owner-miss #{_diagMiss} owner={Describe(owner)} chain={DescribeChain(owner)}");
+    }
+
+    /// <summary>滚轮判定一行：hover 到什么控件、命中与否。</summary>
+    internal static void DiagHover(Control? hovered, bool hit)
+    {
+        if (_diagHover >= 10)
+            return;
+        _diagHover++;
+        Diag($"[WasteDiag] hover #{_diagHover} hovered={Describe(hovered)} hit={hit} ourSets={OurSets.Count}");
+    }
+
+    private static string Describe(Node? node)
+    {
+        if (node == null)
+            return "<null>";
+
+        return $"{node.GetType().Name}({SafeName(node)})";
+    }
+
+    private static string DescribeChain(Node? node)
+    {
+        var text = string.Empty;
+        var cur = node;
+        for (var depth = 0; depth < 6 && cur != null; depth++)
+        {
+            text += (depth == 0 ? string.Empty : "<-") + Describe(cur);
+            cur = TryGetParent(cur);
+        }
+
+        return text.Length == 0 ? "<null>" : text;
+    }
+
+    private static string SafeName(Node node)
+    {
+        try
+        {
+            return node.Name.ToString();
+        }
+        catch (System.Exception)
+        {
+            return "<freed>";
+        }
+    }
+
+    private static void Diag(string message)
+    {
+        try
+        {
+            Entry.Logger.Info(message);
+        }
+        catch (System.Exception)
+        {
+            // 埋点失败无所谓
+        }
+    }
+
     /// <summary>
     /// 预热：在**我们自己的初始化上下文**里先把"容易被 MonoMod JIT hook 卡住"的方法各编译一次。
-    /// 成功/失败都留日志 ⇒ 实机上一眼能看出 JIT 是否还失败（失败会把异常直接打在 init 阶段 ✓）。
+    /// 成功/失败都留日志 ⇒ 实机上一眼能看出 JIT 是否还失败。
     /// </summary>
     internal static void WarmUp()
     {
         try
         {
             _ = IsPreviewOwner(null);
+            _ = IsPreviewControl(null);
             _ = IsPreviewReward(null);
             Collect(null!, []);
             Entry.Logger.Info("[WastePreview] warm-up ok: JIT-sensitive methods compiled.");
