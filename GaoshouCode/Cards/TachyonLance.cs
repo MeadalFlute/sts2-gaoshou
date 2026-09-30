@@ -172,7 +172,7 @@ public override CardAssetProfile AssetProfile => new(
 
     protected override void OnUpgrade()
     {
-        // 升级后移除"虚无"（临时力量固定 1 层，不再升级加层）。
+        // 升级后移除"虚无"（临时力量升级时 1 -> 2 层）。
         RemoveKeyword(CardKeyword.Ethereal);
          DynamicVars.GetRequired<IntVar>("TemporaryStrength").UpgradeValueBy(1); // 1 -> 2
     }
