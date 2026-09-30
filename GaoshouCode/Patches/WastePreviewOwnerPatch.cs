@@ -42,13 +42,19 @@ public sealed class WastePreviewOwnerPatch : IPatchMethod
 
     public static void Postfix(Control owner, ref NHoverTipSet? __result)
     {
-        // 悬浮窗创建路径：异常会打断原版 tooltip 的创建/布局 ⇒ 一律吞掉（只记一次日志）。
+        // 【埋点前置】第一行就打（即使随后抛异常，也能知道"走到了哪一步"）。
+        WastePreviewPatch.DiagEnterOwner(__result != null, owner);
+
+        // 悬浮窗创建路径：异常会打断原版 tooltip 的创建/布局 ⇒ 一律吞掉（只记一次，但**记完整栈**）。
         try
         {
+            if (__result == null)
+                return;
+
             // 【一次性取证】正式版 hovertip "错位到屏幕左上角" 专用：只记录**前 3 次**悬浮窗创建的几何信息。
             // 判读方法：正常时 set 的 parent 是原版悬浮层、size>0、位置贴着 owner；
             // 错位时通常能看到 parent=null/size=(0,0)/anchors 全 0/位置=(0,0) ⇒ 直接指出是哪一层坏了。
-            if (__result != null && _diagCount < 3)
+            if (_diagCount < 3)
             {
                 _diagCount++;
                 var set = __result;
@@ -59,22 +65,16 @@ public sealed class WastePreviewOwnerPatch : IPatchMethod
                     $"offset=({set.OffsetLeft},{set.OffsetTop},{set.OffsetRight},{set.OffsetBottom}) children={set.GetChildCount()}");
             }
 
-            if (__result != null)
-            {
-                // 一次性取证：登记成功 / 未命中各留一行 ⇒ 能区分"登记根本没发生"与"登记了但查找失败"。
-                if (WastePreviewPatch.IsPreviewOwner(owner))
-                    WastePreviewPatch.RecordSet(__result, owner);
-                else
-                    WastePreviewPatch.DiagOwnerMiss(owner);
-            }
+            // 一次性取证：登记成功 / 未命中各留一行 ⇒ 能区分"登记根本没发生"与"登记了但查找失败"。
+            if (WastePreviewPatch.IsPreviewOwner(owner))
+                WastePreviewPatch.RecordSet(__result, owner);
+            else
+                WastePreviewPatch.DiagOwnerMiss(owner);
         }
         catch (System.Exception e)
         {
-            if (!_warned)
-            {
-                _warned = true;
-                Entry.Logger.Warn($"[WastePreview] owner recording skipped after an error: {e.Message}");
-            }
+            // ⚠️ 必须带**完整栈**：只看 Message 会像前几轮一样"看不到抛在哪一行" ✗
+            WastePreviewPatch.WarnFull(ref _warned, "[WastePreview] owner recording skipped after an error", e);
         }
     }
 

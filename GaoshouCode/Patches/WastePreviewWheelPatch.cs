@@ -42,27 +42,37 @@ public sealed class WastePreviewWheelPatch : IPatchMethod
 
     public static bool Prefix(NCursorManager __instance, InputEvent inputEvent)
     {
-        // 调用点是原版输入回调：任何异常都会污染原版输入处理、并在日志里刷 ERROR ⇒ 一律兜住（只记一次）。
+        // 【埋点前置】第一行就打（前 10 次）：即使随后抛异常，也能知道"进到了哪一步、当时有没有登记"。
+        WastePreviewPatch.DiagEnterWheel(WastePreviewPatch.PreviewRegistered);
+
+        // 调用点是原版输入回调：任何异常都会污染原版输入处理并在日志里刷 ERROR ⇒ 兜住，但**记完整栈** ✓
         try
         {
-            return PrefixCore(__instance, inputEvent);
+            return PrefixCore(inputEvent);
         }
         catch (System.Exception e)
         {
-            if (_warned)
-                return true;
-            _warned = true;
-            Entry.Logger.Warn($"[WastePreview] wheel handler skipped after an error: {e.Message}");
+            WastePreviewPatch.WarnFull(ref _warned, "[WastePreview] wheel handler skipped after an error", e);
             return true;
         }
     }
 
     private static bool _warned;
 
-    private static bool PrefixCore(NCursorManager __instance, InputEvent inputEvent)
+    /// <summary>
+    /// **纯数据版**：运行时**不碰任何 Godot 节点/工具方法** ✗（2026-09-30 正式版：MonoMod 的 JIT hook 会在
+    /// "从补丁回调里调用我方节点遍历方法"时抛 `ArgumentException` ✗ ⇒ 预热也救不了，因为失败是**上下文相关**的 ✓）。
+    /// 这里只做：纯 C# 的 `PreviewRegistered` 判断 + 纯 C# 的 delta 计算 + `WastePreview.Step`（纯数据）
+    /// + `RequestRefresh()`（置一个 bool）⇒ 真正的节点更新交给**已实证可用**的 `_Process` 补丁在下一帧执行 ✓
+    /// 代价：不再独占滚轮（底层界面可能同时滚动）；换来的是"危险上下文里零节点操作" ✓
+    /// </summary>
+    private static bool PrefixCore(InputEvent inputEvent)
     {
-        if (inputEvent is not InputEventMouseButton { Pressed: true } mouseButton)
+        if (inputEvent is not InputEventMouseButton mouseButton || !mouseButton.Pressed)
             return true;
+
+        if (!WastePreviewPatch.PreviewRegistered)
+            return true;                    // 屏幕上没有我们的悬浮窗 ⇒ 完全放行（纯数据判断 ✓）
 
         var delta = mouseButton.ButtonIndex switch
         {
@@ -73,44 +83,8 @@ public sealed class WastePreviewWheelPatch : IPatchMethod
         if (delta == 0)
             return true;
 
-        var viewport = __instance.GetViewport();
-        if (viewport == null || viewport.IsInputHandled())
-            return true;                    // 已被别处处理，别重复吃
-
-        if (!IsHoveringPreviewCard(viewport))
-            return true;                    // 鼠标不在这三张卡上 → 完全放行（手牌照常滚动）
-
         WastePreview.Step(delta, Time.GetTicksMsec());
-        WastePreviewPatch.RefreshVisiblePreviews();
-
-        // 独占：GUI 阶段（含 NScrollableContainer 的滚轮滚动）与 _UnhandledInput 都收不到这个滚轮。
-        viewport.SetInputAsHandled();
+        WastePreviewPatch.RequestRefresh();
         return true;                        // 不改原方法本体：滚轮本来就不走它的分支
-    }
-
-    private static bool IsHoveringPreviewCard(Viewport viewport)
-    {
-        // 闸门 1：屏幕上正显示着"我们的"废品牌预览卡（悬浮窗属于那三张卡之一）。
-        if (WastePreviewPatch.HasVisiblePreview())
-        {
-            WastePreviewPatch.DiagHover(null, true);
-            return true;
-        }
-
-        // 闸门 2（(B) 方案）：**不遍历深链** —— 只看 hover 控件自身与**直接父级**；
-        // Godot 调用单独 try/catch（失败只当这一路不命中，不把整条链否掉）。
-        Control? hovered = null;
-        try
-        {
-            hovered = viewport.GuiGetHoveredControl();
-        }
-        catch (System.Exception)
-        {
-            hovered = null;
-        }
-
-        var hit = WastePreviewPatch.IsPreviewControl(hovered);
-        WastePreviewPatch.DiagHover(hovered, hit);
-        return hit;
     }
 }
