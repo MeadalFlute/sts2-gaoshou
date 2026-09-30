@@ -59,9 +59,13 @@ public sealed class WastePreviewPatch : IPatchMethod
     public static void Postfix(NHoverTipSet __instance)
     {
         // 这是**共享悬浮窗的原版 _Process**：任何异常都会污染所有卡牌的 tooltip
-        //（实测症状：hovertip 错位到屏幕左上角）⇒ 整体吞掉，只记一次日志。
+        //（实测症状：hovertip 错位到屏幕左上角）⇒ 整体吞掉，只记一次日志（带完整栈）。
         try
         {
+            // ⭐ 所有"识别 owner + 登记"的重活都在**这个上下文**里做 —— 它是**已被实证可用**的：
+            //   本方法每帧都在跑 Collect/ApplyCurrent（同样碰游戏类型与节点），日志里从未报错 ✓
+            //   而 NHoverTipSet.CreateAndShow 的 detour 是"首次 JIT 我方方法就炸"的脆弱上下文 ✗
+            ProcessPendingScan();
             Step(__instance);
         }
         catch (System.Exception e)
@@ -71,6 +75,122 @@ public sealed class WastePreviewPatch : IPatchMethod
     }
 
     private static bool _warned;
+
+    // ---- 跨补丁上下文交接：CreateAndShow 的 postfix 里**只做纯字段赋值**（内联，不产生任何方法调用/JIT ✗）----
+
+    /// <summary>CreateAndShow 的 postfix 置位（纯字段写入 ✓）。</summary>
+    internal static bool PendingScan;
+
+    /// <summary>待识别的悬浮窗（纯字段写入 ✓）。</summary>
+    internal static NHoverTipSet? PendingSet;
+
+    /// <summary>待识别的 owner（纯字段写入 ✓）。</summary>
+    internal static Control? PendingOwner;
+
+    /// <summary>
+    /// 处理上一帧 CreateAndShow 交接过来的悬浮窗：**识别 + 登记 + 诊断全在这里做** ✓
+    /// （只在 _Process 这个安全上下文里调用 ⇒ 不再有"在 CreateAndShow detour 里首次 JIT" ✗）
+    /// </summary>
+    internal static void ProcessPendingScan()
+    {
+        if (!PendingScan)
+            return;
+
+        PendingScan = false;
+        var set = PendingSet;
+        var owner = PendingOwner;
+        PendingSet = null;
+        PendingOwner = null;
+
+        if (set == null)
+            return;
+
+        DiagEnterOwner(true, owner);
+        if (IsPreviewOwner(owner))
+        {
+            RecordSet(set, owner);
+            LogTipDiag(set, owner);
+        }
+        else
+        {
+            DiagOwnerMiss(owner);
+        }
+    }
+
+    /// <summary>【一次性取证】前 3 次悬浮窗的几何信息（hovertip 错位排查用；现已正常，保留供复核）。</summary>
+    private static void LogTipDiag(NHoverTipSet set, Control? owner)
+    {
+        if (_tipDiagCount >= 3)
+            return;
+        _tipDiagCount++;
+        Diag($"[TipDiag] #{_tipDiagCount} owner={Describe(owner)} set={SafeName(set)} " +
+             $"parent={set.GetParent()?.Name ?? "<null>"} size={set.Size} pos={set.Position} " +
+             $"anchors=({set.AnchorLeft},{set.AnchorTop},{set.AnchorRight},{set.AnchorBottom}) children={set.GetChildCount()}");
+    }
+
+    private static int _tipDiagCount;
+
+    /// <summary>
+    /// **强制预编译**（`RuntimeHelpers.PrepareMethod`）：把"会被补丁回调间接调用"的我方方法在 **init 上下文**
+    /// 里提前 JIT 掉 ⇒ 补丁回调里不会再出现"首次 JIT" ✗
+    /// （实证：MonoMod 的 JIT hook 在 `NHoverTipSet.CreateAndShow` / `NCursorManager._Input` 的 detour 上下文里
+    ///  首次编译我方方法（`IsPreviewNodeItself`）会抛 ArgumentException ✗；同方法在普通上下文里编译没问题 ✓。
+    ///  注意 `WarmUp()` 那种"用 null 调一次"是**不够**的 —— 参数为 null 会提前 return，被调方根本不会被编译 ✗。）
+    /// </summary>
+    internal static void ForceJit()
+    {
+        var names = new[]
+        {
+            "IsPreviewNodeItself", "IsPreviewOwner", "IsPreviewControl", "IsPreviewReward", "IsPreviewCardModel",
+            "TryGetParent", "RecordSet", "DiagRegistered", "DiagOwnerMiss", "DiagEnterOwner", "DiagEnterWheel",
+            "DiagHover", "Describe", "DescribeChain", "SafeName", "Diag", "WarnFull", "LogTipDiag",
+            "ConsumePendingRefresh", "ProcessPendingScan", "Collect", "ApplyCurrent", "EnsurePreviewNodes",
+            "IsOurSet", "PruneSets", "PreviewCardsIn", "RefreshVisiblePreviews", "HasVisiblePreview",
+            "RequestRefresh", "get_PreviewRegistered", "WarmUp",
+        };
+
+        var flags = System.Reflection.BindingFlags.Static
+                    | System.Reflection.BindingFlags.Public
+                    | System.Reflection.BindingFlags.NonPublic;
+
+        var ok = 0;
+        var failed = 0;
+        foreach (var name in names)
+        {
+            var method = typeof(WastePreviewPatch).GetMethod(name, flags);
+            if (method == null)
+                continue;
+
+            try
+            {
+                System.Runtime.CompilerServices.RuntimeHelpers.PrepareMethod(method.MethodHandle);
+                ok++;
+            }
+            catch (System.Exception e)
+            {
+                failed++;
+                if (failed <= 3)
+                    Entry.Logger.Warn($"[WastePreview] PrepareMethod failed for {name}: {e.GetType().Name}: {e.Message}");
+            }
+        }
+
+        // 轮播数据侧（滚轮补丁会调用）
+        try
+        {
+            System.Runtime.CompilerServices.RuntimeHelpers.PrepareMethod(
+                typeof(WastePreview).GetMethod(nameof(WastePreview.Step))!.MethodHandle);
+            System.Runtime.CompilerServices.RuntimeHelpers.PrepareMethod(
+                typeof(WastePreview).GetMethod(nameof(WastePreview.Current))!.MethodHandle);
+            ok += 2;
+        }
+        catch (System.Exception e)
+        {
+            failed++;
+            Entry.Logger.Warn($"[WastePreview] PrepareMethod failed for WastePreview.Step/Current: {e.Message}");
+        }
+
+        Entry.Logger.Info($"[WastePreview] force-JIT: {ok} compiled, {failed} failed (of {names.Length}+2).");
+    }
 
     /// <summary>一次性 Warn，**带完整类型/消息/栈**（只看 Message 会像前几轮那样"看不到抛在哪一行" ✗）。</summary>
     internal static void WarnFull(ref bool flag, string tag, System.Exception e)
