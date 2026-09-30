@@ -6,6 +6,7 @@ using MegaCrit.Sts2.Core.Commands.Builders;       // AttackCommand（游戏 2026
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Entities.Creatures;
 using MegaCrit.Sts2.Core.Hooks;
+using MegaCrit.Sts2.Core.Models;   // AbstractModel（正式版 AttackCommand.ModelSource 的类型；以 release 存档 DLL 的验签结果为准）
 using STS2RitsuLib.Patching.Models;
 
 namespace Gaoshou.Patches;

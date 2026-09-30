@@ -148,7 +148,7 @@ public sealed class SuperUpgrader : ModEventTemplate
     private async Task PayHp()
     {
         await CreatureCmd.Damage(new ThrowingPlayerChoiceContext(), Owner!.Creature,
-            DynamicVars["HpCost"].BaseValue, ValueProp.Unblockable | ValueProp.Unpowered, null, null, null);
+            DynamicVars["HpCost"].BaseValue, ValueProp.Unblockable | ValueProp.Unpowered, null, null);
         await TryRollUpgrade();
         await AdvanceRound();
     }

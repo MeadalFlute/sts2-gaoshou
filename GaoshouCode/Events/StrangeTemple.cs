@@ -56,7 +56,7 @@ public sealed class StrangeTemple : ModEventTemplate
     private async Task TakeGold()
     {
         await CreatureCmd.Damage(new ThrowingPlayerChoiceContext(), Owner!.Creature,
-            DynamicVars["TempleHp"].BaseValue, ValueProp.Unblockable | ValueProp.Unpowered, null, null, null);
+            DynamicVars["TempleHp"].BaseValue, ValueProp.Unblockable | ValueProp.Unpowered, null, null);
         await PlayerCmd.GainGold(DynamicVars.Gold.BaseValue, Owner!);
         SetEventFinished(PageDescription("DONE"));
     }

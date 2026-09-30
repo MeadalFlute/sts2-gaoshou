@@ -107,7 +107,7 @@ public sealed class MysteriousCave : ModEventTemplate
 
     private Task LoseCaveHp()
         => CreatureCmd.Damage(new ThrowingPlayerChoiceContext(), Owner!.Creature,
-            DynamicVars["CaveHp"].BaseValue, ValueProp.Unblockable | ValueProp.Unpowered, null, null, null);
+            DynamicVars["CaveHp"].BaseValue, ValueProp.Unblockable | ValueProp.Unpowered, null, null);
 
     private async Task DoneOpt()
     {

@@ -73,7 +73,7 @@ public sealed class GaoshouTemporaryStrengthPower : ModPowerTemplate
             Amount -= 1;
             InvokeDisplayAmountChanged();
             await CreatureCmd.Damage(choiceContext, Owner, 1m,
-                ValueProp.Unblockable | ValueProp.Unpowered | ValueProp.Move, Owner, null, null);
+                ValueProp.Unblockable | ValueProp.Unpowered | ValueProp.Move, Owner, null);
             return;
         }
 
