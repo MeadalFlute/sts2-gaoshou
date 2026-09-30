@@ -47,14 +47,29 @@ public class ManaColorHoverPatch : IPatchMethod
 
     public static IEnumerable<IHoverTip> Postfix(IEnumerable<IHoverTip> __result, AbstractModel __instance)
     {
-        if (__instance is CardModel card
-            && card.Id?.Entry?.StartsWith("GAOSHOU_CARD") == true
-            && TryGetManaTip(card, out var manaTip))
+        // 悬浮提示构建期间**绝不能抛**：异常会让原版提示链/布局整体失效
+        //（实测症状：所有卡牌 hovertip 错位到屏幕左上角）⇒ 失败时原样返回原版结果 ✓
+        try
         {
-            return new IHoverTip[] { manaTip }.Concat(__result ?? Enumerable.Empty<IHoverTip>());
+            if (__instance is CardModel card
+                && card.Id?.Entry?.StartsWith("GAOSHOU_CARD") == true
+                && TryGetManaTip(card, out var manaTip))
+            {
+                return new IHoverTip[] { manaTip }.Concat(__result ?? Enumerable.Empty<IHoverTip>());
+            }
+        }
+        catch (System.Exception e)
+        {
+            if (!_warned)
+            {
+                _warned = true;
+                Entry.Logger.Warn($"[ManaTip] mana color tip skipped after an error: {e.Message}");
+            }
         }
         return __result ?? Enumerable.Empty<IHoverTip>();
     }
+
+    private static bool _warned;
 
     private static bool TryGetManaTip(CardModel card, out IHoverTip tip)
     {

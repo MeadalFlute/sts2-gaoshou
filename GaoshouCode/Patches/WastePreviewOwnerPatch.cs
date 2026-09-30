@@ -42,7 +42,21 @@ public sealed class WastePreviewOwnerPatch : IPatchMethod
 
     public static void Postfix(Control owner, ref NHoverTipSet? __result)
     {
-        if (__result != null && WastePreviewPatch.IsPreviewOwner(owner))
-            WastePreviewPatch.RecordSet(__result);
+        // 悬浮窗创建路径：异常会打断原版 tooltip 的创建/布局 ⇒ 一律吞掉（只记一次日志）。
+        try
+        {
+            if (__result != null && WastePreviewPatch.IsPreviewOwner(owner))
+                WastePreviewPatch.RecordSet(__result);
+        }
+        catch (System.Exception e)
+        {
+            if (!_warned)
+            {
+                _warned = true;
+                Entry.Logger.Warn($"[WastePreview] owner recording skipped after an error: {e.Message}");
+            }
+        }
     }
+
+    private static bool _warned;
 }

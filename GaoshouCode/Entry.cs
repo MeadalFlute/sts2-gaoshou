@@ -197,6 +197,11 @@ public partial class Entry
         // 这条只在这些界面上把"显示我们头像"的 TextureRect 补上 88×88 + IgnoreSize/KeepAspectCentered ✓
         // （不动共享贴图 ⇒ 顶部栏不受影响 ✓）。
         patcher.RegisterPatch<CharacterIconDisplaySizePatch>();
+        // 百科大全角色详情：目标方法只在 beta 0.111.0 存在（正式版没有）⇒ 单独一个补丁类，
+        // 挂不上时只影响这一条，绝不连累「历史记录」那条。两条的可选目标缺失都会在下面打日志。
+        patcher.RegisterPatch<BestiaryCharacterIconDisplaySizePatch>();
+        LogMissingOptionalTargets(CharacterIconDisplaySizePatch.GetTargets(), nameof(CharacterIconDisplaySizePatch));
+        LogMissingOptionalTargets(BestiaryCharacterIconDisplaySizePatch.GetTargets(), nameof(BestiaryCharacterIconDisplaySizePatch));
         // 「连续攻击」循环的收尾计时器要按**每段命中**重置，而"每段"只有 TriggerAnim 能提供
         //（ModifyAttackHitCount 在命中循环之外、每张牌只调一次 ✗）⇒ 额外挂这条纯旁路通知。
         patcher.RegisterPatch<RecordAttackTriggerPatch>();
@@ -240,6 +245,53 @@ public partial class Entry
         RitsuLibFramework.SubscribeLifecycle<RunLoadedEvent>(_ => GaoshouEventFlags.Reset());
         RitsuLibFramework.SubscribeLifecycle<RunEndedEvent>(_ => GaoshouEventFlags.Reset());
 
+        // 构建/游戏版本自检（装错版本会静默出错位，见方法注释）。
+        VerifyGameVariant();
+
         Logger.Info("Gaoshou initialized.");
+    }
+
+    /// <summary>本 dll 是按哪个游戏版本编译的（main 分支 = "beta"，release 分支 = "release"）。</summary>
+    private const string ExpectedGameVariant = "beta";
+
+    /// <summary>
+    /// 构建/游戏版本自检：本 dll 只能装在它编译时对应的游戏版本上。
+    /// 装错版本**不会崩**，但补丁与游戏 API 会整片错位 —— 历史事故症状：
+    /// 增幅弃牌无法确认、卡牌被复制、悬浮提示错位（2026-09-30）。
+    /// 判据用"只在一个版本存在的 API"，走反射按名查（两个分支都能编译）。
+    /// </summary>
+    private static void VerifyGameVariant()
+    {
+        // beta 0.111.0 的 CardModel 才有 CreateCloneForPlayer(player)；正式版 0.107.1 只有 CreateClone()。
+        var isBetaGame = typeof(CardModel).GetMethod("CreateCloneForPlayer") != null;
+        var actual = isBetaGame ? "beta" : "release";
+        if (actual == ExpectedGameVariant)
+        {
+            Logger.Info($"[Variant] game variant '{actual}' matches this build.");
+            return;
+        }
+
+        Logger.Error($"[Variant] MISMATCH: this Gaoshou build targets the '{ExpectedGameVariant}' game, but the running game looks like '{actual}'. " +
+                     "Patches and game API calls will be misaligned (card selection may not confirm, cards may duplicate, hover tips may break). " +
+                     "Install the matching Gaoshou build: beta dll on the beta game, release dll on the release game.");
+    }
+
+    /// <summary>
+    /// RitsuLib 的"可选目标"在本版本缺失时是**静默跳过**的 ⇒ 这里补一条明确日志，
+    /// 避免"以为修了、其实没生效"被埋掉（2026-09-30 事故复盘）。
+    /// </summary>
+    private static void LogMissingOptionalTargets(ModPatchTarget[] targets, string patchName)
+    {
+        foreach (var target in targets)
+        {
+            if (!target.IgnoreIfMissing)
+                continue;
+
+            var found = target.TargetType.GetMethod(
+                target.MethodName,
+                BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
+            if (found == null)
+                Logger.Warn($"[Patch] {patchName}: target {target} is missing in this game version - that part is skipped.");
+        }
     }
 }

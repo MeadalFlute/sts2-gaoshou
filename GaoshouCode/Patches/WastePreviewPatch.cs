@@ -57,6 +57,25 @@ public sealed class WastePreviewPatch : IPatchMethod
 
     public static void Postfix(NHoverTipSet __instance)
     {
+        // 这是**共享悬浮窗的原版 _Process**：任何异常都会污染所有卡牌的 tooltip
+        //（实测症状：hovertip 错位到屏幕左上角）⇒ 整体吞掉，只记一次日志。
+        try
+        {
+            Step(__instance);
+        }
+        catch (System.Exception e)
+        {
+            if (_warned)
+                return;
+            _warned = true;
+            Entry.Logger.Warn($"[WastePreview] auto-cycle skipped after an error: {e.Message}");
+        }
+    }
+
+    private static bool _warned;
+
+    private static void Step(NHoverTipSet __instance)
+    {
         if (!IsOurSet(__instance))
             return;
 
