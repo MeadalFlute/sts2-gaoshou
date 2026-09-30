@@ -227,9 +227,11 @@ public partial class Entry
         if (!patcher.PatchAll())
             Logger.Error("Patch application failed!");
 
-        // 废品牌轮播：把"容易被 MonoMod JIT hook 卡住"的方法在**我们自己的上下文**里先编译一次
-        //（2026-09-30：IsPreviewOwner 与增幅 lambda 都在"首次于补丁调用路径里 JIT"时抛 ArgumentException）。
-        WastePreviewPatch.WarmUp();
+        // 废品牌轮播：把"会被补丁回调间接调用"的我方方法**强制预编译**（RuntimeHelpers.PrepareMethod）
+        // ⇒ 补丁回调里不再出现"首次 JIT"。2026-09-30 实证：MonoMod 的 JIT hook 在
+        // CreateAndShow / NCursorManager._Input 的 detour 上下文里**首次编译我方方法**时会抛 ArgumentException ✗
+        //（`WarmUp()` 那种"用 null 调一次"不够 —— 参数为 null 会提前 return，被调方根本没被编译 ✗，故改用 PrepareMethod ✓）
+        WastePreviewPatch.ForceJit();
 
         // 心流：双倍伤害(DoubleDamagePower) 的图标**暂时不做覆盖**（2026-09-20 撤下）。
         // 原因：改成自定义图后实测出现「buff 图标渲染异常（像空的）+ 悬停 buff 时说明条目全挤到屏幕左上角」，

@@ -40,45 +40,22 @@ public sealed class WastePreviewOwnerPatch : IPatchMethod
             typeof(HoverTipAlignment)),
     ];
 
+    /// <summary>
+    /// ⚠️ 这里**只做纯字段赋值**（编译器会内联成 `stsfld`：不含任何方法调用 ⇒ 不会触发新的 JIT ✗）。
+    /// 原因（2026-09-30 完整栈实证）：本回调是 `NHoverTipSet.CreateAndShow` 的 detour，
+    /// **在这个上下文里首次 JIT 我方任何方法都会炸** —— MonoMod 的 JIT hook 抛
+    /// `ArgumentException: Value does not fall within the expected range`
+    /// （栈里"正在编译的方法"就是我们的 `WastePreviewPatch.IsPreviewNodeItself` ✗）。
+    /// ⇒ owner 识别 / 登记 / 诊断全部交给 `WastePreviewPatch.ProcessPendingScan()`，
+    ///   由 **`_Process` 补丁**（每帧跑 `Collect`/`ApplyCurrent`、从未报错的安全上下文 ✓）在下一帧执行 ✓
+    /// </summary>
     public static void Postfix(Control owner, ref NHoverTipSet? __result)
     {
-        // 【埋点前置】第一行就打（即使随后抛异常，也能知道"走到了哪一步"）。
-        WastePreviewPatch.DiagEnterOwner(__result != null, owner);
+        if (__result == null)
+            return;
 
-        // 悬浮窗创建路径：异常会打断原版 tooltip 的创建/布局 ⇒ 一律吞掉（只记一次，但**记完整栈**）。
-        try
-        {
-            if (__result == null)
-                return;
-
-            // 【一次性取证】正式版 hovertip "错位到屏幕左上角" 专用：只记录**前 3 次**悬浮窗创建的几何信息。
-            // 判读方法：正常时 set 的 parent 是原版悬浮层、size>0、位置贴着 owner；
-            // 错位时通常能看到 parent=null/size=(0,0)/anchors 全 0/位置=(0,0) ⇒ 直接指出是哪一层坏了。
-            if (_diagCount < 3)
-            {
-                _diagCount++;
-                var set = __result;
-                Entry.Logger.Info(
-                    $"[TipDiag] #{_diagCount} owner={owner.Name} ownerGlobal={owner.GlobalPosition} ownerSize={owner.Size} " +
-                    $"set={set.Name} parent={set.GetParent()?.Name ?? "<null>"} size={set.Size} pos={set.Position} " +
-                    $"anchors=({set.AnchorLeft},{set.AnchorTop},{set.AnchorRight},{set.AnchorBottom}) " +
-                    $"offset=({set.OffsetLeft},{set.OffsetTop},{set.OffsetRight},{set.OffsetBottom}) children={set.GetChildCount()}");
-            }
-
-            // 一次性取证：登记成功 / 未命中各留一行 ⇒ 能区分"登记根本没发生"与"登记了但查找失败"。
-            if (WastePreviewPatch.IsPreviewOwner(owner))
-                WastePreviewPatch.RecordSet(__result, owner);
-            else
-                WastePreviewPatch.DiagOwnerMiss(owner);
-        }
-        catch (System.Exception e)
-        {
-            // ⚠️ 必须带**完整栈**：只看 Message 会像前几轮一样"看不到抛在哪一行" ✗
-            WastePreviewPatch.WarnFull(ref _warned, "[WastePreview] owner recording skipped after an error", e);
-        }
+        WastePreviewPatch.PendingSet = __result;
+        WastePreviewPatch.PendingOwner = owner;
+        WastePreviewPatch.PendingScan = true;
     }
-
-    private static bool _warned;
-
-    private static int _diagCount;
 }
