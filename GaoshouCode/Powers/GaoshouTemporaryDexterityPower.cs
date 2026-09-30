@@ -58,39 +58,62 @@ public sealed class GaoshouTemporaryDexterityPower : ModPowerTemplate
     public override async Task AfterSideTurnEnd(PlayerChoiceContext choiceContext, CombatSide side,
         IEnumerable<Creature> participants)
     {
-        if (side != Owner.Side || !participants.Contains(Owner))
-            return;
-
-        // 神经超频器：持有且 >3 层 → 本回合授予的敏捷照常全额移除（回合开始会按剩余层数补回），
-        // 只是层数只减 1（不再减半），代价是失去 1 点生命。
-        // 注意这里必须用 -Amount：若只扣 1 点，下回合 AfterSideTurnStart 又会补回 Amount 点，敏捷会无限膨胀。
-        if (Owner.Player?.Relics.Any(r => r is Sandevistan) == true && Amount > 3)
+        // ⚠️ 整体 try/catch：引擎回合钩子抛异常 = 回合推进停住 = 卡死 ✗（2026-09-30 实测同款）
+        try
         {
+            if (side != Owner.Side || !GaoshouTemporaryStrengthPower.ContainsParticipant(participants, Owner))
+                return;
+
+            // 神经超频器：持有且 >3 层 → 本回合授予的敏捷照常全额移除（回合开始会按剩余层数补回），
+            // 只是层数只减 1（不再减半），代价是失去 1 点生命。
+            // 注意这里必须用 -Amount：若只扣 1 点，下回合 AfterSideTurnStart 又会补回 Amount 点，敏捷会无限膨胀。
+            // ⚠️ 原写法是 `Owner.Player?.Relics.Any(r => r is Sandevistan)` —— **闭包 lambda** ✗（会卡死的那类 IL ✗）
+            //    ⇒ 改成**显式循环**（无 lambda / 无 LINQ / 无闭包 ✓）
+            if (Amount > 3 && Owner.Player != null && GaoshouTemporaryStrengthPower.HasSandevistan(Owner.Player))
+            {
+                await PowerCmd.Apply<DexterityPower>(choiceContext, Owner, -Amount, Owner, null);
+                Amount -= 1;
+                InvokeDisplayAmountChanged();
+                await CreatureCmd.Damage(choiceContext, Owner, 1m,
+                    ValueProp.Unblockable | ValueProp.Unpowered | ValueProp.Move, Owner, null, null);
+                return;
+            }
+
             await PowerCmd.Apply<DexterityPower>(choiceContext, Owner, -Amount, Owner, null);
-            Amount -= 1;
-            InvokeDisplayAmountChanged();
-            await CreatureCmd.Damage(choiceContext, Owner, 1m,
-                ValueProp.Unblockable | ValueProp.Unpowered | ValueProp.Move, Owner, null, null);
-            return;
-        }
+            var halved = (int)System.Math.Floor(Amount / 2m);
+            if (halved <= 0)
+            {
+                await PowerCmd.Remove(this);
+                return;
+            }
 
-        await PowerCmd.Apply<DexterityPower>(choiceContext, Owner, -Amount, Owner, null);
-        var halved = (int)System.Math.Floor(Amount / 2m);
-        if (halved <= 0)
-        {
-            await PowerCmd.Remove(this);
-            return;
+            Amount = halved;
         }
-        Amount = halved;
+        catch (System.Exception e)
+        {
+            Entry.WarnHookOnce(ref _turnEndWarned, "[TempDexterity] AfterSideTurnEnd skipped after an error", e);
+        }
     }
+
+    private static bool _turnEndWarned;
 
     // 回合开始（本方回合）：把剩余层数对应的敏捷补回（多人时只在自身回合开始补发）。
     public override async Task AfterSideTurnStart(CombatSide side, IReadOnlyList<Creature> participants, ICombatState combatState)
     {
-        if (side != Owner.Side || !participants.Contains(Owner))
-            return;
-        if (Amount <= 0)
-            return;
-        await PowerCmd.Apply<DexterityPower>(new ThrowingPlayerChoiceContext(), Owner, Amount, Owner, null);
+        try
+        {
+            if (side != Owner.Side || !GaoshouTemporaryStrengthPower.ContainsParticipant(participants, Owner))
+                return;
+            if (Amount <= 0)
+                return;
+
+            await PowerCmd.Apply<DexterityPower>(new ThrowingPlayerChoiceContext(), Owner, Amount, Owner, null);
+        }
+        catch (System.Exception e)
+        {
+            Entry.WarnHookOnce(ref _turnStartWarned, "[TempDexterity] AfterSideTurnStart skipped after an error", e);
+        }
     }
+
+    private static bool _turnStartWarned;
 }

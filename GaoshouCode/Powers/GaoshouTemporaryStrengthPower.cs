@@ -60,31 +60,69 @@ public sealed class GaoshouTemporaryStrengthPower : ModPowerTemplate
     public override async Task AfterSideTurnEnd(PlayerChoiceContext choiceContext, CombatSide side,
         IEnumerable<Creature> participants)
     {
-        if (side != Owner.Side) return;
-        // 多人：只在自己回合结束时结算（participants 为正在结束回合的 Creature）。
-        if (!participants.Contains(Owner)) return;
-
-        // 神经超频器：持有且 >3 层 → 本回合授予的力量照常全额移除（回合开始会按剩余层数补回），
-        // 只是层数只减 1（不再减半），代价是失去 1 点生命。
-        // 注意这里必须用 -Amount：若只扣 1 点，下回合 AfterSideTurnStart 又会补回 Amount 点，力量会无限膨胀。
-        if (Owner.Player?.Relics.Any(r => r is Sandevistan) == true && Amount > 3)
+        // ⚠️ 整体 try/catch：这是**引擎回合钩子** ⇒ 一旦抛异常，回合推进就停住 = 卡死 ✗（2026-09-30 实测）
+        try
         {
+            if (side != Owner.Side) return;
+            // 多人：只在自己回合结束时结算（participants 为正在结束回合的 Creature）。
+            if (!ContainsParticipant(participants, Owner)) return;
+
+            // 神经超频器：持有且 >3 层 → 本回合授予的力量照常全额移除（回合开始会按剩余层数补回），
+            // 只是层数只减 1（不再减半），代价是失去 1 点生命。
+            // 注意这里必须用 -Amount：若只扣 1 点，下回合 AfterSideTurnStart 又会补回 Amount 点，力量会无限膨胀。
+            // ⚠️ 原写法是 `Owner.Player?.Relics.Any(r => r is Sandevistan)` —— 那是**闭包 lambda** ✗，
+            //    正是 2026-09-30 反复踩到的那类 IL（MonoMod 的 JIT hook 编译不了 ⇒ ArgumentException ⇒ 卡死 ✗）
+            //    ⇒ 改成**显式循环**（无 lambda/无 LINQ/无闭包 ✓）
+            if (Amount > 3 && Owner.Player != null && HasSandevistan(Owner.Player))
+            {
+                await PowerCmd.Apply<StrengthPower>(choiceContext, Owner, -Amount, Owner, null);
+                Amount -= 1;
+                InvokeDisplayAmountChanged();
+                await CreatureCmd.Damage(choiceContext, Owner, 1m,
+                    ValueProp.Unblockable | ValueProp.Unpowered | ValueProp.Move, Owner, null, null);
+                return;
+            }
+
             await PowerCmd.Apply<StrengthPower>(choiceContext, Owner, -Amount, Owner, null);
-            Amount -= 1;
-            InvokeDisplayAmountChanged();
-            await CreatureCmd.Damage(choiceContext, Owner, 1m,
-                ValueProp.Unblockable | ValueProp.Unpowered | ValueProp.Move, Owner, null, null);
-            return;
+            var halved = (int)Math.Floor(Amount / 2m);
+            if (halved <= 0)
+            {
+                await PowerCmd.Remove(this);
+                return;
+            }
+
+            Amount = halved;
+        }
+        catch (System.Exception e)
+        {
+            Entry.WarnHookOnce(ref _turnEndWarned, "[TempStrength] AfterSideTurnEnd skipped after an error", e);
+        }
+    }
+
+    private static bool _turnEndWarned;
+
+    /// <summary>是否持有「神经超频器」（**显式循环**：不用 LINQ、不用 lambda、不用闭包 ✓）。</summary>
+    public static bool HasSandevistan(MegaCrit.Sts2.Core.Entities.Players.Player player)
+    {
+        foreach (var relic in player.Relics)
+        {
+            if (relic is Sandevistan)
+                return true;
         }
 
-        await PowerCmd.Apply<StrengthPower>(choiceContext, Owner, -Amount, Owner, null);
-        var halved = (int)Math.Floor(Amount / 2m);
-        if (halved <= 0)
+        return false;
+    }
+
+    /// <summary>参与列表里是否有这个 Creature（**显式循环**：替掉 <c>participants.Contains(Owner)</c> 的 LINQ 调用 ✓）。</summary>
+    public static bool ContainsParticipant(IEnumerable<Creature> participants, Creature owner)
+    {
+        foreach (var creature in participants)
         {
-            await PowerCmd.Remove(this);
-            return;
+            if (ReferenceEquals(creature, owner))
+                return true;
         }
-        Amount = halved;
+
+        return false;
     }
 
     // 回合开始（本方回合）：把剩余层数对应的力量补回（多人时只在自身回合开始补发）。
@@ -92,10 +130,19 @@ public sealed class GaoshouTemporaryStrengthPower : ModPowerTemplate
     // 多人客机时 FirstOrDefault 拿到主机导致客机不补发——改为能力自身钩子，per-owner 判定。
     public override async Task AfterSideTurnStart(CombatSide side, IReadOnlyList<Creature> participants, ICombatState combatState)
     {
-        if (side != Owner.Side) return;
-        if (!participants.Contains(Owner)) return;
-        if (Amount <= 0) return;
+        try
+        {
+            if (side != Owner.Side) return;
+            if (!ContainsParticipant(participants, Owner)) return;
+            if (Amount <= 0) return;
 
-        await PowerCmd.Apply<StrengthPower>(new ThrowingPlayerChoiceContext(), Owner, Amount, Owner, null);
+            await PowerCmd.Apply<StrengthPower>(new ThrowingPlayerChoiceContext(), Owner, Amount, Owner, null);
+        }
+        catch (System.Exception e)
+        {
+            Entry.WarnHookOnce(ref _turnStartWarned, "[TempStrength] AfterSideTurnStart skipped after an error", e);
+        }
     }
+
+    private static bool _turnStartWarned;
 }

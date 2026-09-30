@@ -233,6 +233,9 @@ public partial class Entry
         //（`WarmUp()` 那种"用 null 调一次"不够 —— 参数为 null 会提前 return，被调方根本没被编译 ✗，故改用 PrepareMethod ✓）
         WastePreviewPatch.ForceJit();
 
+        // 回合/阶段钩子 JIT 自检（卡死级事故的关键排查手段：编不过的钩子会让引擎调用时抛异常 ⇒ 回合推进停住 ✗）
+        VerifyTurnHookJit();
+
         // 心流：双倍伤害(DoubleDamagePower) 的图标**暂时不做覆盖**（2026-09-20 撤下）。
         // 原因：改成自定义图后实测出现「buff 图标渲染异常（像空的）+ 悬停 buff 时说明条目全挤到屏幕左上角」，
         // 且把尺寸对齐原版规格（小图标 64×64 / 大图 256×256）后依旧复现 —— 说明问题出在"覆盖图集切图"这条路径本身
@@ -262,6 +265,81 @@ public partial class Entry
 
     /// <summary>本 dll 是按哪个游戏版本编译的（main 分支 = "beta"，release 分支 = "release"）。</summary>
     private const string ExpectedGameVariant = "beta";
+
+    /// <summary>
+    /// 引擎钩子（回合/阶段钩子等）的**一次性 Warn，带完整类型/消息/栈** ✓
+    /// （钩子抛异常 = 回合推进停住 = 游戏卡死 ✗ ⇒ 必须兜住并留证 ✓）
+    /// </summary>
+    public static void WarnHookOnce(ref bool flag, string tag, System.Exception e)
+    {
+        if (flag)
+            return;
+        flag = true;
+        Logger.Warn($"{tag}: {e.GetType().FullName}: {e.Message}\n{e.StackTrace}");
+    }
+
+    /// <summary>
+    /// 回合/阶段钩子的 **JIT 自检**（2026-09-30 卡死事故复盘 ✓）：
+    /// 我们挂在引擎回合钩子上的方法一旦"编不过"（MonoMod 的 JIT hook 抛 `ArgumentException` ✗），
+    /// 引擎调用它时就会抛异常 ⇒ **回合推进停住 = 游戏卡死** ✗。
+    /// 这里在 init 时把 `Gaoshou.*` 里所有名字含 Turn / Sande / Participant 的方法逐个 `PrepareMethod`
+    /// ⇒ **启动一次**即可从日志看出有没有编不过的（并点名 ✓）。
+    /// </summary>
+    private static void VerifyTurnHookJit()
+    {
+        var ok = 0;
+        var failed = 0;
+        var checkedTypes = 0;
+        var failures = new List<string>();
+
+        try
+        {
+            var assembly = Assembly.GetExecutingAssembly();
+            const BindingFlags flags = BindingFlags.Instance | BindingFlags.Static
+                                       | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly;
+
+            foreach (var type in assembly.GetTypes())
+            {
+                var ns = type.Namespace ?? string.Empty;
+                if (!ns.StartsWith("Gaoshou", StringComparison.Ordinal) || type.IsGenericTypeDefinition)
+                    continue;
+
+                checkedTypes++;
+                foreach (var method in type.GetMethods(flags))
+                {
+                    if (method.IsAbstract || method.ContainsGenericParameters)
+                        continue;
+
+                    var name = method.Name;
+                    var relevant = name.Contains("Turn", StringComparison.Ordinal)
+                                   || name.Contains("Sande", StringComparison.Ordinal)
+                                   || name.Contains("Participant", StringComparison.Ordinal);
+                    if (!relevant)
+                        continue;
+
+                    try
+                    {
+                        System.Runtime.CompilerServices.RuntimeHelpers.PrepareMethod(method.MethodHandle);
+                        ok++;
+                    }
+                    catch (System.Exception e)
+                    {
+                        failed++;
+                        if (failures.Count < 10)
+                            failures.Add($"{type.Name}.{name}: {e.GetType().Name}: {e.Message}");
+                    }
+                }
+            }
+        }
+        catch (System.Exception e)
+        {
+            Logger.Warn($"[HookJit] sweep failed: {e.GetType().Name}: {e.Message}");
+        }
+
+        Logger.Info($"[HookJit] turn/phase hooks: {ok} compiled, {failed} failed (types={checkedTypes}).");
+        foreach (var failure in failures)
+            Logger.Warn($"[HookJit] FAILED: {failure}");
+    }
 
     /// <summary>
     /// 构建/游戏版本自检：本 dll 只能装在它编译时对应的游戏版本上。
