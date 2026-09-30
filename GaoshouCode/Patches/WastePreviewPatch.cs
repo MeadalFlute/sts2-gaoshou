@@ -110,12 +110,105 @@ public sealed class WastePreviewPatch : IPatchMethod
         {
             RecordSet(set, owner);
             LogTipDiag(set, owner);
+            return;
         }
-        else
+
+        // ⭐ 详情页（"查看卡牌"）：卡节点叫 `NCard(Card)`、名字里**没有卡 id** ✗（实证 samples 已给出）
+        //   ⇒ 名字判据无解 ⇒ 改用**悬浮窗文本识别** ✓：我们的废品牌预览窗里一定有那句唯一的提示语
+        //   （`GAOSHOU_WASTE_PREVIEW_HINT` 的本地化文本 ✓）⇒ 纯字符串比对，零误伤
+        //   （损失规避的窗里是"硬纸板"预览、没有这句提示语 ✓ 不会误判 ✓）
+        if (TooltipLooksLikeWastePreview(set))
         {
-            DiagOwnerMiss(owner);
+            Diag($"[WasteDiag] registered-by-text #{_diagTextHits + 1} owner={Describe(owner)} set={SafeName(set)}");
+            _diagTextHits++;
+            RecordSet(set, owner);
+            return;
         }
+
+        DiagOwnerMiss(owner);
     }
+
+    private static int _diagTextHits;
+
+    /// <summary>本次是否"疑似我们的悬浮窗"（仅用于日志，避免误判时我们看不到）。</summary>
+    private static bool TooltipLooksLikeWastePreview(NHoverTipSet set)
+    {
+        var hint = HintText();
+        if (hint.Length == 0)
+            return false;
+
+        return SubtreeTextContains(set, hint, 0);
+    }
+
+    /// <summary>在悬浮窗子树里找 Label/RichTextLabel 的文本（**只读原生属性** ✓ 限深 8、限 300 节点 ✓）。</summary>
+    private static bool SubtreeTextContains(Node node, string needle, int depth)
+    {
+        if (depth > 8 || !GodotObject.IsInstanceValid(node))
+            return false;
+
+        var visited = 0;
+        foreach (var child in node.GetChildren())
+        {
+            if (visited++ >= 300)
+                return false;
+
+            if (child == null || !GodotObject.IsInstanceValid(child))
+                continue;
+
+            if (NodeTextContains(child, needle))
+                return true;
+
+            if (SubtreeTextContains(child, needle, depth + 1))
+                return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>单个节点（若是 Label/RichTextLabel）的文本是否含目标串 ✓（原生属性读取，失败当不命中 ✓）。</summary>
+    private static bool NodeTextContains(Node node, string needle)
+    {
+        try
+        {
+            if (node is Label label)
+                return label.Text.Contains(needle, System.StringComparison.Ordinal);
+
+            if (node is RichTextLabel rich)
+                return rich.Text.Contains(needle, System.StringComparison.Ordinal);
+        }
+        catch (System.Exception)
+        {
+            return false;
+        }
+
+        return false;
+    }
+
+    private static string _hintText = string.Empty;
+    private static bool _hintTextResolved;
+
+    /// <summary>耗品牌预览提示语的本地化文本（只解析一次 ✓ 纯字符串 ✓）。</summary>
+    private static string HintText()
+    {
+        if (_hintTextResolved)
+            return _hintText;
+
+        _hintTextResolved = true;
+        try
+        {
+            _hintText = new MegaCrit.Sts2.Core.Localization.LocString("cards", "GAOSHOU_WASTE_PREVIEW_HINT").GetFormattedText();
+            Diag($"[WastePreview] hint text for tooltip matching: '{_hintText}'");
+        }
+        catch (System.Exception e)
+        {
+            _hintText = string.Empty;
+            WarnFull(ref _hintWarned, "[WastePreview] hint text lookup failed", e);
+        }
+
+        return _hintText;
+    }
+
+    private static bool _hintWarned;
 
     /// <summary>【一次性取证】前 3 次悬浮窗的几何信息（hovertip 错位排查用；现已正常，保留供复核）。</summary>
     private static void LogTipDiag(NHoverTipSet set, Control? owner)
@@ -151,6 +244,7 @@ public sealed class WastePreviewPatch : IPatchMethod
             "IsOurSet", "PruneSets", "PreviewCardsIn", "RefreshVisiblePreviews", "HasVisiblePreview",
             "RequestRefresh", "get_PreviewRegistered", "WarmUp",
             "LooksLikeScreen", "GetTypeName", "ScanSubtree", "ScanNode", "ScanOwnerAndParent", "BeginScan",
+            "TooltipLooksLikeWastePreview", "SubtreeTextContains", "NodeTextContains", "HintText",
         };
 
         var flags = System.Reflection.BindingFlags.Static
@@ -234,8 +328,10 @@ public sealed class WastePreviewPatch : IPatchMethod
             return;
         }
 
-        // 预览确实在屏幕上 ⇒ 供滚轮补丁做"独占"判定（纯字段写 ✓，不产生任何调用 ✓）
-        PreviewActive = CachedPreviewNodes.Count > 0;
+        // 预览确实在屏幕上（我们的悬浮窗真的在跑）⇒ 刷新"激活时间戳"供滚轮补丁做独占判定 ✓
+        // ⚠️ 与"缓存"分开：缓存只管性能（CachedPreviewNodes ✓），激活只看这个时间戳 ✓
+        PreviewActive = true;
+        LastActiveMs = Time.GetTicksMsec();
 
         // 滚轮那条补丁只写"纯数据"（WastePreview.Step + RequestRefresh），真正的节点更新在这里做
         //（这个 _Process 上下文做节点操作是**已被实证可用**的 ✓）。
@@ -282,10 +378,15 @@ public sealed class WastePreviewPatch : IPatchMethod
     internal static bool PreviewRegistered => OurSets.Count > 0;
 
     /// <summary>
-    /// **废品牌预览此刻是否真的显示着**（由 `_Process` 这个安全上下文里算好，滚轮补丁只**读字段** ✓）。
-    /// 独占判定就用它 ⇒ 滚轮回调里零节点操作、零我们方法的首次 JIT ✓
+    /// **废品牌预览此刻是否真的显示着**（缓存与激活分离 ✗✓）：
+    ///   * 旧版用"缓存里有预览节点"（`CachedPreviewNodes.Count > 0`）⇒ 缓存**长期为真** ⇒ 没呼出预览时也吃滚轮 ✗
+    ///   * 现在改为**时间戳**：只有"我们的悬浮窗**真的被 `_Process` 处理过**"才刷新
+    ///     <see cref="LastActiveMs" /> ⇒ 悬浮窗消失后不再刷新 ⇒ 独占自动失效 ✓
     /// </summary>
     internal static bool PreviewActive;
+
+    /// <summary>最近一次"我们的悬浮窗真的在跑"的时刻（ms ✓ 由 <c>_Process</c> 刷新）。</summary>
+    internal static ulong LastActiveMs;
 
     /// <summary>请求刷新（滚轮补丁调用）：只置一个 bool，真正的节点更新交给已实证可用的 <c>_Process</c> 补丁。</summary>
     internal static void RequestRefresh()
