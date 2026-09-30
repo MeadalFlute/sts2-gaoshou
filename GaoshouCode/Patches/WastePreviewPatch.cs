@@ -131,17 +131,20 @@ public sealed class WastePreviewPatch : IPatchMethod
     private static int _tipDiagCount;
 
     /// <summary>
-    /// **强制预编译**（`RuntimeHelpers.PrepareMethod`）：把"会被补丁回调间接调用"的我方方法在 **init 上下文**
-    /// 里提前 JIT 掉 ⇒ 补丁回调里不会再出现"首次 JIT" ✗
-    /// （实证：MonoMod 的 JIT hook 在 `NHoverTipSet.CreateAndShow` / `NCursorManager._Input` 的 detour 上下文里
-    ///  首次编译我方方法（`IsPreviewNodeItself`）会抛 ArgumentException ✗；同方法在普通上下文里编译没问题 ✓。
-    ///  注意 `WarmUp()` 那种"用 null 调一次"是**不够**的 —— 参数为 null 会提前 return，被调方根本不会被编译 ✗。）
+    /// **强制预编译**（`RuntimeHelpers.PrepareMethod`）并**据此决定能力开关** ✓：
+    ///   * 逐个编译"会被补丁回调间接调用"的我方方法；
+    ///   * 其中 `IsPreviewNodeByModel`（含游戏类型 `is`/成员读取 ✗）若**编不过**，
+    ///     就保持 <see cref="ModelCheckJitOk" /> = false ⇒ **运行时永不调用它** ✗（改由纯字符串判据工作 ✓）
+    ///     ⇒ 这样即使 MonoMod 的 JIT hook 拒绝某段 IL，功能也只是"降级"，不会在运行时炸 ✓✓
+    ///   * 用户只需**启动一次游戏**看这一行：`force-JIT: N compiled, M failed … (modelCheck=on/off)`
+    ///     ⇒ M=0 即全部通过；M&gt;0 会点名是哪几个方法 ✗
     /// </summary>
     internal static void ForceJit()
     {
         var names = new[]
         {
-            "IsPreviewNodeItself", "IsPreviewOwner", "IsPreviewControl", "IsPreviewReward", "IsPreviewCardModel",
+            "IsPreviewNodeItself", "IsPreviewNodeByModel", "IsOurCardNodeName", "IsPreviewOwner",
+            "IsPreviewControl", "IsPreviewReward", "IsPreviewCardModel",
             "TryGetParent", "RecordSet", "DiagRegistered", "DiagOwnerMiss", "DiagEnterOwner", "DiagEnterWheel",
             "DiagHover", "Describe", "DescribeChain", "SafeName", "Diag", "WarnFull", "LogTipDiag",
             "ConsumePendingRefresh", "ProcessPendingScan", "Collect", "ApplyCurrent", "EnsurePreviewNodes",
@@ -165,6 +168,9 @@ public sealed class WastePreviewPatch : IPatchMethod
             {
                 System.Runtime.CompilerServices.RuntimeHelpers.PrepareMethod(method.MethodHandle);
                 ok++;
+
+                if (name == "IsPreviewNodeByModel")
+                    ModelCheckJitOk = true;     // 只有真的编过才允许运行时调用 ✓
             }
             catch (System.Exception e)
             {
@@ -174,22 +180,35 @@ public sealed class WastePreviewPatch : IPatchMethod
             }
         }
 
-        // 轮播数据侧（滚轮补丁会调用）
-        try
+        // 轮播数据侧（滚轮补丁会调用）—— 用带 BindingFlags 的查找（internal 方法用默认 flags 找不到 ⇒ NRE ✗）
+        var dataFlags = System.Reflection.BindingFlags.Static
+                        | System.Reflection.BindingFlags.Public
+                        | System.Reflection.BindingFlags.NonPublic;
+        var step = typeof(WastePreview).GetMethod(nameof(WastePreview.Step), dataFlags);
+        var current = typeof(WastePreview).GetMethod(nameof(WastePreview.Current), dataFlags);
+        foreach (var entry in new[] { ("WastePreview.Step", step), ("WastePreview.Current", current) })
         {
-            System.Runtime.CompilerServices.RuntimeHelpers.PrepareMethod(
-                typeof(WastePreview).GetMethod(nameof(WastePreview.Step))!.MethodHandle);
-            System.Runtime.CompilerServices.RuntimeHelpers.PrepareMethod(
-                typeof(WastePreview).GetMethod(nameof(WastePreview.Current))!.MethodHandle);
-            ok += 2;
-        }
-        catch (System.Exception e)
-        {
-            failed++;
-            Entry.Logger.Warn($"[WastePreview] PrepareMethod failed for WastePreview.Step/Current: {e.Message}");
+            if (entry.Item2 == null)
+            {
+                failed++;
+                Entry.Logger.Warn($"[WastePreview] PrepareMethod skipped: {entry.Item1} not found via reflection.");
+                continue;
+            }
+
+            try
+            {
+                System.Runtime.CompilerServices.RuntimeHelpers.PrepareMethod(entry.Item2.MethodHandle);
+                ok++;
+            }
+            catch (System.Exception e)
+            {
+                failed++;
+                Entry.Logger.Warn($"[WastePreview] PrepareMethod failed for {entry.Item1}: {e.GetType().Name}: {e.Message}");
+            }
         }
 
-        Entry.Logger.Info($"[WastePreview] force-JIT: {ok} compiled, {failed} failed (of {names.Length}+2).");
+        Entry.Logger.Info(
+            $"[WastePreview] force-JIT: {ok} compiled, {failed} failed (of {names.Length}+2); modelCheck={(ModelCheckJitOk ? "on" : "off")}.");
     }
 
     /// <summary>一次性 Warn，**带完整类型/消息/栈**（只看 Message 会像前几轮那样"看不到抛在哪一行" ✗）。</summary>
@@ -302,8 +321,38 @@ public sealed class WastePreviewPatch : IPatchMethod
         return IsPreviewNodeItself(control);
     }
 
-    /// <summary>单个节点是不是"我们的"废品牌预览相关节点（纯类型/模型判断：无 LINQ、无委托、无模式 when）。</summary>
+    /// <summary>
+    /// 单个节点是不是"我们的"废品牌预览相关节点。
+    ///
+    /// ⚠️ 本方法**只能用"一定能被 MonoMod 的 JIT hook 编译"的 IL** ✗：
+    ///   2026-09-30 实证 —— 旧版（对游戏类型做 `is` + 读游戏成员）连 `RuntimeHelpers.PrepareMethod`
+    ///   （在 **init 上下文**、与 detour 无关）都编译不了：`ArgumentException: Value does not fall within the expected range`
+    ///   ⇒ 说明是**方法本身的 IL 形态**被 hook 拒绝 ✗，而不是上下文问题 ✗。
+    ///   而只读 `Node.Name` / `GetParent()` 的方法（`SafeName`/`Describe`/`DiagEnterOwner`/`TryGetParent`）
+    ///   全部 PrepareMethod **通过** ✓ ⇒ 这里改成：
+    ///     ① **节点名含卡 id**（实证名字形如 `GridCardHolder-CARD_GAOSHOU_CARD_…` ✓）—— 纯 BCL 字符串 ✓
+    ///     ② 名字没有就往上找 2 层（同样是名字字符串 ✓）
+    ///     ③ 仅当"模型判据版"（<see cref="IsPreviewNodeByModel" />，含游戏类型/成员 ✗）**PrepareMethod 通过**
+    ///        时才调用它兜底 ✓（编译不过就永不调用 ⇒ 绝不在运行时炸 ✗）
+    /// </summary>
     private static bool IsPreviewNodeItself(Node node)
+    {
+        if (IsOurCardNodeName(SafeName(node)))
+            return true;
+
+        var parent = TryGetParent(node);
+        if (parent != null && IsOurCardNodeName(SafeName(parent)))
+            return true;
+
+        var grand = parent == null ? null : TryGetParent(parent);
+        if (grand != null && IsOurCardNodeName(SafeName(grand)))
+            return true;
+
+        return ModelCheckJitOk && IsPreviewNodeByModel(node);
+    }
+
+    /// <summary>模型判据版（含游戏类型 `is` 与游戏成员读取 ✗）——只在 PrepareMethod 成功时才使用 ✓。</summary>
+    private static bool IsPreviewNodeByModel(Node node)
     {
         if (node is NCardHolder holder && IsPreviewCardModel(holder.CardModel))
             return true;
@@ -311,15 +360,28 @@ public sealed class WastePreviewPatch : IPatchMethod
         if (node is NCard card && IsPreviewCardModel(card.Model))
             return true;
 
-        // 「搜刮！」奖励界面的奖励按钮：owner 就是按钮本身，卡片只在悬浮窗里 ⇒ 判奖励内容。
-        if (node is NRewardButton button && IsPreviewReward(button.Reward))
-            return true;
-
-        // 查看卡牌界面（NInspectCardScreen）：owner 是屏幕本身 ⇒ 判它正在展示的 `_card`。
-        if (node is NInspectCardScreen screen && IsPreviewCardModel(screen._card?.Model))
-            return true;
-
         return false;
+    }
+
+    /// <summary>"模型判据版"是否可用（由 <see cref="ForceJit" /> 设置；编不过就保持 false ⇒ 永不调用 ✓）。</summary>
+    private static bool ModelCheckJitOk;
+
+    /// <summary>本 mod 三张废品牌的卡 id（节点名里就带这个 ✓ 见 [TipDiag] 实证）。</summary>
+    private const string ImprovisedWeaponId = "GAOSHOU_CARD_IMPROVISED_WEAPON";
+
+    private const string JunkChestId = "GAOSHOU_CARD_JUNK_CHEST";
+
+    private const string WasteNotId = "GAOSHOU_CARD_WASTE_NOT";
+
+    /// <summary>节点名里是否含我们三张废品牌的卡 id（**纯 BCL 字符串操作** ✓）。</summary>
+    private static bool IsOurCardNodeName(string name)
+    {
+        if (name.Length == 0)
+            return false;
+
+        return name.Contains(ImprovisedWeaponId, System.StringComparison.Ordinal)
+            || name.Contains(JunkChestId, System.StringComparison.Ordinal)
+            || name.Contains(WasteNotId, System.StringComparison.Ordinal);
     }
 
     /// <summary>安全取父节点：原生调用失败（对象已释放等）只让**这一层**失败，不把整条链否掉。</summary>
