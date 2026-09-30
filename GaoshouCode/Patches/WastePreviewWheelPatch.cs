@@ -71,11 +71,16 @@ public sealed class WastePreviewWheelPatch : IPatchMethod
 
     private static bool IsHoveringPreviewCard(Viewport viewport)
     {
+        // 已释放的 Viewport/控件不能碰（否则抛 ArgumentException，被 fail-soft 吞掉 ⇒ 轮播静默失效）。
+        if (!GodotObject.IsInstanceValid(viewport))
+            return false;
+
         // 闸门 1：屏幕上正显示着"我们的"废品牌预览卡（那个悬浮窗属于我们的三张卡之一）。
         if (WastePreviewPatch.HasVisiblePreview())
             return true;
 
         // 闸门 2：悬浮窗还没建好的那一帧，退回控件链判断（同样只认那三张卡）。
-        return WastePreviewPatch.IsPreviewOwner(viewport.GuiGetHoveredControl());
+        var hovered = viewport.GuiGetHoveredControl();
+        return hovered != null && GodotObject.IsInstanceValid(hovered) && WastePreviewPatch.IsPreviewOwner(hovered);
     }
 }
