@@ -92,8 +92,12 @@ public sealed class WastePreviewWheelPatch : IPatchMethod
         WastePreview.Step(delta, Time.GetTicksMsec());
         WastePreviewPatch.RequestRefresh();
 
-        // 独占：只有"预览真的显示着"时才吃这个滚轮（否则底层界面照常滚动 ✓）
-        if (WastePreviewPatch.PreviewActive)
+        // 独占：只有"预览**此刻真的在显示**"时才吃这个滚轮 ✓
+        // ⚠️ 不能用"缓存里有预览节点"判 ✗（缓存长期为真 ⇒ 没呼出预览时也吃滚轮 ✗ 用户实测反馈）。
+        //    改用 `_Process` 刷新的时间戳：最近 250ms 内我们的悬浮窗被处理过 ⇒ 才算"正在显示" ✓
+        //    （纯字段读 + 原生 `Time.GetTicksMsec()`，与上面同一类安全调用；没有任何我方节点/工具方法调用 ✗）
+        var fresh = Time.GetTicksMsec() - WastePreviewPatch.LastActiveMs <= 250;
+        if (WastePreviewPatch.PreviewRegistered && fresh)
         {
             try
             {
