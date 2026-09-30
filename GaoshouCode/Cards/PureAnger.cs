@@ -31,8 +31,9 @@ public sealed class PureAnger : ModCardTemplate
     public override CardAssetProfile AssetProfile => new(
         PortraitPath: $"{Entry.ResPath}/images/cards/PureAnger.png");
 
-    // 「第一次打出」奖励尚未使用（升级后）时泛橙光。
-    protected override bool ShouldGlowGoldInternal => IsUpgraded && !_firstPlayBonusUsed;
+    // 「第一次打出」奖励尚未使用（升级后）时泛橙光；弃牌/选牌界面（手牌选择模式）下不亮。
+    protected override bool ShouldGlowGoldInternal =>
+        GaoshouKeywordMechanics.IsHandGlowAllowed() && IsUpgraded && !_firstPlayBonusUsed;
 
     // 词条：附赠（抽到这张牌时额外抽 n 张，n 见描述里的 {Cards}）。机制由 AfterCardDrawn 实现。
     public override IEnumerable<CardKeyword> CanonicalKeywords =>
