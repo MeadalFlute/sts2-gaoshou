@@ -52,6 +52,24 @@ public sealed class GaoshouGlowColorPatch : IPatchMethod
     /// </summary>
     public static void Postfix(NHandCardHolder __instance)
     {
+        // 同 KeywordStateIconPatch：这是原版 UI 回调，抛异常会打断手牌渲染/布局 ⇒ 失败一律吞掉。
+        try
+        {
+            Apply(__instance);
+        }
+        catch (System.Exception e)
+        {
+            if (_warned)
+                return;
+            _warned = true;
+            Entry.Logger.Warn($"[GlowColor] recoloring skipped after an error: {e.Message}");
+        }
+    }
+
+    private static bool _warned;
+
+    private static void Apply(NHandCardHolder __instance)
+    {
         var cardNode = __instance.CardNode;
         var card = cardNode?.Model;
         if (card == null)

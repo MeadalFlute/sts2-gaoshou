@@ -68,7 +68,29 @@ public sealed class KeywordStateIconPatch : IPatchMethod
         },
     ];
 
+    /// <summary>
+    /// 悬浮提示是原版 UI 的布局数据源：这里一旦抛异常，提示链会整体断掉
+    /// （历史事故症状：所有卡牌的 hovertip 错位到屏幕左上角）⇒ 任何失败都吞掉，
+    /// 保持 <paramref name="__result" /> 为原版结果（本方法只在最后一步才写 __result）。
+    /// </summary>
     public static void Postfix(CardModel __instance, ref IEnumerable<IHoverTip> __result)
+    {
+        try
+        {
+            Apply(__instance, ref __result);
+        }
+        catch (System.Exception e)
+        {
+            if (_warned)
+                return;
+            _warned = true;
+            Entry.Logger.Warn($"[KeywordIcon] hover-tip icons skipped after an error: {e.Message}");
+        }
+    }
+
+    private static bool _warned;
+
+    private static void Apply(CardModel __instance, ref IEnumerable<IHoverTip> __result)
     {
         if (__result == null || __instance.Keywords.Count == 0)
             return;

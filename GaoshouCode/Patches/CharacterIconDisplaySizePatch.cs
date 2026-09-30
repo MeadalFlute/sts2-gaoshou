@@ -46,18 +46,14 @@ public sealed class CharacterIconDisplaySizePatch : IPatchMethod
 
     public static ModPatchTarget[] GetTargets() =>
     [
-        // 历史记录：%Icon（public 方法 ✓）
-        PatchTarget.Method(typeof(NRunHistoryPlayerIcon), "LoadRun"),
-        // ⚠️ 游戏 2026-09-30 更新后 `NBestiaryCharacterFilter` 这个类**已从原版移除** ✗
-        //    （新 DLL 里 Bestiary 相关只剩 NBestiary / NBestiaryEntry / NBestiaryLayout* / BestiaryEntry 等）
-        //    ⇒ 原「角色筛选」入口不复存在，不再挂它 ✓。
-        // 百科大全：角色详情（私有方法 ⇒ 用 OptionalMethod 按名定位，找不到也只是这条不生效 ✓）
-        PatchTarget.OptionalMethod(typeof(NBestiary), "DisplayCharacterData"),
+        // 历史记录：%Icon（public 方法 ✓，两个游戏版本都在）。
+        // 用 Optional 而不是必需：万一某个版本里它改名/被移除，**不能**让整个补丁注册失败。
+        PatchTarget.OptionalMethod(typeof(NRunHistoryPlayerIcon), "LoadRun"),
     ];
 
     public static void Postfix(Node __instance) => FixSubtree(__instance);
 
-    private static void FixSubtree(Node root)
+    internal static void FixSubtree(Node root)
     {
         foreach (var child in root.GetChildren())
         {
@@ -79,10 +75,41 @@ public sealed class CharacterIconDisplaySizePatch : IPatchMethod
         if (rect.CustomMinimumSize == DisplaySize && rect.ExpandMode == TextureRect.ExpandModeEnum.IgnoreSize)
             return;   // 已经设好了（避免重复写入/抖动）
 
+        // ⚠️ 绝对不要写 rect.Size ✗（2026-09-30 bug：历史头像"过大 + 偏右下"，beta/正式版都复现）：
+        //    原版场景 run_history_player_icon.tscn 里的 `Icon` 是 **anchors_preset=15（0,0→1,1 全矩形）**
+        //    的 TextureRect，**尺寸完全由父节点 PlayerIcon（custom_minimum_size = 64×64）的锚点决定**，
+        //    场景里既没有 size 也没有 offset。Godot 里对 anchors≠0 的节点写 Size 会**重算并固化 offsets**
+        //    ⇒ 节点从此脱离父容器排版、被甩到右下 ✗（这正是实测症状）。
+        //    真正要做的只有两件事：① IgnoreSize 掐掉"贴图原始尺寸 200×200 顶起 min size"（原版 88×88
+        //    贴图不会顶，我们的会 ⇒ 未修时就是"过大 + 往右下生长"）；② 让贴图等比缩进槽位。
         rect.CustomMinimumSize = DisplaySize;
-        rect.Size = DisplaySize;
-        // 这两项就是原版角色 icon 场景用的组合（ironclad_icon.tscn: expand_mode=1 / stretch_mode=5）✓
+        // 这两项就是原版角色 icon 场景用的组合（expand_mode=1 / stretch_mode=5）✓
         rect.ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize;
         rect.StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered;
     }
+}
+
+/// <summary>
+/// 百科大全：角色详情里的角色图（<c>NBestiary.DisplayCharacterData</c>）。
+///
+/// ⚠️ **单独一个补丁类**的原因：该方法**只存在于游戏 0.111.0（beta）**；
+/// 正式版 0.107.1 的 NBestiary 里没有它（已用反编译核对）⇒ 在正式版上这条本来就挂不上 ✗。
+/// 拆开是为了保证"挂不上"**只影响这一条**，绝不连累上面「历史记录」那条（2026-09-30 事故复盘）。
+/// RitsuLib 的可选目标缺失时是静默跳过的，所以 Entry 里另外补一条明确日志 ✓。
+/// </summary>
+public sealed class BestiaryCharacterIconDisplaySizePatch : IPatchMethod
+{
+    public static string PatchId => "gaoshou_character_icon_display_size_bestiary";
+
+    public static string Description => "same 88x88 icon size fix for the bestiary character detail (beta-only method)";
+
+    public static bool IsCritical => false;
+
+    public static ModPatchTarget[] GetTargets() =>
+    [
+        // 私有方法 ⇒ 按名定位；缺失时忽略（正式版就是这样）
+        PatchTarget.OptionalMethod(typeof(NBestiary), "DisplayCharacterData"),
+    ];
+
+    public static void Postfix(Node __instance) => CharacterIconDisplaySizePatch.FixSubtree(__instance);
 }

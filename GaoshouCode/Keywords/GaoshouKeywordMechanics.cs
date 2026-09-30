@@ -67,7 +67,25 @@ public static class GaoshouKeywordMechanics
     /// </summary>
     public static bool IsHandGlowAllowed()
     {
-        var hand = NCombatRoom.Instance?.Ui?.Hand;
-        return hand == null || !hand.IsInCardSelection;
+        // 这个闸门是在**原版 UI 回调**里被调用的（手牌高光 / 词条悬浮提示）。
+        // 一旦它自己抛异常，异常会从 UI 回调冒出去、打断整条提示链（历史事故症状：
+        // 所有卡牌的 hovertip 错位到屏幕左上角）⇒ 任何失败都按"允许高光"处理，
+        // 最多多亮一次，绝不影响布局与流程。
+        try
+        {
+            var hand = NCombatRoom.Instance?.Ui?.Hand;
+            return hand == null || !hand.IsInCardSelection;
+        }
+        catch (System.Exception e)
+        {
+            if (!_glowGateWarned)
+            {
+                _glowGateWarned = true;
+                Entry.Logger.Warn($"[GlowGate] hand-selection probe failed, allowing glow: {e.Message}");
+            }
+            return true;
+        }
     }
+
+    private static bool _glowGateWarned;
 }
