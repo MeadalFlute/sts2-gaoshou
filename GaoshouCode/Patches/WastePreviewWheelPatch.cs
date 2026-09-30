@@ -42,6 +42,25 @@ public sealed class WastePreviewWheelPatch : IPatchMethod
 
     public static bool Prefix(NCursorManager __instance, InputEvent inputEvent)
     {
+        // 调用点是原版输入回调：任何异常都会污染原版输入处理、并在日志里刷 ERROR ⇒ 一律兜住（只记一次）。
+        try
+        {
+            return PrefixCore(__instance, inputEvent);
+        }
+        catch (System.Exception e)
+        {
+            if (_warned)
+                return true;
+            _warned = true;
+            Entry.Logger.Warn($"[WastePreview] wheel handler skipped after an error: {e.Message}");
+            return true;
+        }
+    }
+
+    private static bool _warned;
+
+    private static bool PrefixCore(NCursorManager __instance, InputEvent inputEvent)
+    {
         if (inputEvent is not InputEventMouseButton { Pressed: true } mouseButton)
             return true;
 
