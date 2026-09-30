@@ -61,7 +61,7 @@ public sealed class LimitedPlayRule : SingletonModel
     public override async Task BeforeCardPlayed(CardPlay cardPlay)
     {
         var card = cardPlay?.Card;
-        var player = cardPlay?.Player;
+        var player = cardPlay?.Card.Owner;
         if (card == null || player == null)
             return;
 

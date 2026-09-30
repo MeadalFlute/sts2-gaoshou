@@ -55,7 +55,8 @@ public sealed class FlyingAxe : ModCardTemplate
 
         // 普通攻击：对所选目标造成 10(15) 点伤害。
         await DamageCmd.Attack(DynamicVars.Damage.BaseValue)
-            .FromCard(this, cardPlay)
+            // 游戏 2026-09-30 更新后签名变化，此处同步适配
+            .FromCard(this)
             .Targeting(target)
             .Execute(choiceContext);
 

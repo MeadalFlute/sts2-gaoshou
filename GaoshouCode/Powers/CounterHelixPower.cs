@@ -49,14 +49,7 @@ public sealed class CounterHelixPower : ModPowerTemplate
         if (enemies.Count == 0)
             return;
 
-        await CreatureCmd.Damage(
-            choiceContext: choiceContext,
-            targets: enemies,
-            amount: Amount,
-            props: ValueProp.Unpowered,
-            dealer: Owner,
-            cardSource: null,
-            cardPlay: null);
+        await CreatureCmd.Damage(choiceContext: choiceContext, targets: enemies, amount: Amount, props: ValueProp.Unpowered, dealer: Owner, cardSource: null);
     }
 
     // "本回合"：敌方回合结束时移除。

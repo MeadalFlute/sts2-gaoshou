@@ -52,11 +52,12 @@ public sealed class HeavyStrick : ModCardTemplate
 
         // 移除目标的护甲。
         if (enemy.Block > 0)
-            await CreatureCmd.LoseBlock(choiceContext, enemy, enemy.Block, Owner.Creature);
+            await CreatureCmd.LoseBlock(enemy, enemy.Block);
 
         // 造成 14(18) 点伤害；施加 3(5) 层易伤。
         await DamageCmd.Attack(DynamicVars.Damage.BaseValue)
-            .FromCard(this, cardPlay).Targeting(enemy).Execute(choiceContext);
+            // 游戏 2026-09-30 更新后签名变化，此处同步适配
+            .FromCard(this).Targeting(enemy).Execute(choiceContext);
         await PowerCmd.Apply<VulnerablePower>(choiceContext, enemy,
             DynamicVars.GetRequired<PowerVar<VulnerablePower>>("VulnerablePower").BaseValue,
             Owner.Creature, this);

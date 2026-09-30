@@ -11,6 +11,8 @@ using STS2RitsuLib.Cards.DynamicVars;
 using STS2RitsuLib.Interop.AutoRegistration;
 using STS2RitsuLib.Scaffolding.Content;
 
+using MegaCrit.Sts2.Core.Commands.Builders;   // 游戏 2026-09-30 更新后 AttackCommand 移至此命名空间
+
 namespace Gaoshou.Cards;
 
 // 双鞭：攻击（罕见）。耗 1 能量 1 辉星。造成 6(8) 点伤害；对随机敌人造成 6(8) 点伤害。流转：获得 1 能量、1 辉星。
@@ -65,13 +67,15 @@ public sealed class DoalBian : ModCardTemplate
         var vigor = Owner!.Creature.GetPowerAmount<VigorPower>();
 
         await DamageCmd.Attack(DynamicVars.Damage.BaseValue)
-            .FromCard(this, cardPlay).Targeting(cardPlay.Target).Execute(choiceContext);
+            // 游戏 2026-09-30 更新后签名变化，此处同步适配
+            .FromCard(this).Targeting(cardPlay.Target).Execute(choiceContext);
 
         var enemies = (this.CombatState?.HittableEnemies ?? []).ToList();
         var random = Owner.RunState.Rng.CombatTargets.NextItem(enemies)!;
         if (random != null)
             await DamageCmd.Attack(DynamicVars.GetRequired<DamageVar>("secondHit").BaseValue + vigor)
-                .FromCard(this, cardPlay).Targeting(random).Execute(choiceContext);
+                // 游戏 2026-09-30 更新后签名变化，此处同步适配
+                .FromCard(this).Targeting(random).Execute(choiceContext);
 
         // 流转（颜色与上一张牌完全不同时触发）：获得 1 能量、1 辉星。
         if (GaoshouFlowTracker.IsFlowReady(this))

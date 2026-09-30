@@ -25,7 +25,8 @@ public sealed class GrandMasterPower : ModPowerTemplate
 
     public override async Task AfterCardPlayed(PlayerChoiceContext choiceContext, CardPlay cardPlay)
     {
-        var player = cardPlay.Player;
+        // 游戏 2026-09-30 更新后签名变化，此处同步适配
+        var player = cardPlay.Card.Owner;
         // 仅当打出的牌「流转」判定成功（颜色与上一张牌完全不同）时触发；只响应装备者自己的打出（多人防串触发）。
         if (player == null || Amount <= 0 || player != Owner.Player || !GaoshouFlowTracker.IsFlowReady(cardPlay.Card))
             return;

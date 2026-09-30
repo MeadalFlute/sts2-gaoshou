@@ -23,7 +23,7 @@ public sealed class DoubleStrikePower : ModPowerTemplate
         BigIconPath: $"{Entry.ResPath}/images/powers/doublestrike.png");
 
     public override decimal ModifyDamageAdditive(Creature? target, decimal amount, ValueProp props,
-        Creature? dealer, CardModel? cardSource, CardPlay? cardPlay)
+        Creature? dealer, CardModel? cardSource)
     {
         // 仅加成"打击"牌：牌名（Id）包含 STRIKE（连环打击 LINKED_STRIKE 等亦命中）。
         if (Owner != dealer || cardSource == null)

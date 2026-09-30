@@ -47,8 +47,7 @@ public sealed class GlassKnife : ModCardTemplate, Gaoshou.Keywords.IWasteCard
     {
         ArgumentNullException.ThrowIfNull(cardPlay.Target);
         // 使敌人失去生命：不可格挡、不受力量加成（与「放血/捕捉灵魂」同款 Unblockable|Unpowered 属性）。
-        await CreatureCmd.Damage(choiceContext, cardPlay.Target!, DynamicVars.Damage.BaseValue,
-            ValueProp.Unblockable | ValueProp.Unpowered | ValueProp.Move, Owner.Creature, this, cardPlay);
+        await CreatureCmd.Damage(choiceContext, cardPlay.Target!, DynamicVars.Damage.BaseValue, ValueProp.Unblockable | ValueProp.Unpowered | ValueProp.Move, Owner.Creature, this);
     }
 
     protected override void OnUpgrade()

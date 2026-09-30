@@ -12,6 +12,8 @@ using STS2RitsuLib.Cards.DynamicVars;
 using STS2RitsuLib.Interop.AutoRegistration;
 using STS2RitsuLib.Scaffolding.Content;
 
+using MegaCrit.Sts2.Core.Commands.Builders;   // 游戏 2026-09-30 更新后 AttackCommand 移至此命名空间
+
 namespace Gaoshou.Cards;
 
 // 完美木棍剑：攻击（无色衍生）。耗 2 能量。
@@ -66,13 +68,15 @@ public sealed class PerfectStickSword : ModCardTemplate, Gaoshou.Keywords.IWaste
 
         await DamageCmd.Attack(DynamicVars.Damage.BaseValue)
             .WithHitCount((int)times)
-            .FromCard(this, cardPlay)
+            // 游戏 2026-09-30 更新后签名变化，此处同步适配
+            .FromCard(this)
             .Targeting(target)
             .Execute(choiceContext);
 
         // 对所有敌人造成伤害（单次 Execute）。
         await DamageCmd.Attack(DynamicVars.GetRequired<DamageVar>("all").BaseValue + vigor)
-            .FromCard(this, cardPlay)
+            // 游戏 2026-09-30 更新后签名变化，此处同步适配
+            .FromCard(this)
             .TargetingAllOpponents(this.CombatState)
             .Execute(choiceContext);
     }

@@ -11,6 +11,8 @@ using STS2RitsuLib.Cards.DynamicVars;
 using STS2RitsuLib.Interop.AutoRegistration;
 using STS2RitsuLib.Scaffolding.Content;
 
+using MegaCrit.Sts2.Core.Commands.Builders;   // 游戏 2026-09-30 更新后 AttackCommand 移至此命名空间
+
 namespace Gaoshou.Cards;
 
 // 黑虎掏心：攻击（普通）。耗 1 能量 0 辉星。造成 6(8) 伤害。\n[流转]（默认直接触发）：造成 5(8) 伤害。
@@ -61,14 +63,16 @@ public sealed class TigerClaw : ModCardTemplate
         var vigor = Owner!.Creature.GetPowerAmount<VigorPower>();
 
         await DamageCmd.Attack(DynamicVars.Damage.BaseValue)
-            .FromCard(this, cardPlay)
+            // 游戏 2026-09-30 更新后签名变化，此处同步适配
+            .FromCard(this)
             .Targeting(cardPlay.Target)
             .Execute(choiceContext);
 
         // 流转（颜色与上一张牌完全不同时触发）：造成 5(8) 点伤害。
         if (GaoshouFlowTracker.IsFlowReady(this))
             await DamageCmd.Attack(DynamicVars.GetRequired<DamageVar>("secondHit").BaseValue + vigor)
-                .FromCard(this, cardPlay)
+                // 游戏 2026-09-30 更新后签名变化，此处同步适配
+                .FromCard(this)
                 .Targeting(cardPlay.Target)
                 .Execute(choiceContext);
     }

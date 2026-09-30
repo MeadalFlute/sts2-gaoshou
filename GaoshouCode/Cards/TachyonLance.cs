@@ -20,6 +20,8 @@ using STS2RitsuLib.Cards.DynamicVars;
 using STS2RitsuLib.Interop.AutoRegistration;
 using STS2RitsuLib.Scaffolding.Content;
 
+using MegaCrit.Sts2.Core.Commands.Builders;   // 游戏 2026-09-30 更新后 AttackCommand 移至此命名空间
+
 namespace Gaoshou.Cards;
 
 // 速子长矛：攻击（稀有）。X 辉星费用（0 能量）。
@@ -76,9 +78,7 @@ public override CardAssetProfile AssetProfile => new(
             if (owner == null || state == null)
                 return 0m;
 
-            var perHit = Hook.ModifyDamage(owner.RunState, state, target, owner.Creature,
-                card.DynamicVars.Damage.BaseValue, ValueProp.Move, card, null,
-                ModifyDamageHookType.All, CardPreviewMode.Normal, out _);
+            var perHit = Hook.ModifyDamage(owner.RunState, state, target, owner.Creature, card.DynamicVars.Damage.BaseValue, ValueProp.Move, card, ModifyDamageHookType.All, CardPreviewMode.Normal, out _);
 
             var hits = ResolveX(card) + MiracleCounter.GetMiracleCount(owner);
             if (hits <= 0 || perHit <= 0m)
@@ -160,7 +160,8 @@ public override CardAssetProfile AssetProfile => new(
             var random = enemies.Count > 0 ? Owner.RunState.Rng.CombatTargets.NextItem(enemies) : null;
             if (random != null)
                 await DamageCmd.Attack(damage)
-                    .FromCard(this, cardPlay)
+                    // 游戏 2026-09-30 更新后签名变化，此处同步适配
+                    .FromCard(this)
                     .Targeting(random)
                     .Execute(choiceContext);
 

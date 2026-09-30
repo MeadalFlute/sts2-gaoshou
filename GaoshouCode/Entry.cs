@@ -23,6 +23,8 @@ using Gaoshou.Tutorial;
 using Logger = MegaCrit.Sts2.Core.Logging.Logger;
 
 
+using MegaCrit.Sts2.Core.Commands.Builders;   // 游戏 2026-09-30 更新后 AttackCommand 移至此命名空间
+
 namespace Gaoshou;
 
 [ModInitializer(nameof(Initialize))]

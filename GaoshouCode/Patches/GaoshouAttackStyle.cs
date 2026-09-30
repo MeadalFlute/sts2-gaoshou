@@ -2,7 +2,8 @@ using Godot;   // Time.GetTicksMsec()（会话兜底超时用）
 using Gaoshou.Cards;                              // DualSMG（「双持冲锋枪」风格判定）
 using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.Commands.Builders;
-using MegaCrit.Sts2.Core.Entities.Cards;          // CardPlay（区分"一次出牌"）
+using MegaCrit.Sts2.Core.Commands.Builders;       // AttackCommand（游戏 2026-09-30 更新后该类移到了 Builders 命名空间）
+using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Entities.Creatures;
 using MegaCrit.Sts2.Core.Hooks;
 using STS2RitsuLib.Patching.Models;
@@ -123,7 +124,7 @@ public static class GaoshouAttackStyle
     private static int _smgShotIndex;
 
     /// <summary>上一次（任意）出牌用过的 CardPlay 实例；换实例 = 新的一次出牌 ⇒ 开火序号归零。</summary>
-    private static CardPlay? _smgCardPlay;
+    private static AbstractModel? _smgCardPlay;   // 游戏 2026-09-30 更新后 AttackCommand 不再携带 CardPlay，改用 ModelSource 作为"本次出牌来源"的身份
 
     /// <summary>
     /// 取下一个开火序号，并返回"这一发用**上枪**"（true）/ "**下枪**"（false）。
@@ -307,8 +308,12 @@ public static class GaoshouAttackStyle
             var stale = _session == null || now - _sessionStartedAt > StaleSessionSeconds;
             // 同一张牌的后续段（完美棍剑：先单体多段、再全体一段）**要**能改写风格；
             // 而出处不同的命令（反伤 / 亡语 / 追击打出来的攻击）是嵌套，不能改写。
-            var samePlay = !stale && command.CardPlay != null &&
-                           ReferenceEquals(command.CardPlay, _session!.CardPlay);
+            // 游戏 2026-09-30 更新后签名变化，此处同步适配：AttackCommand 不再有 CardPlay 属性，
+            // 改用 ModelSource（FromCard 时就是那张 CardModel）的引用身份判"同一张牌"。
+            // ⚠️ 语义变化：旧版按"每一次出牌(CardPlay)"区分，新版按"同一张牌实例"区分
+            //    ⇒ 风暴重放（重复打出同一张牌）不再算"新的一次出牌"（仅影响动画风格选择，不影响游戏数据）。
+            var samePlay = !stale && command.ModelSource != null &&
+                           ReferenceEquals(command.ModelSource, _session!.ModelSource);
 
             if (!stale && !samePlay)
                 return;
@@ -322,12 +327,15 @@ public static class GaoshouAttackStyle
             _hitCountKnown = false;
             // 「双持冲锋枪」风格（见 IsDualSmg）：只在**最外层会话**里改写，
             // 嵌套命令（反伤 / 亡语 / 追击打出来的攻击）不改写 ⇒ 它们打断时风格依旧是外层这张牌的 ✓。
-            _dualSmg = command.CardPlay?.Card is DualSMG;
+            // 游戏 2026-09-30 更新后签名变化，此处同步适配：CardPlay?.Card ⇒ ModelSource（同一张 DualSMG）。
+            _dualSmg = command.ModelSource is DualSMG;
             // 【开火序号】只在"换了一次出牌"时归零：同一次 DualSMG 出牌的逐敌循环 + 风暴第二轮
             // 共用同一个 CardPlay 实例 ⇒ 不会在这里被重置（见 _smgShotIndex 的注释）✓。
-            if (command.CardPlay is { } smgPlay && !ReferenceEquals(smgPlay, _smgCardPlay))
+            // 游戏 2026-09-30 更新后签名变化，此处同步适配：改比 ModelSource（同一张牌实例）。
+            // ⚠️ 风暴重放时 ModelSource 不变 ⇒ 开火序号不再在重放时归零（仅影响上下交替的动画观感，不影响游戏数据）。
+            if (command.ModelSource is { } smgModel && !ReferenceEquals(smgModel, _smgCardPlay))
             {
-                _smgCardPlay = smgPlay;
+                _smgCardPlay = smgModel;
                 _smgShotIndex = 0;
             }
         }

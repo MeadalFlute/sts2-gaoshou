@@ -49,8 +49,7 @@ public sealed class BurntMatch : ModCardTemplate, Gaoshou.Keywords.IWasteCard
         await PlayerCmd.GainEnergy(DynamicVars.GetRequired<EnergyVar>("Energy").BaseValue, Owner);
 
         // 对自己造成 2 点伤害（可格挡：不带 Unblockable，格挡正常生效；不带力量加成）。
-        await CreatureCmd.Damage(choiceContext, Owner.Creature,
-            DynamicVars.GetRequired<IntVar>("SelfDamage").BaseValue, ValueProp.Unpowered, Owner.Creature, this, cardPlay);
+        await CreatureCmd.Damage(choiceContext, Owner.Creature, DynamicVars.GetRequired<IntVar>("SelfDamage").BaseValue, ValueProp.Unpowered, Owner.Creature, this);
     }
 
     protected override void OnUpgrade()

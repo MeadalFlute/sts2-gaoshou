@@ -67,7 +67,8 @@ public sealed class Mozambique : ModCardTemplate
         {
             await DamageCmd.Attack(DynamicVars.Damage.BaseValue)
             .WithHitCount(DynamicVars.GetRequired<IntVar>("Times").IntValue)
-                .FromCard(this, cardPlay)
+                // 游戏 2026-09-30 更新后签名变化，此处同步适配
+                .FromCard(this)
                 .Targeting(enemy)
                 .Execute(choiceContext);
         }

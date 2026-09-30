@@ -61,7 +61,8 @@ public sealed class HorseSlayer : ModCardTemplate
     {
         // 对所有敌人各造成一次伤害（真 AOE）。
         await DamageCmd.Attack(DynamicVars.Damage.BaseValue)
-                .FromCard(this, cardPlay)
+                // 游戏 2026-09-30 更新后签名变化，此处同步适配
+                .FromCard(this)
                 .TargetingAllOpponents(this.CombatState)
                 .Execute(choiceContext);
 

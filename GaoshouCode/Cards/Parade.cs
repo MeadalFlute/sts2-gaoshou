@@ -69,7 +69,13 @@ public sealed class Parade : ModCardTemplate
                 continue;
 
             // 施放者直接用被选中的实例；其余玩家各拿一份克隆（克隆保留升级状态）。
-            CardModel copy = ReferenceEquals(player, Owner) ? picked : picked.CreateCloneForPlayer(player);
+            // 游戏 2026-09-30 更新后签名变化，此处同步适配：
+            //   旧 API `CreateCloneForPlayer(player)` 已被移除（新 CardModel 只有无参 `CreateClone()`）。
+            //   等价写法：CreateClone() 本身**不设 owner**（反编译实测：只设 _cloneOf / ExhaustOnNextPlay），
+            //   而 `CardModel.Owner` 的 setter 允许**一次性**赋值（已有 owner 时会抛异常）⇒ 先 clone 再手动赋 owner 即与旧行为一致 ✓
+            CardModel copy = ReferenceEquals(player, Owner) ? picked : picked.CreateClone();
+            if (!ReferenceEquals(copy, picked) && copy.Owner is null)
+                copy.Owner = player;
             copy.SetToFreeThisTurn();
             CardPileAddResult added = await CardPileCmd.AddGeneratedCardToCombat(copy, PileType.Hand, Owner);
 

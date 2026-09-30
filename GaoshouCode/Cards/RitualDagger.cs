@@ -65,7 +65,8 @@ public sealed class RitualDagger : ModCardTemplate
         var total = DynamicVars.Damage.BaseValue;
 
         var cmd = await DamageCmd.Attack(total)
-            .FromCard(this, cardPlay)
+            // 游戏 2026-09-30 更新后签名变化，此处同步适配
+            .FromCard(this)
             .Targeting(enemy)
             .Execute(choiceContext);
 

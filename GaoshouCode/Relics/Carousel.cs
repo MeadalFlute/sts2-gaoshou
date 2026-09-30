@@ -52,7 +52,8 @@ public override RelicAssetProfile AssetProfile => new(
 
     public override async Task AfterCardPlayed(PlayerChoiceContext choiceContext, CardPlay cardPlay)
     {
-        var player = cardPlay.Player;
+        // 游戏 2026-09-30 更新后签名变化，此处同步适配
+        var player = cardPlay.Card.Owner;
         if (player != Owner || _triggeredThisTurn)
             return;
         if (cardPlay.Card.DeckVersion != null)

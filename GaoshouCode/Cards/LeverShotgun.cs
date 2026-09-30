@@ -49,7 +49,8 @@ public sealed class LeverShotgun : ModCardTemplate
     protected override async Task OnPlay(PlayerChoiceContext choiceContext, CardPlay cardPlay)
     {
         await DamageCmd.Attack(DynamicVars.Damage.BaseValue)
-                .FromCard(this, cardPlay)
+                // 游戏 2026-09-30 更新后签名变化，此处同步适配
+                .FromCard(this)
                 .TargetingAllOpponents(this.CombatState)
                 .Execute(choiceContext);
 

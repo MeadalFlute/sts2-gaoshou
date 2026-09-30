@@ -30,7 +30,8 @@ public sealed class SwordDancePower : ModPowerTemplate
 
     public override async Task AfterCardPlayed(PlayerChoiceContext choiceContext, CardPlay cardPlay)
     {
-        var player = cardPlay.Player;
+        // 游戏 2026-09-30 更新后签名变化，此处同步适配
+        var player = cardPlay.Card.Owner;
         // 只响应装备者自己的打出（多人防串触发——否则主机打流转牌时客机的剑舞也会抽牌）。
         if (player == null || Amount <= 0 || player != Owner.Player)
             return;

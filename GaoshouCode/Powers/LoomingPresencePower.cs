@@ -37,7 +37,7 @@ public sealed class LoomingPresencePower : ModPowerTemplate
     // 仅响应"打向敌方"的卡牌伤害。
     //
     // ⚠️ 不能只判断 dealer / cardSource：状态牌（灼伤 BURN / 感染 INFECTION / 凋萎 WITHER / 腐朽 DECAY）
-    // 的伤害是"玩家打给自己"的，但 CreatureCmd.Damage(ctx, target, damageVar, cardSource, cardPlay)
+    // 的伤害是"玩家打给自己"的，但 CreatureCmd.Damage(ctx, target, damageVar, cardSource)
     // 会把 dealer 记成 cardSource.Owner.Creature（= 玩家本人），cardSource 又是那张状态牌 ——
     // 两个条件都会成立，于是"挨灼伤"也会叠格挡（2026-09-22 据 bug report 修复）。
     // 原版同类能力（EnvenomPower / PaperCutsPower）靠 props.IsPoweredAttack() 排除 Unpowered 的状态牌伤害；

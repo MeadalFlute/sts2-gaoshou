@@ -56,7 +56,8 @@ public sealed class ChargeBlade : ModCardTemplate
         // 对所有敌人造成 2 点伤害 4（5）次（焚烧同款：全敌 × N 单次 Execute）。
         await DamageCmd.Attack(DynamicVars.Damage.BaseValue)
             .WithHitCount((int)DynamicVars.GetRequired<IntVar>("Times").BaseValue)
-            .FromCard(this, cardPlay)
+            // 游戏 2026-09-30 更新后签名变化，此处同步适配
+            .FromCard(this)
             .TargetingAllOpponents(this.CombatState)
             .Execute(choiceContext);
 

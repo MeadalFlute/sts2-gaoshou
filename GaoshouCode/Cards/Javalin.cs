@@ -49,7 +49,8 @@ public sealed class Javalin : ModCardTemplate
     {
         ArgumentNullException.ThrowIfNull(cardPlay.Target);
         await DamageCmd.Attack(DynamicVars.Damage.BaseValue)
-            .FromCard(this, cardPlay)
+            // 游戏 2026-09-30 更新后签名变化，此处同步适配
+            .FromCard(this)
             .Targeting(cardPlay.Target)
             .Execute(choiceContext);
 

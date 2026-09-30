@@ -60,7 +60,8 @@ public sealed class MountainLean : ModCardTemplate
         if (times <= 0) return;
 
         await DamageCmd.Attack(times * DynamicVars.ExtraDamage.BaseValue)
-            .FromCard(this, cardPlay)
+            // 游戏 2026-09-30 更新后签名变化，此处同步适配
+            .FromCard(this)
             .Targeting(cardPlay.Target)
             .Execute(choiceContext);
     }

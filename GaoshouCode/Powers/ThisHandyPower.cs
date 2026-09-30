@@ -24,7 +24,8 @@ public sealed class ThisHandyPower : ModPowerTemplate
 
     public override async Task AfterCardPlayed(PlayerChoiceContext choiceContext, CardPlay cardPlay)
     {
-        var player = cardPlay.Player;
+        // 游戏 2026-09-30 更新后签名变化，此处同步适配
+        var player = cardPlay.Card.Owner;
         // 临时牌 = 局内生成、不属于牌组（DeckVersion == null）。仅响应自己的打出（多人防串触发）。
         if (player == null || player != Owner.Player || cardPlay.Card.DeckVersion != null)
             return;
@@ -34,6 +35,6 @@ public sealed class ThisHandyPower : ModPowerTemplate
             return;
 
         var enemy = player.RunState.Rng.CombatTargets.NextItem(enemies)!;
-        await CreatureCmd.Damage(choiceContext, enemy, Amount, ValueProp.Unpowered, player.Creature, cardPlay.Card, cardPlay);
+        await CreatureCmd.Damage(choiceContext, enemy, Amount, ValueProp.Unpowered, player.Creature, cardPlay.Card);
     }
 }

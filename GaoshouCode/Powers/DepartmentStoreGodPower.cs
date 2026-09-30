@@ -24,7 +24,8 @@ public sealed class DepartmentStoreGodPower : ModPowerTemplate
 
     public override async Task AfterCardPlayed(PlayerChoiceContext choiceContext, CardPlay cardPlay)
     {
-        var player = cardPlay.Player;
+        // 游戏 2026-09-30 更新后签名变化，此处同步适配
+        var player = cardPlay.Card.Owner;
         if (Owner.Player == null || player.NetId != Owner.Player.NetId)
             return;
            

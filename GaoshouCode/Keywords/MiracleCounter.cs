@@ -79,7 +79,8 @@ public sealed class MiracleCounter : SingletonModel
     public override Task AfterCardPlayed(PlayerChoiceContext choiceContext, CardPlay cardPlay)
     {
         var card = cardPlay.Card;
-        if (card.Owner == null || card.Owner != cardPlay.Player)
+        // 游戏 2026-09-30 更新后签名变化，此处同步适配
+        if (card.Owner == null || card.Owner != cardPlay.Card.Owner)
             return Task.CompletedTask;
         if (!card.Keywords.Contains(GaoshouKeyword.Miracle))
             return Task.CompletedTask;

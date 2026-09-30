@@ -11,6 +11,8 @@ using STS2RitsuLib.Cards.DynamicVars;
 using STS2RitsuLib.Interop.AutoRegistration;
 using STS2RitsuLib.Scaffolding.Content;
 
+using MegaCrit.Sts2.Core.Commands.Builders;   // 游戏 2026-09-30 更新后 AttackCommand 移至此命名空间
+
 namespace Gaoshou.Cards;
 
 // 连环打击：攻击。耗 2 能量 0 辉星。造成 4 伤害一次，然后造成 5 伤害一次。升级后：6、9。
@@ -58,12 +60,14 @@ public sealed class LinkedStrike : ModCardTemplate
         var vigor = Owner!.Creature.GetPowerAmount<VigorPower>();
 
         await DamageCmd.Attack(DynamicVars.Damage.BaseValue)
-            .FromCard(this, cardPlay)
+            // 游戏 2026-09-30 更新后签名变化，此处同步适配
+            .FromCard(this)
             .Targeting(cardPlay.Target)
             .Execute(choiceContext);
 
         await DamageCmd.Attack(DynamicVars.GetRequired<DamageVar>("secondHit").BaseValue + vigor)
-            .FromCard(this, cardPlay)
+            // 游戏 2026-09-30 更新后签名变化，此处同步适配
+            .FromCard(this)
             .Targeting(cardPlay.Target)
             .Execute(choiceContext);
     }

@@ -28,7 +28,7 @@ public sealed class DyingSurgePower : ModPowerTemplate
 
     // 本回合造成的伤害翻倍。
     public override decimal ModifyDamageMultiplicative(Creature? target, decimal amount, ValueProp props,
-        Creature? dealer, CardModel? cardSource, CardPlay? cardPlay)
+        Creature? dealer, CardModel? cardSource)
     {
         if (Owner != dealer)
             return 1m;

@@ -69,10 +69,12 @@ public override CardAssetProfile AssetProfile => new(
             var random = enemies.Count > 0 ? Owner.RunState.Rng.CombatTargets.NextItem(enemies) : null;
             if (random != null)
                 await DamageCmd.Attack(DynamicVars.GetRequired<DamageVar>("miracle").BaseValue)
-                    .FromCard(this, cardPlay).Targeting(random).Execute(choiceContext);
+                    // 游戏 2026-09-30 更新后签名变化，此处同步适配
+                    .FromCard(this).Targeting(random).Execute(choiceContext);
                     */
             await DamageCmd.Attack(DynamicVars.GetRequired<DamageVar>("miracle").BaseValue)
-                .FromCard(this, cardPlay)
+                // 游戏 2026-09-30 更新后签名变化，此处同步适配
+                .FromCard(this)
                 .TargetingAllOpponents(this.CombatState)
                 .Execute(choiceContext);
         }
