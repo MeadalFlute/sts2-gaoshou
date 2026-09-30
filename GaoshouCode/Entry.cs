@@ -229,6 +229,10 @@ public partial class Entry
         if (!patcher.PatchAll())
             Logger.Error("Patch application failed!");
 
+        // 废品牌轮播：把"容易被 MonoMod JIT hook 卡住"的方法在**我们自己的上下文**里先编译一次
+        //（2026-09-30：IsPreviewOwner 与增幅 lambda 都在"首次于补丁调用路径里 JIT"时抛 ArgumentException）。
+        WastePreviewPatch.WarmUp();
+
         // 心流：双倍伤害(DoubleDamagePower) 的图标**暂时不做覆盖**（2026-09-20 撤下）。
         // 原因：改成自定义图后实测出现「buff 图标渲染异常（像空的）+ 悬停 buff 时说明条目全挤到屏幕左上角」，
         // 且把尺寸对齐原版规格（小图标 64×64 / 大图 256×256）后依旧复现 —— 说明问题出在"覆盖图集切图"这条路径本身

@@ -4,6 +4,7 @@ using Gaoshou.Cards;
 using Gaoshou.Keywords;
 using Godot;
 using MegaCrit.Sts2.Core.Entities.Cards;
+using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Nodes;
 using MegaCrit.Sts2.Core.Nodes.Cards;
 using MegaCrit.Sts2.Core.Nodes.Cards.Holders;
@@ -126,39 +127,74 @@ public sealed class WastePreviewPatch : IPatchMethod
     /// </summary>
     internal static bool IsPreviewOwner(Node? owner)
     {
-        for (var node = owner; node != null; node = node.GetParent())
+        // ⚠️ 本方法的 IL 被**刻意写得极简**（2026-09-30 正式版事故）：
+        //   原版日志的完整栈显示异常其实是 **MonoMod 的 JIT hook 在编译本方法时抛的**
+        //   （`MonoMod.Core...JitHookDelegateHolder.CompileMethodHook` → `WastePreviewPatch.IsPreviewOwner`，
+        //    与同一轮"增幅 lambda（<>c.b__0_0）"完全同一类失败 ✗），**不是** Godot 已释放节点的问题 ✗
+        //   ⇒ 所以这里**去掉**一切"花哨 IL"：LINQ（`Any(...)` + 方法组委托 ✗）、模式 `when` 子句 ✗、
+        //     `switch` 类型模式 ✗ ⇒ 改成**普通 while 循环 + 一串 if**（IL 只有 isinst/brtrue/call ✓）。
+        //   另外 `Entry.Initialize` 里会调用 <see cref="WarmUp" />，在我们自己的上下文里先 JIT 一次 ✓。
+        var node = owner;
+        for (var depth = 0; node != null && depth < 64; depth++)
         {
-            // ⚠️ 必须先校验原生实例（2026-09-30 正式版日志实证）：Godot 里对**已释放**的节点调
-            //    GetParent()/读属性会抛 "ArgumentException: Value does not fall within the expected range" ✗
-            //    ⇒ 上层 fail-soft 把它吞掉 ⇒ 悬浮窗永远不会被登记 ⇒ **废品牌轮播失效** ✗
-            //    （日志：`[WastePreview] owner recording skipped after an error: Value does not fall within the expected range.`
-            //      at WastePreviewPatch.IsPreviewOwner ← WastePreviewWheelPatch.IsHoveringPreviewCard）
             if (!GodotObject.IsInstanceValid(node))
                 return false;
 
-            switch (node)
-            {
-                case NCardHolder holder when WastePreview.IsPreviewCard(holder.CardModel):
-                case NCard card when WastePreview.IsPreviewCard(card.Model):
-                    return true;
+            if (node is NCardHolder holder && IsPreviewCardModel(holder.CardModel))
+                return true;
 
-                // 「搜刮！」奖励界面的奖励按钮：owner 就是按钮本身，而卡片只存在于悬浮窗里
-                // （CardReward 没覆写 CreateIcon —— 只有 Potion/Relic 覆写了，按钮上是个通用图标），
-                // 沿控件链向上找永远找不到卡片节点 → 改判"这条奖励的内容里有没有我们的三张卡之一"。
-                // 2026-09-23 修：原先只向上找，导致奖励界面里轮播完全不生效（悬浮窗从未被登记）。
-                // 注意这里判的是**奖励内容**，不是悬浮窗内容 —— 损失规避的悬浮里那张硬纸板预览依然不会误触发。
-                case NRewardButton button when button.Reward is CardReward cardReward
-                    && cardReward.Cards.Any(WastePreview.IsPreviewCard):
-                    return true;
+            if (node is NCard card && IsPreviewCardModel(card.Model))
+                return true;
 
-                // 查看卡牌界面（NInspectCardScreen）：owner 同样是屏幕本身，被查看的卡是它的
-                // `_card`（NCard 字段）→ 一并用同一个判据补上，否则在牌库里放大查看这三张卡时也不会轮播。
-                case NInspectCardScreen screen when WastePreview.IsPreviewCard(screen._card?.Model):
-                    return true;
-            }
+            // 「搜刮！」奖励界面的奖励按钮：owner 就是按钮本身，而卡片只存在于悬浮窗里
+            // （CardReward 没覆写 CreateIcon ⇒ 沿控件链永远找不到卡片节点）⇒ 改判"奖励内容里有没有那三张卡"。
+            if (node is NRewardButton button && IsPreviewReward(button.Reward))
+                return true;
+
+            // 查看卡牌界面（NInspectCardScreen）：owner 是屏幕本身 ⇒ 判它正在展示的 `_card`。
+            if (node is NInspectCardScreen screen && IsPreviewCardModel(screen._card?.Model))
+                return true;
+
+            node = node.GetParent();
         }
 
         return false;
+    }
+
+    /// <summary>奖励内容里有没有"我们的"废品牌（原先用 <c>Cards.Any(方法组)</c>，为躲 MonoMod JIT 失败改成显式循环）。</summary>
+    private static bool IsPreviewReward(Reward? reward)
+    {
+        if (reward is not CardReward cardReward || cardReward.Cards == null)
+            return false;
+
+        foreach (var c in cardReward.Cards)
+        {
+            if (IsPreviewCardModel(c))
+                return true;
+        }
+
+        return false;
+    }
+
+    private static bool IsPreviewCardModel(CardModel? card) => WastePreview.IsPreviewCard(card);
+
+    /// <summary>
+    /// 预热：在**我们自己的初始化上下文**里先把"容易被 MonoMod JIT hook 卡住"的方法各编译一次。
+    /// 成功/失败都留日志 ⇒ 实机上一眼能看出 JIT 是否还失败（失败会把异常直接打在 init 阶段 ✓）。
+    /// </summary>
+    internal static void WarmUp()
+    {
+        try
+        {
+            _ = IsPreviewOwner(null);
+            _ = IsPreviewReward(null);
+            Collect(null!, []);
+            Entry.Logger.Info("[WastePreview] warm-up ok: JIT-sensitive methods compiled.");
+        }
+        catch (System.Exception e)
+        {
+            Entry.Logger.Warn($"[WastePreview] warm-up failed: {e.Message}");
+        }
     }
 
     /// <summary>把当前屏幕上所有"我们的"废品牌预览换成 <see cref="WastePreview.Current" />（滚轮补丁也会用）。</summary>
