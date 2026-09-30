@@ -174,5 +174,6 @@ public override CardAssetProfile AssetProfile => new(
     {
         // 升级后移除"虚无"（临时力量固定 1 层，不再升级加层）。
         RemoveKeyword(CardKeyword.Ethereal);
+         DynamicVars.GetRequired<IntVar>("TemporaryStrength").UpgradeValueBy(1); // 1 -> 2
     }
 }
