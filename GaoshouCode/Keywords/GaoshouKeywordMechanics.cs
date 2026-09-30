@@ -38,33 +38,33 @@ public static class GaoshouKeywordMechanics
         var prompt = new LocString("cards", "GAOSHOU_AMPLIFY_PROMPT");
         prompt.Add("MaxCount", maxDiscard);
         var prefs = new CardSelectorPrefs(prompt, 0, Math.Min(maxDiscard, hand.Count));
-        // 复刻原版 FromHandForDiscard 的临时高光规则：只有真正的奇巧牌可亮。
-        // 呼吸不是奇巧牌，但其弃置效果会在此处触发，因此额外显示同款提示。
-        //
-        // ⚠️ 这个谓词是**全局唯一**由"原版手牌选牌 UI 在构建选牌界面时逐张调用"的模组代码：
-        //    NPlayerHand.UpdateSelectModeCardVisibility → NHandCardHolder.UpdateCard → ShouldGlowGold
-        //    → NPlayerHand.SelectModeGoldGlowOverride → 就是这里 ✗。
-        //    它一旦抛异常，SelectCards 会在 RefreshSelectModeConfirmButton() **之前**中断
-        //    ⇒ 确认键永远处于 Disabled ⇒ 症状就是"增幅弃牌的选牌界面无法确认"
-        //    （2026-09-30 正式版实测；beta 正常 —— 同一个谓词在两个游戏版本里的返回值/异常行为可以不同）。
-        //    ⇒ 因此这里做 **全量兜底**：任何异常都当作"不亮"，绝不把异常抛回原版 UI。
-        prefs.ShouldGlowGold = candidate =>
-        {
-            try
-            {
-                if (candidate is Breath)
-                    return true;
-                if (!candidate.IsSlyThisTurn)
-                    return false;
-
-                return candidate.CanPlay(out var reason, out _) || reason.HasResourceCostReason();
-            }
-            catch (System.Exception)
-            {
-                return false;
-            }
-        };
-        var discarded = (await CardSelectCmd.FromHand(choiceContext, card.Owner, prefs, null, card)).ToList();
+        // ⚠️⚠️ 这里**绝不能**再自己赋值 `prefs.ShouldGlowGold = <lambda>` ✗✗（2026-09-30 正式版事故根因）
+        //   反编译日志铁证（godot.log）：
+        //     ERROR: System.ArgumentException: Value does not fall within the expected range.
+        //       at MonoMod.Core.Interop.CoreCLR.V60.InvokeCompileMethod(...)
+        //       at MonoMod.Core.Platforms.Runtimes.Core60Runtime.JitHookDelegateHolder.CompileMethodHook(...)
+        //       at Gaoshou.Keywords.GaoshouKeywordMechanics.<>c.<AmplifyAsync>b__0_0(CardModel candidate)
+        //       at MegaCrit.Sts2.Core.Nodes.Cards.Holders.NHandCardHolder.get_ShouldGlowGold()
+        //       at ...NHandCardHolder.UpdateCard_Patch3(...)   ← 首次进入补丁化方法时触发
+        //   ⇒ 异常来自 **MonoMod 的 JIT hook 在编译我们这个 lambda 时失败**，**不是** lambda 体内的逻辑
+        //     ⇒ 它在 **JIT 期**抛出，所以 lambda 里的 try/catch **根本来不及执行** ✗（这解释了"兜底无效"）。
+        //   ⇒ 后果链：谓词抛 → NHandCardHolder.UpdateCard 抛 → SelectCards 在
+        //     RefreshSelectModeConfirmButton() 之前中断 ⇒ 确认键保持 Disabled / 选牌界面卡住
+        //     ⇒ 玩家再点确认 → 原版 TaskCompletionSource 被二次完成（SetResult）→
+        //       "An attempt was made to transition a task to a final state when it had already completed."
+        //     ⇒ 表现为"增幅弃牌无法确认 + 牌像被复制" ✓
+        //   ⇒ 修法：**完全不注入我们自己的委托**，改用原版 `CardSelectCmd.FromHandForDiscard`
+        //     （奇巧高光规则由**游戏程序集内部**的谓词提供，不经过我们的 lambda）✓
+        //     代价：失去"呼吸 Breath 也显示同款金色提示"这条**纯观感**加成（弃置机制本身不受影响）✓
+        // 【一次性取证】入口埋点：若一次出牌里出现多行 begin（同 #diag 计数上限 3 次调用）即说明流程被跑了多次。
+        var diag = NextDiag();
+        if (diag > 0)
+            Diag($"[AmplifyDiag] #{diag} begin card={card.Id?.Entry} maxDiscard={maxDiscard} hand={hand.Count} " +
+                 $"prefs={prefs.MinSelect}..{prefs.MaxSelect}");
+        var discarded = (await CardSelectCmd.FromHandForDiscard(choiceContext, card.Owner, prefs, null, card)).ToList();
+        if (diag > 0)
+            Diag($"[AmplifyDiag] #{diag} selected={discarded.Count} " +
+                 $"[{string.Join(", ", discarded.Select(c => $"{c.Id?.Entry}#{c.GetHashCode()}:{c.Pile?.Type}"))}]");
         // 弃置：① 去掉重复项；② 只弃置**此刻仍在手牌里**的牌（被别处移走/已弃置的不再重复弃置）。
         // 这两条都是纯防御：正常路径下 Selected 里每张都恰好在手牌且唯一 ⇒ 行为与旧版逐字一致 ✓；
         // 但在"选牌返回值异常/与游戏版本行为不一致"时，可以避免把同一张牌弃置两次造成的**卡牌复制**假象。
@@ -80,6 +80,27 @@ public static class GaoshouKeywordMechanics
 
         for (var i = 0; i < discardedCount; i++)
             await mainOnce(choiceContext);
+
+        if (diag > 0)
+            Diag($"[AmplifyDiag] #{diag} discarded={discardedCount} replays={discardedCount}");
+    }
+
+    private static int _diagCount;
+
+    /// <summary>一次性埋点开关：只放行前 3 次增幅流程（0 = 本次不再记录）。</summary>
+    private static int NextDiag() => _diagCount < 3 ? ++_diagCount : 0;
+
+    /// <summary>埋点输出：任何异常都不允许影响增幅流程/选牌界面。</summary>
+    private static void Diag(string message)
+    {
+        try
+        {
+            Entry.Logger.Info(message);
+        }
+        catch (System.Exception)
+        {
+            // 埋点失败无所谓
+        }
     }
 
     /// <summary>
