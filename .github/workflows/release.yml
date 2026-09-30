@@ -1,0 +1,316 @@
+# =============================================================================
+#  按 git tag 双分支发布到【同一个】Steam 创意工坊条目
+#  Gaoshou / 高手 - The Pro   (appId 2868840 / item 3794146241)
+# -----------------------------------------------------------------------------
+#  tag 约定：
+#     v1.4.0        -> release 分支（游戏正式版 0.107.1）  is_beta=false -> maxBranch=public
+#     v1.4.0-beta   -> main    分支（游戏 beta   0.111.0）  is_beta=true  -> minBranch=public-beta
+#
+#  原理：Steam「创意工坊物品版本控制」允许同一条目存在多个版本，每个版本声明自己
+#        支持的游戏分支范围（minBranch/maxBranch）；玩家按自己当前分支自动拿到对应版本，
+#        游戏端还会用 ModManager.CheckSteamBranchSupport 强制校验。
+#        ⚠️ 不声明范围 = Steam 视为"支持所有分支" = 后上传者覆盖全体玩家。
+#
+#  ⚠️ 上传环节刻意【不用】iouter_actions/sts2/publish：
+#     它是"构建+导出 PCK+上传+发 Release"全流程，且硬编码 LexNinja2 的工程假设
+#     （CSharpier / Spine GDExtension / <proj>/mod_image.png / ModsPath），并且只能 @master 浮动引用。
+#     这里只借它的上传脚本 iouter/workshop-deploy，且 pin 到 commit SHA。
+#     c1018ce 是"还会写 minBranch/maxBranch"的最后一个提交；
+#     2026-07-04 的 58f7765 删掉了这段逻辑，@main 会让 isBeta 变成空操作。
+# =============================================================================
+
+name: Release to Steam Workshop
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing tag to (re)publish, e.g. v1.4.0-beta'
+        required: true
+
+# 同一条目的上传必须串行：并发上传会互相踩 staging 目录与版本顺序
+concurrency:
+  group: steam-workshop-publish
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  APP_ID: '2868840'                # Slay the Spire 2（非敏感）
+  WORKSHOP_ITEM_ID: '3794146241'   # 高手 - The Pro（非敏感；两个分支共用这一条）
+  PROJECT_NAME: 'Gaoshou'
+  GODOT_VERSION: '4.5.1'
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # 1) tag -> 分支防呆校验 / is_beta / 版本号 / 期望的 min_game_version
+  # ---------------------------------------------------------------------------
+  detect:
+    runs-on: ubuntu-latest
+    outputs:
+      is_beta: ${{ steps.classify.outputs.is_beta }}
+      branch: ${{ steps.classify.outputs.branch }}
+      version: ${{ steps.classify.outputs.version }}
+      min_game_version: ${{ steps.classify.outputs.min_game_version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0        # 需要全部远端分支，才能判断 tag 落在哪条分支
+          fetch-tags: true
+
+      - name: Classify tag and validate branch
+        id: classify
+        env:
+          BETA_BRANCH: 'main'                 # beta 基线分支
+          STABLE_BRANCH: 'release'            # 正式版基线分支
+          MIN_GAME_VERSION_BETA: '0.111.0'    # 与 main 分支的 Gaoshou.json 一致
+          MIN_GAME_VERSION_STABLE: '0.107.1'  # 与 release 分支的 Gaoshou.json 一致
+        run: |
+          set -euo pipefail
+          TAG="${{ github.event.inputs.tag || github.ref_name }}"
+          echo "Detected tag: $TAG"
+
+          BRANCHES=$(git branch -r --contains "$TAG" | sed 's/^[ ]*//' | sed 's|origin/||' | tr '\n' ' ')
+          echo "Branches containing this tag: $BRANCHES"
+
+          if [[ "$TAG" == *"-beta" ]]; then
+            EXPECTED="$BETA_BRANCH";   IS_BETA="true";  MGV="$MIN_GAME_VERSION_BETA"
+          else
+            EXPECTED="$STABLE_BRANCH"; IS_BETA="false"; MGV="$MIN_GAME_VERSION_STABLE"
+          fi
+
+          if [[ ! " $BRANCHES " =~ " $EXPECTED " ]]; then
+            echo "::error::tag '$TAG' must be on branch '$EXPECTED', but found: ${BRANCHES:-none}"
+            exit 1
+          fi
+
+          VERSION="${TAG#v}"
+          {
+            echo "is_beta=$IS_BETA"
+            echo "branch=$EXPECTED"
+            echo "version=$VERSION"
+            echo "min_game_version=$MGV"
+          } >> "$GITHUB_OUTPUT"
+          echo "OK: is_beta=$IS_BETA branch=$EXPECTED version=$VERSION expected min_game_version=$MGV"
+
+  # ---------------------------------------------------------------------------
+  # 2) 构建（GitHub 托管 ubuntu；无游戏环境 -> 走 Book.StS2.RefLib NuGet 兜底）
+  #    产物 dist/content/{Gaoshou.dll,Gaoshou.json,Gaoshou.pck}
+  # ---------------------------------------------------------------------------
+  build:
+    needs: detect
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
+          fetch-depth: 1
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: Setup Godot (mono + export templates)
+        uses: chickensoft-games/setup-godot@v2.4.1
+        with:
+          version: ${{ env.GODOT_VERSION }}
+          use-dotnet: true
+          include-templates: true
+
+      - name: Resolve Godot executable
+        id: godot
+        run: echo "GODOT_EXE=$(which godot)" >> "$GITHUB_OUTPUT"
+
+      - name: Assert min_game_version matches this branch
+        env:
+          EXPECTED: ${{ needs.detect.outputs.min_game_version }}
+        run: |
+          set -euo pipefail
+          ACTUAL=$(python3 -c "import json;print(json.load(open('Gaoshou.json'))['min_game_version'])")
+          echo "manifest min_game_version=$ACTUAL expected=$EXPECTED"
+          if [ "$ACTUAL" != "$EXPECTED" ]; then
+            echo "::error::Gaoshou.json 的 min_game_version($ACTUAL) 与本分支期望值($EXPECTED) 不一致。"
+            echo "::error::min_game_version 与 Steam 的分支范围是两套独立闸门，必须都对。"
+            exit 1
+          fi
+
+      - name: Import Godot project
+        run: godot --headless --editor --quit --path . --import
+
+      # 走仓库自带的 CopyMod / ExportPCK 逻辑；所有被 git 跟踪的本机绝对路径都用 -p: 覆盖
+      # （MSBuild 全局属性优先于 local.props / Directory.Build.props 的赋值）
+      - name: Build DLL and export PCK
+        env:
+          GODOT_EXE: ${{ steps.godot.outputs.GODOT_EXE }}
+        run: |
+          set -euo pipefail
+          dotnet build "$PROJECT_NAME.csproj" -c Release \
+            -p:UseSts2RefLib=true \
+            -p:GodotExe="$GODOT_EXE" \
+            -p:GodotExportPreset="Windows Desktop" \
+            -p:ModOutputDir="$PWD/dist/content/" \
+            -p:CopyModOnBuild=true \
+            -p:RunPckExport=true
+
+      - name: Patch staged manifest version (tag -> version)
+        env:
+          VERSION: ${{ needs.detect.outputs.version }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, os, pathlib
+          p = pathlib.Path("dist/content/Gaoshou.json")
+          d = json.loads(p.read_text(encoding="utf-8"))
+          d["version"] = os.environ["VERSION"]
+          p.write_text(json.dumps(d, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+          print("staged version =", d["version"], "| min_game_version =", d["min_game_version"])
+          PY
+          test -f dist/content/Gaoshou.dll
+          test -f dist/content/Gaoshou.pck
+          ls -l dist/content
+
+      - name: Collect optional preview image
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          # 工坊预览图是可选的：仓库里放 ci/mod_preview.png（<=1MB）就会被一起更新；
+          # 不放则保持工坊现有预览不变（VDF 里不会出现 previewfile 键）。
+          if [ -f ci/mod_preview.png ]; then
+            cp ci/mod_preview.png dist/mod_preview.png
+            SIZE=$(stat -c%s dist/mod_preview.png)
+            if [ "$SIZE" -gt 1048576 ]; then echo "::error::preview image > 1MB"; exit 1; fi
+            echo "preview=dist/mod_preview.png" >> "$GITHUB_ENV"
+          else
+            echo "preview=<none>（保持工坊现有预览）" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Checksums and summary
+        env:
+          IS_BETA: ${{ needs.detect.outputs.is_beta }}
+          VERSION: ${{ needs.detect.outputs.version }}
+          MGV: ${{ needs.detect.outputs.min_game_version }}
+        run: |
+          set -euo pipefail
+          {
+            echo "### Build summary"
+            echo ""
+            echo "| 项 | 值 |"
+            echo "| --- | --- |"
+            echo "| tag version | \`$VERSION\` |"
+            echo "| branch | \`${{ needs.detect.outputs.branch }}\` |"
+            echo "| is_beta | \`$IS_BETA\` |"
+            echo "| min_game_version | \`$MGV\` |"
+            echo "| workshop item | \`$WORKSHOP_ITEM_ID\` |"
+            echo "| branch range | $( [ "$IS_BETA" = "true" ] && echo 'minBranch=public-beta' || echo 'maxBranch=public' ) |"
+            echo ""
+            echo '```'
+            (cd dist/content && sha256sum Gaoshou.dll Gaoshou.json Gaoshou.pck)
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          (cd dist/content && sha256sum Gaoshou.dll Gaoshou.json Gaoshou.pck)
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mod-dist
+          path: dist/**
+          if-no-files-found: error
+
+  # ---------------------------------------------------------------------------
+  # 3) 上传到同一个工坊条目（docker 类型 action 只能在 Linux runner 上跑）
+  # ---------------------------------------------------------------------------
+  publish:
+    needs: [detect, build]
+    runs-on: ubuntu-latest
+    # 可选：给这个 job 挂一个受保护 environment（要求人工批准 + 限定 secrets 范围）
+    # environment: steam-workshop
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: mod-dist
+          path: dist
+
+      - name: Preflight - secrets present
+        env:
+          STEAM_USERNAME: ${{ secrets.STEAM_USERNAME }}
+          STEAM_CONFIG_VDF: ${{ secrets.STEAM_CONFIG_VDF }}
+        run: |
+          set -euo pipefail
+          [ -n "$STEAM_USERNAME" ]   || { echo "::error::missing secret STEAM_USERNAME"; exit 1; }
+          [ -n "$STEAM_CONFIG_VDF" ] || { echo "::error::missing secret STEAM_CONFIG_VDF"; exit 1; }
+          echo "secrets OK（值不会被打印）"
+
+      - name: Upload to Steam Workshop
+        # ★ 必须 pin SHA（理由见文件头注释）
+        uses: iouter/workshop-deploy@c1018ce9cdf0bb77530eec57b0bd1804abd14065
+        with:
+          username: ${{ secrets.STEAM_USERNAME }}
+          configVdf: ${{ secrets.STEAM_CONFIG_VDF }}
+          appId: '2868840'
+          publishedFileId: '3794146241'
+          path: dist/content
+          changeNote: >-
+            ${{ needs.detect.outputs.is_beta == 'true' && '[beta]' || '[stable]' }}
+            v${{ needs.detect.outputs.version }}
+            (game branch ${{ needs.detect.outputs.branch }},
+            min_game_version ${{ needs.detect.outputs.min_game_version }})
+          # 注意：这个 action 的参数名是 camelCase 的 isBeta（不是 is-beta）
+          isBeta: ${{ needs.detect.outputs.is_beta }}
+          # 有预览图时才传（空字符串 = 不动工坊现有预览）
+          previewFile: ${{ env.preview || '' }}
+
+      # -----------------------------------------------------------------------
+      # 备选：完全不依赖第三方 action，自己写 manifest.vdf + steamcmd。
+      #      首次启用前请在本机 dry-run 一次，确认 STEAM_HOME / config.vdf 的挂载路径。
+      # -----------------------------------------------------------------------
+      # - name: Upload to Steam Workshop (self-contained steamcmd)
+      #   env:
+      #     STEAM_USERNAME: ${{ secrets.STEAM_USERNAME }}
+      #     STEAM_CONFIG_VDF: ${{ secrets.STEAM_CONFIG_VDF }}
+      #     IS_BETA: ${{ needs.detect.outputs.is_beta }}
+      #     VERSION: ${{ needs.detect.outputs.version }}
+      #   run: |
+      #     set -euo pipefail
+      #     mkdir -p steamhome/config
+      #     printf '%s' "$STEAM_CONFIG_VDF" > steamhome/config/config.vdf
+      #     chmod 600 steamhome/config/config.vdf
+      #     if [ "$IS_BETA" = "true" ]; then BRANCH_LINE='"minBranch" "public-beta"'; else BRANCH_LINE='"maxBranch" "public"'; fi
+      #     cat > manifest.vdf <<EOF
+      #     "workshopitem"
+      #     {
+      #         "appid" "2868840"
+      #         "publishedfileid" "3794146241"
+      #         "contentfolder" "/content"
+      #         "changenote" "v$VERSION"
+      #         $BRANCH_LINE
+      #     }
+      #     EOF
+      #     cat manifest.vdf
+      #     docker run --rm \
+      #       -v "$PWD/dist/content:/content:ro" \
+      #       -v "$PWD/manifest.vdf:/manifest.vdf:ro" \
+      #       -v "$PWD/steamhome:/home/steam/Steam" \
+      #       cm2network/steamcmd:root \
+      #       +login "$STEAM_USERNAME" +workshop_build_item /manifest.vdf +quit
+
+      - name: Post-upload checklist
+        env:
+          IS_BETA: ${{ needs.detect.outputs.is_beta }}
+          VERSION: ${{ needs.detect.outputs.version }}
+          BRANCH: ${{ needs.detect.outputs.branch }}
+        run: |
+          {
+            echo "### 上传后必须人工核对（没报错 != 配置成功）"
+            echo ""
+            echo "1. 工坊页 https://steamcommunity.com/sharedfiles/filedetails/?id=$WORKSHOP_ITEM_ID 的"
+            echo "   **改动说明(Change Notes)** 标签页，确认最新版本显示的**支持分支范围**是："
+            echo "   $( [ "$IS_BETA" = "true" ] && echo '从 public-beta 起（minBranch=public-beta）' || echo '最高到 public（maxBranch=public）' )"
+            echo "2. 用 **$BRANCH** 基线的游戏客户端启动，确认 Mod 能加载且版本号 = \`$VERSION\`。"
+            echo "3. 用**另一条**基线的客户端启动，确认它拿到的是**另一种**构建（应报"
+            echo "   \`STEAM_BRANCH_UNSUPPORTED\` 或被 Steam 下发另一个版本），**不是**同一份。"
+            echo "4. 对照本 workflow “Build summary” 里的 sha256 与本地构建结果。"
+          } >> "$GITHUB_STEP_SUMMARY"
+          cat "$GITHUB_STEP_SUMMARY"
