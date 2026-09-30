@@ -40,20 +40,45 @@ public static class GaoshouKeywordMechanics
         var prefs = new CardSelectorPrefs(prompt, 0, Math.Min(maxDiscard, hand.Count));
         // 复刻原版 FromHandForDiscard 的临时高光规则：只有真正的奇巧牌可亮。
         // 呼吸不是奇巧牌，但其弃置效果会在此处触发，因此额外显示同款提示。
+        //
+        // ⚠️ 这个谓词是**全局唯一**由"原版手牌选牌 UI 在构建选牌界面时逐张调用"的模组代码：
+        //    NPlayerHand.UpdateSelectModeCardVisibility → NHandCardHolder.UpdateCard → ShouldGlowGold
+        //    → NPlayerHand.SelectModeGoldGlowOverride → 就是这里 ✗。
+        //    它一旦抛异常，SelectCards 会在 RefreshSelectModeConfirmButton() **之前**中断
+        //    ⇒ 确认键永远处于 Disabled ⇒ 症状就是"增幅弃牌的选牌界面无法确认"
+        //    （2026-09-30 正式版实测；beta 正常 —— 同一个谓词在两个游戏版本里的返回值/异常行为可以不同）。
+        //    ⇒ 因此这里做 **全量兜底**：任何异常都当作"不亮"，绝不把异常抛回原版 UI。
         prefs.ShouldGlowGold = candidate =>
         {
-            if (candidate is Breath)
-                return true;
-            if (!candidate.IsSlyThisTurn)
-                return false;
+            try
+            {
+                if (candidate is Breath)
+                    return true;
+                if (!candidate.IsSlyThisTurn)
+                    return false;
 
-            return candidate.CanPlay(out var reason, out _) || reason.HasResourceCostReason();
+                return candidate.CanPlay(out var reason, out _) || reason.HasResourceCostReason();
+            }
+            catch (System.Exception)
+            {
+                return false;
+            }
         };
         var discarded = (await CardSelectCmd.FromHand(choiceContext, card.Owner, prefs, null, card)).ToList();
-        foreach (var c in discarded)
-            await CardCmd.Discard(choiceContext, c);
+        // 弃置：① 去掉重复项；② 只弃置**此刻仍在手牌里**的牌（被别处移走/已弃置的不再重复弃置）。
+        // 这两条都是纯防御：正常路径下 Selected 里每张都恰好在手牌且唯一 ⇒ 行为与旧版逐字一致 ✓；
+        // 但在"选牌返回值异常/与游戏版本行为不一致"时，可以避免把同一张牌弃置两次造成的**卡牌复制**假象。
+        var discardedCount = 0;
+        foreach (var c in discarded.Distinct())
+        {
+            if (c.Pile?.Type != PileType.Hand)
+                continue;
 
-        for (var i = 0; i < discarded.Count; i++)
+            await CardCmd.Discard(choiceContext, c);
+            discardedCount++;
+        }
+
+        for (var i = 0; i < discardedCount; i++)
             await mainOnce(choiceContext);
     }
 
