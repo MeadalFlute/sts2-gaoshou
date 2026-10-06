@@ -135,14 +135,8 @@ public sealed class Cryptic : ModCardTemplate
             await CardPileCmd.Draw(choiceContext, draw, Owner);
     }
 
-    // 附赠 n：本牌被抽到时额外抽 n 张（必须 card == this 守卫，否则任意抽牌都会级联）。
-    public override Task AfterCardDrawn(PlayerChoiceContext choiceContext, CardModel card, bool fromHandDraw)
-    {
-        if (card != this)
-            return Task.CompletedTask;
-        return CardPileCmd.Draw(choiceContext, DynamicVars.GetRequired<IntVar>("Bonus").BaseValue, Owner);
-    }
-
+    // 附赠 n 的机制**不在本文件**：由词条规则 Keywords\BonusDrawRule.cs 统一驱动
+    // （2026-10-06 整理为关键词；本卡只声明词条 + 变量 Bonus = n）。
     protected override void OnUpgrade()
     {
         // 事件牌：升级仅提升附赠数量（1 -> 2）。

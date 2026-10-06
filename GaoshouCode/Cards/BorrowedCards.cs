@@ -14,21 +14,15 @@ using STS2RitsuLib.Scaffolding.Content;
 
 namespace Gaoshou.Cards;
 
-// 借用之牌：技能（稀有）。耗 2 能量。选择手牌中至多 2 张牌，将它们的一张复制品**永久加入你的卡组**；
-// 打出后**永久离开你的卡组**。消耗、虚无（升级移除虚无）。
+// 借用之牌：技能（稀有）。耗 2 能量。选择手牌中至多 2(3) 张牌，将它们的一张复制品加入你的手牌。消耗。
 //
-// 【2026-09-24 重做】原效果是"把一张**临时**复制品加入**手牌**"（幻影同款 CreateClone + AddGeneratedCardToCombat）；
-// 现在改成永久进卡组：
-//   * 克隆源取手牌的 `DeckVersion`（= 卡组侧那一份原牌）、用 `RunState.CloneCard` 生成**运行层**克隆，
-//     再 `CardPileCmd.Add(copy, PileType.Deck)`（与多莉的镜子 DollysMirror 同一口径）；
-//   * "打出后永久离开卡组"照 DeprecatedCard 的写法：`RemoveFromDeck(DeckVersion)` 后清掉引用。
-//
-// ⚠️ 关键前提（反编译 Player.PopulateCombatState 核实）：战斗开始时，游戏把卡组每张牌
-// `state.CloneCard(deckCard)` 克隆进抽牌堆，并让**战斗克隆**的 `DeckVersion` 指向卡组里那张原牌。
-// 所以战斗中任何"卡组侧"操作都必须走 `DeckVersion`：
-//   * 不能把 `this` 直接丢给 `RemoveFromDeck`（它要求 `Pile.Type == PileType.Deck`，而 this 在 Play 区 ⇒ 抛异常）；
-//   * 手牌里现生成的牌（token/复制品）没有 DeckVersion ⇒ 复制它们时退回手牌实例本身，且它们本来就不在卡组里、
-//     所以不会误删任何东西 ✓。
+// 【2026-10-05 回调】回到"**战斗内临时复制**"（2026-09-24 那版"永久进卡组 + 打出后永久离开卡组"已撤下）：
+//   * 复制品用 `CreateClone()` 生成**战斗实例**，再 `AddGeneratedCardToCombat(copy, PileType.Hand)` 入手
+//     —— 与幻影（Keywords/Phantom.cs）同一条路径 ✓
+//   * 复制品**保持原样**：不减费、不带消耗、不带幻影/回响（不要默认按幻影处理 ✗）
+//   * 卡牌本体只有「消耗」；升级只把复制数量 2 → 3（不再有"虚无→移除虚无"）
+// ⚠️ `CreateClone()` 必须存在：beta 0.111.0 有 `CreateCloneForPlayer(player)`，正式版 0.107.1 只有
+//    `CreateClone()`（见 Entry.cs 的变体自检）⇒ 用两版共有的 `CreateClone()` ✓
 [RegisterCard(typeof(GaoshouCardPool))]
 public sealed class BorrowedCards : ModCardTemplate
 {
@@ -46,7 +40,6 @@ public sealed class BorrowedCards : ModCardTemplate
     public override IEnumerable<CardKeyword> CanonicalKeywords =>
     [
         CardKeyword.Exhaust,
-        CardKeyword.Ethereal,
     ];
 
     protected override IEnumerable<DynamicVar> CanonicalVars =>
@@ -62,32 +55,28 @@ public sealed class BorrowedCards : ModCardTemplate
     {
         var max = (int)DynamicVars.GetRequired<IntVar>("CopyCount").BaseValue;
         var hand = PileType.Hand.GetPile(Owner).Cards.ToList();
-        if (hand.Count > 0)
-        {
-            // 选择至多 max 张手牌（可少选）。**不做任何过滤**：玩家爱复制什么就复制什么（任务牌也允许）。
-            var prefs = new CardSelectorPrefs(new LocString("cards", "GAOSHOU_BORROWED_CARDS_PROMPT"), 0, Math.Min(max, hand.Count));
-            var selected = (await CardSelectCmd.FromHand(choiceContext, Owner, prefs, null, this)).ToList();
+        if (hand.Count == 0)
+            return;
 
-            // 每张选中的牌：生成一份复制品**永久加入卡组**（不再放进手牌）。
-            foreach (var c in selected)
-            {
-                var source = c.DeckVersion ?? c;
-                var copy = Owner!.RunState.CloneCard(source);
-                CardCmd.PreviewCardPileAdd(await CardPileCmd.Add(copy, PileType.Deck));
-            }
-        }
+        // 选择至多 max 张手牌（可少选）。**不做任何过滤**：玩家爱复制什么就复制什么（任务牌也允许）。
+        var prefs = new CardSelectorPrefs(new LocString("cards", "GAOSHOU_BORROWED_CARDS_PROMPT"), 0, Math.Min(max, hand.Count));
+        var selected = (await CardSelectCmd.FromHand(choiceContext, Owner, prefs, null, this)).ToList();
 
-        // 打出后永久离开你的卡组（卡组里那一份是 DeckVersion；已经不在卡组里时什么都不做）。
-        if (this.DeckVersion != null)
+        // 每张选中的牌：生成一份**战斗内**复制品加入手牌（同幻影路径；复制品保持原费用/颜色/词条）。
+        foreach (var c in selected)
         {
-            await CardPileCmd.RemoveFromDeck(this.DeckVersion);
-            this.DeckVersion = null;
+            // 纯防御：选牌结果里已经被移出手牌的，不再复制（避免复制出幽灵牌）。
+            if (c?.Pile?.Type != PileType.Hand)
+                continue;
+
+            var copy = c.CreateClone();
+            CardCmd.PreviewCardPileAdd(await CardPileCmd.AddGeneratedCardToCombat(copy, PileType.Hand, Owner));
         }
     }
 
     protected override void OnUpgrade()
     {
-        // 复制数量固定 2；升级后移除"虚无"。
-        RemoveKeyword(CardKeyword.Ethereal);
+        // 升级：复制数量 2 -> 3（不再涉及"虚无"）。
+        DynamicVars.GetRequired<IntVar>("CopyCount").UpgradeValueBy(1);
     }
 }

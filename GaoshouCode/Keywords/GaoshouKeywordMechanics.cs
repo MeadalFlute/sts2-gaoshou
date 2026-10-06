@@ -5,6 +5,8 @@ using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
 using MegaCrit.Sts2.Core.Localization;
 using MegaCrit.Sts2.Core.Nodes.Rooms;
+using MegaCrit.Sts2.Core.Nodes.Screens.Overlays;
+using MegaCrit.Sts2.Core.Nodes.Screens.ScreenContext;
 using Gaoshou.Cards;
 using STS2RitsuLib.Scaffolding.Content;
 
@@ -36,6 +38,10 @@ public static class GaoshouKeywordMechanics
             return;
 
         var prompt = new LocString("cards", "GAOSHOU_AMPLIFY_PROMPT");
+        // 【2026-10-06 用户决定】提示行**只标"最多能弃几张"**即可，不再强调增幅档位 ✗
+        //   （中途曾加过 `（增幅 {AmplifyCount}）`，用户看过后认为多余 ⇒ 已撤掉，只留 {MaxCount}）。
+        //   注意 {MaxCount} 是 min(增幅层数, 手牌数)：手牌少时数字会跟着变小，这是**刻意的**——
+        //   它表示"本次真的能选几张"，不是卡面档位；玩家若疑惑档位请直接看卡面「增幅N」✓
         prompt.Add("MaxCount", maxDiscard);
         var prefs = new CardSelectorPrefs(prompt, 0, Math.Min(maxDiscard, hand.Count));
         // ⚠️⚠️ 这里**绝不能**再自己赋值 `prefs.ShouldGlowGold = <lambda>` ✗✗（2026-09-30 正式版事故根因）
@@ -104,11 +110,15 @@ public static class GaoshouKeywordMechanics
     }
 
     /// <summary>
-    /// 高光是否允许出现在当前界面：只允许出现在"正常手牌行"里。
-    /// 手牌选择模式（弃牌 / 选牌界面）下卡牌**仍然留在手牌堆里**（<c>PileType.Hand</c>），
-    /// 单靠牌堆判定挡不住；且原版此时会用 <c>CardSelectorPrefs.ShouldGlowGold</c>
-    /// （经 <c>NPlayerHand.SelectModeGoldGlowOverride</c>）接管泛光判定 ⇒ 模组必须自己让位，
-    /// 否则改色后的流转/奇迹/风暴高光会照到选牌界面上。
+    /// 高光是否允许出现在当前界面：只允许出现在"正常手牌行"里（出牌阶段、没有任何选牌界面）。
+    /// 两类界面必须让位（2026-10-02 修复"呼吸/醉拳高光在非弃牌选牌界面误亮"）：
+    ///   ⓐ **覆盖层屏幕**（<c>NOverlayStack</c>）：从牌堆选牌（头槌 / 宇宙冷漠）、查看牌堆、
+    ///      卡牌奖励、遗物/卡牌详查等都由它承载 ⇒ 此时手牌还在场，但已不是"正常手牌行"。
+    ///      原版自己也用同一判据（<c>NPlayerHand.UpdateCard</c> 里的
+    ///      <c>NOverlayStack.Instance.ScreenCount &gt; 0</c>）⇒ 与原生口径一致。
+    ///   ⓑ **手牌选择模式**（弃牌 / 消耗 / 升级 / 放回牌堆顶）：卡牌**仍然留在手牌堆里**
+    ///      （<c>PileType.Hand</c>），单靠牌堆判定挡不住 ⇒ 用原版自己的
+    ///      <c>NPlayerHand.IsInCardSelection</c>（<c>Mode.SimpleSelect</c> / <c>Mode.UpgradeSelect</c>）让位。
     /// 房间/手牌节点还没建好时（<c>NCombatRoom.Instance</c> 为空）按"允许"处理，行为与旧版一致。
     /// </summary>
     public static bool IsHandGlowAllowed()
@@ -119,7 +129,20 @@ public static class GaoshouKeywordMechanics
         // 最多多亮一次，绝不影响布局与流程。
         try
         {
-            var hand = NCombatRoom.Instance?.Ui?.Hand;
+            // ⓪ 当前"活动屏幕"必须就是战斗房间本身：一旦被任何覆盖层（从牌堆选牌 / 查看牌堆 /
+            //    卡牌奖励 / 详查）顶掉，就说明玩家已不在正常出牌界面 ⇒ 一律不高光。
+            //    判据与参数与原版 NPingButton / NEndTurnButton 完全一致（比的是 NCombatRoom.Instance 同一实例）。
+            var room = NCombatRoom.Instance;
+            if (room != null && !ActiveScreenContext.Instance.IsCurrent(room))
+                return false;
+
+            // ① 双保险：NOverlayStack 上挂了任何覆盖层屏幕（原版 NPlayerHand.UpdateCard 用的就是这个判据）。
+            var overlays = NOverlayStack.Instance;
+            if (overlays != null && overlays.ScreenCount > 0)
+                return false;
+
+            // ② 手牌选择模式（弃牌 / 消耗 / 升级 / 放回牌堆顶）下手牌仍留在 Hand 堆里 ⇒ 让位。
+            var hand = room?.Ui?.Hand;
             return hand == null || !hand.IsInCardSelection;
         }
         catch (System.Exception e)

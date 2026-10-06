@@ -103,7 +103,8 @@ public sealed class GaoshouGlowColorPatch : IPatchMethod
 }
 
 /// <summary>
-/// 「呼吸」在**选牌/弃牌界面**里获得与奇巧(Sly)完全相同的**原版金色高光**。
+/// 「呼吸」在**弃牌选择界面**里获得与奇巧(Sly)完全相同的**原版金色高光**
+/// （消耗 / 升级 / 放回牌堆顶等其它选牌界面**不**发光 —— 见下方 Postfix 内的判定依据）。
 ///
 /// 为什么不沿用"给 <c>CardSelectorPrefs.ShouldGlowGold</c> 赋我们的委托"：2026-09-30 正式版事故 ——
 /// MonoMod 的 JIT hook 在编译 <c>AmplifyAsync</c> 里那个 lambda（编译器生成的 <c>&lt;&gt;c.b__0_0</c>）时
@@ -141,9 +142,18 @@ public sealed class BreathDiscardGlowPatch : IPatchMethod
             if (__instance.CardNode?.Model is not Breath)
                 return;
 
-            // 只在"手牌选择模式"（弃牌/选牌界面）里补这层金色，与奇巧口径一致；正常出牌手牌不亮。
+            // 只认**原版弃牌选择**这一种界面（2026-10-02 修复"呼吸在非弃牌选牌界面误亮"）。
+            // 依据：全库中给 <c>CardSelectorPrefs.ShouldGlowGold</c> 赋值的**只有**
+            // <c>CardSelectCmd.FromHandForDiscard</c>（已核对 beta 0.111.0 与 release 0.107.1 两版反编译），
+            // 而它是 <c>NPlayerHand.SelectModeGoldGlowOverride</c> 的唯一来源 ⇒
+            // "该 override 非空" ⟺ "当前手牌选择就是弃牌选择"。
+            // 消耗（净化 Purity）、升级（武装）、放回抽牌堆顶（腾挪 / 微光 / 光子切割）、
+            // 以及其他一切 <c>CardSelectCmd.FromHand</c> 泛用选择**都不会**赋值 ⇒ 呼吸不再误亮 ✓
+            // 口径与奇巧(Sly) 完全一致：原版就是靠这个 override 决定选牌界面里谁发金光。
             var hand = MegaCrit.Sts2.Core.Nodes.Rooms.NCombatRoom.Instance?.Ui?.Hand;
             if (hand == null || !hand.IsInCardSelection)
+                return;
+            if (hand.SelectModeGoldGlowOverride == null)
                 return;
 
             __result = true;

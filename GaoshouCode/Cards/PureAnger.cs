@@ -35,7 +35,8 @@ public sealed class PureAnger : ModCardTemplate
     protected override bool ShouldGlowGoldInternal =>
         GaoshouKeywordMechanics.IsHandGlowAllowed() && IsUpgraded && !_firstPlayBonusUsed;
 
-    // 词条：附赠（抽到这张牌时额外抽 n 张，n 见描述里的 {Cards}）。机制由 AfterCardDrawn 实现。
+    // 词条：附赠（抽到这张牌时额外抽 n 张，n = 动态变量 Bonus）。
+    // 机制**不在本文件**：由词条规则 Keywords\BonusDrawRule.cs 统一驱动（2026-10-06 整理为关键词）。
     public override IEnumerable<CardKeyword> CanonicalKeywords =>
     [
         GaoshouKeyword.Bonus,
@@ -44,7 +45,7 @@ public sealed class PureAnger : ModCardTemplate
     // 辉星/能量图标变量（描述中转换为图标）。
     protected override IEnumerable<DynamicVar> CanonicalVars =>
     [
-        ModCardVars.Int("Cards", 1),
+        ModCardVars.Int("Bonus", 1),   // 附赠 1：抽到时额外抽 1 张
         ModCardVars.Energy("Energy", 1),
         ModCardVars.Stars("Stars", 1),
         // 升级首次打出获得 3 能量的“3”（图标变量=1 配合“3{icon}”显示；数量由该变量驱动，可被外挂修改）。
@@ -54,14 +55,6 @@ public sealed class PureAnger : ModCardTemplate
     public PureAnger() : base(BaseEnergyCost, CardKind, CardRarityValue, CardTarget, ShowInCardLibrary)
     {
         // 0 辉星：不覆写 CanonicalStarCost，保持默认"无辉星费用"。
-    }
-
-    // 抽到时：额外抽 1 张牌（仅当本牌自身被抽到时触发——必须 card==this 守卫，否则每次任意抽牌都+1造成级联抽满手牌）。
-    public override Task AfterCardDrawn(PlayerChoiceContext choiceContext, CardModel card, bool fromHandDraw)
-    {
-        if (card != this)
-            return Task.CompletedTask;
-        return CardPileCmd.Draw(choiceContext, DynamicVars.GetRequired<IntVar>("Cards").BaseValue, Owner);
     }
 
     protected override async Task OnPlay(PlayerChoiceContext choiceContext, CardPlay cardPlay)

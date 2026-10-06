@@ -33,8 +33,8 @@ public sealed class GaoshouUnlockSettings : SingletonModel
                         T("立即解锁", "Unlock Now"),
                         _ => UnlockAll(),
                         ModSettingsButtonTone.Accent,
-                        T("解锁全部卡牌/遗物图鉴与角色进阶 10。\n（不含多人通用进阶等级）",
-                          "Reveal all Gaoshou cards and relics, and set the character's ascension to 10.\n(Leaves the shared multiplayer ascension level untouched.)"))),
+                        T("解锁全部卡牌/遗物/药水图鉴与角色进阶 10。\n（不含多人通用进阶等级）",
+                          "Reveal all Gaoshou cards, relics and potions, and set the character's ascension to 10.\n(Leaves the shared multiplayer ascension level untouched.)"))),
             pageId: "gaoshou_main");
     }
 
@@ -63,6 +63,15 @@ public sealed class GaoshouUnlockSettings : SingletonModel
             .ToList();
         foreach (var id in relicIds)
             SaveManager.Instance.Progress.MarkRelicAsSeen(id);
+
+        // 药水（玩家反馈 2026-10-06：药水图鉴没被这个按钮解锁 ⇒ 之前只覆盖了卡牌与遗物 ✗）。
+        // 与卡牌/遗物同源：走路段的 Progress.MarkPotionAsSeen(ModelId) ✓
+        var potionIds = ModelDb.AllPotions
+            .Where(p => p.Id?.Entry?.StartsWith("GAOSHOU_POTION") == true)
+            .Select(p => p.Id)
+            .ToList();
+        foreach (var id in potionIds)
+            SaveManager.Instance.Progress.MarkPotionAsSeen(id);
 
         // 角色进阶 10（仅高手角色，不动多人通用进阶）。
         foreach (var character in ModelDb.AllCharacters)

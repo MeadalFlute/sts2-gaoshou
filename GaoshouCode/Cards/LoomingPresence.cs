@@ -12,12 +12,14 @@ using STS2RitsuLib.Scaffolding.Content;
 
 namespace Gaoshou.Cards;
 
-// 浮光掠影：能力（稀有）。耗 1 能量。每当你对敌人造成伤害时，获得 3(4) 层格挡。
+// 浮光掠影：能力（稀有）。耗 2 能量。获得 2 层浮光掠影；流转：再获得 2 层。虚无（升级移除虚无）。
+// 【2026-10-05 重做】由"技能 / 1 费 / 每层 1"改为"**能力** / 2 费 / 每层 2"：
+//   原版对"某流派的兑现"一贯用蓝色能力牌 ⇒ 归位为能力；层数翻倍以补偿 2 费与稀有槽位。
 [RegisterCard(typeof(GaoshouCardPool))]
 public sealed class LoomingPresence : ModCardTemplate
 {
-    private const int BaseEnergyCost = 1;
-    private const CardType CardKind = CardType.Skill;
+    private const int BaseEnergyCost = 2;
+    private const CardType CardKind = CardType.Power;
     private const CardRarity CardRarityValue = CardRarity.Rare;
     private const TargetType CardTarget = TargetType.Self;
     private const bool ShowInCardLibrary = true;
@@ -44,7 +46,7 @@ public sealed class LoomingPresence : ModCardTemplate
 
     protected override IEnumerable<DynamicVar> CanonicalVars =>
     [
-        ModCardVars.Int("FlowGain", 1),
+        ModCardVars.Int("FlowGain", 2),
     ];
 
     public LoomingPresence() : base(BaseEnergyCost, CardKind, CardRarityValue, CardTarget, ShowInCardLibrary)
@@ -53,11 +55,11 @@ public sealed class LoomingPresence : ModCardTemplate
 
     protected override async Task OnPlay(PlayerChoiceContext choiceContext, CardPlay cardPlay)
     {
-        // 获得 1 层浮光掠影。
+        // 获得 2 层浮光掠影。
         await PowerCmd.Apply<LoomingPresencePower>(choiceContext, Owner.Creature,
             DynamicVars.GetRequired<IntVar>("FlowGain").BaseValue, Owner.Creature, this);
 
-        // 流转（颜色与上一张牌完全不同）：额外获得 1 层。
+        // 流转（颜色与上一张牌完全不同）：再获得 2 层。
         if (GaoshouFlowTracker.IsFlowReady(this))
             await PowerCmd.Apply<LoomingPresencePower>(choiceContext, Owner.Creature,
                 DynamicVars.GetRequired<IntVar>("FlowGain").BaseValue, Owner.Creature, this);
@@ -65,7 +67,7 @@ public sealed class LoomingPresence : ModCardTemplate
 
     protected override void OnUpgrade()
     {
-        // 升级后移除"虚无"（流转获得固定 1 层）。
+        // 升级只移除"虚无"（费用与层数不变）。
         RemoveKeyword(CardKeyword.Ethereal);
     }
 }

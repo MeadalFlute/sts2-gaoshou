@@ -1,0 +1,8 @@
+{
+  "GAOSHOU_POTION_EQUILIBRIUM.title": "两仪药水",
+  "GAOSHOU_POTION_EQUILIBRIUM.description": "获得{Energy:energyIcons()}和{Stars:starIcons()}。",
+  "GAOSHOU_POTION_WASTE_BREW.title": "拾荒药水",
+  "GAOSHOU_POTION_WASTE_BREW.description": "将[blue]{WasteCount:diff()}[/blue]张[gold]升级过的[/gold]随机[gold]废品[/gold]牌加入你的[gold]手牌[/gold]。",
+  "GAOSHOU_POTION_ACUPOINT_POWDER.title": "封穴散",
+  "GAOSHOU_POTION_ACUPOINT_POWDER.description": "击晕一名敌人1回合。"
+}

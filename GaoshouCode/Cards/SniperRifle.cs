@@ -49,16 +49,23 @@ public sealed class SniperRifle : ModCardTemplate
         CardKeyword.Retain, // 追加保留
     ];
 
-    // 计算伤害：基础 0 + 3 × 当前力量（描述 {CalculatedDamage:diff()} 显示战斗内伤害预览）。
+    // 计算伤害：基础 0 + 3 × （当前力量 + 本牌第一行给的 3 层临时力量）。
+    // 描述 {CalculatedDamage:diff()} 显示战斗内伤害预览。
+    // 【2026-10-06 用户调整】预览必须**算上本牌自己给的 3 层临时力量**（出牌顺序是从上到下，
+    //   第一行的临时力量在伤害之前结算 ⇒ 实打伤害 = (力量 + 3) × 3）。
+    //   同时把 ExtraDamage 由 2 修正为 3：本表的 ExtraDamage 是**倍率系数**
+    //   （预览公式 = CalculationBase + ExtraDamage × 乘数函数，见 CalculatedVar.Calculate），
+    //   旧值 2 会让预览只有实伤的 2/3；系数必须与 OnPlay 用的 Multiplier(3) 一致。
     protected override IEnumerable<DynamicVar> CanonicalVars =>
     [
         // 【2026-09-29 用户调整】第一行：获得 3 层临时力量（变量名与其它临时力量卡一致：TemporaryStrength）。
         ModCardVars.Int("TemporaryStrength", 3),
         new CalculationBaseVar(0m),
-        new ExtraDamageVar(2m),
+        new ExtraDamageVar(3m),
         ModCardVars.Int("Multiplier", 3),
         new CalculatedDamageVar(ValueProp.Move).WithMultiplier(
-            static (card, target) => card.Owner!.Creature.GetPowerAmount<StrengthPower>()),
+            static (card, target) => card.Owner!.Creature.GetPowerAmount<StrengthPower>()
+                + card.DynamicVars.GetRequired<IntVar>("TemporaryStrength").BaseValue),
     ];
 
     public SniperRifle() : base(BaseEnergyCost, CardKind, CardRarityValue, CardTarget, ShowInCardLibrary)

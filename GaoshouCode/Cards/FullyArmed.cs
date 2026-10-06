@@ -35,7 +35,8 @@ public sealed class FullyArmed : ModCardTemplate
         HoverTipFactory.FromPower<GaoshouRetainBlockPower>(),
     ];
 
-    // 词条：附赠（抽到这张牌时额外抽 n 张，n 见描述里的 {Cards}）。机制由 AfterCardDrawn 实现。
+    // 词条：附赠（抽到这张牌时额外抽 n 张，n = 动态变量 Bonus）。
+    // 机制**不在本文件**：由词条规则 Keywords\BonusDrawRule.cs 统一驱动（2026-10-06 整理为关键词）。
     public override IEnumerable<CardKeyword> CanonicalKeywords =>
     [
         GaoshouKeyword.Bonus,
@@ -44,23 +45,13 @@ public sealed class FullyArmed : ModCardTemplate
     protected override IEnumerable<DynamicVar> CanonicalVars =>
     [
         ModCardVars.Int("Blur", 10),
-        ModCardVars.Int("Cards", 1),   // 附赠的张数（描述里的 {Cards}）
+        ModCardVars.Int("Bonus", 1),   // 附赠 1：抽到时额外抽 1 张
     ];
 
     public override int CanonicalStarCost => 2;
 
     public FullyArmed() : base(BaseEnergyCost, CardKind, CardRarityValue, CardTarget, ShowInCardLibrary)
     {
-    }
-
-    // 附赠：抽到本牌时额外抽 {Cards} 张。
-    // 必须 card == this 守卫 —— 否则任何一张牌被抽到时都会再抽（级联抽满手牌）。
-    public override Task AfterCardDrawn(PlayerChoiceContext choiceContext, CardModel card, bool fromHandDraw)
-    {
-        if (card != this)
-            return Task.CompletedTask;
-
-        return CardPileCmd.Draw(choiceContext, DynamicVars.GetRequired<IntVar>("Cards").BaseValue, Owner);
     }
 
     protected override async Task OnPlay(PlayerChoiceContext choiceContext, CardPlay cardPlay)

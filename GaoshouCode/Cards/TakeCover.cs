@@ -2,7 +2,6 @@ using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
 using MegaCrit.Sts2.Core.Localization.DynamicVars;
-using MegaCrit.Sts2.Core.Models.Powers;
 using MegaCrit.Sts2.Core.ValueProps;
 using Gaoshou.Characters;
 using Gaoshou.Keywords;
@@ -12,7 +11,8 @@ using STS2RitsuLib.Scaffolding.Content;
 
 namespace Gaoshou.Cards;
 
-// 寻找掩护：技能（普通）。耗 2 能量。获得 11(15) 层格挡；下回合开始时获得 1 辉星。
+// 寻找掩护：技能（普通）。耗 2 能量。获得 11(15) 层格挡；获得 1(2) 辉星。
+// 【2026-10-05 时序调整】辉星由"下回合开始"改为**当回合立即**获得：蓝色防御牌不再与后续蓝牌抢同一库存星辉。
 [RegisterCard(typeof(GaoshouCardPool))]
 public sealed class TakeCover : ModCardTemplate
 {
@@ -43,14 +43,14 @@ public sealed class TakeCover : ModCardTemplate
     {
         await CreatureCmd.GainBlock(Owner.Creature, DynamicVars.Block, cardPlay);
 
-        // 下回合开始时获得 1(升级2) 辉星（原生"下回合辉星"buff；数量由 Stars 变量驱动）。
+        // 当回合立即获得 1(升级2) 辉星（数量由 Stars 变量驱动）。
         var starsGain = (int)DynamicVars.GetRequired<StarsVar>("Stars").BaseValue;
-        await PowerCmd.Apply<StarNextTurnPower>(choiceContext, Owner.Creature, starsGain, Owner.Creature, this);
+        await PlayerCmd.GainStars(starsGain, Owner);
     }
 
     protected override void OnUpgrade()
     {
         DynamicVars.Block.UpgradeValueBy(4);   // 11 -> 15
-        DynamicVars.GetRequired<StarsVar>("Stars").UpgradeValueBy(1);   // 下回合辉星 1 -> 2
+        DynamicVars.GetRequired<StarsVar>("Stars").UpgradeValueBy(1);   // 辉星 1 -> 2
     }
 }

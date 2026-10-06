@@ -12,7 +12,8 @@ using STS2RitsuLib.Scaffolding.Content;
 
 namespace Gaoshou.Cards;
 
-// 这个顺手：能力（罕见）。耗 0 能量 1 辉星（升级 0/0）。每当你打出【临时】牌后，对随机敌人造成 3（4）点伤害。
+// 这个顺手：能力（罕见）。耗 0 能量 1 辉星（升级 0/0）。每当你**生成**一张【临时】牌后，对随机敌人造成 4（5）点伤害。
+// 【2026-10-05 重做】触发点由"打出临时牌"改为"生成临时牌"（见 Powers/ThisHandyPower.cs）；伤害 3(4) → 4(5)。
 [RegisterCard(typeof(GaoshouCardPool))]
 public sealed class ThatsHandy : ModCardTemplate
 {
@@ -40,10 +41,10 @@ public sealed class ThatsHandy : ModCardTemplate
     // 0 能量 1 辉星。
     public override int CanonicalStarCost => 1;
 
-    // 伤害 3（升级 4）。
+    // 伤害 4（升级 5）。
     protected override IEnumerable<DynamicVar> CanonicalVars =>
     [
-        ModCardVars.Int("PowerAmount", 3),
+        ModCardVars.Int("PowerAmount", 4),
     ];
 
     protected override async Task OnPlay(PlayerChoiceContext choiceContext, CardPlay cardPlay)
@@ -54,7 +55,7 @@ public sealed class ThatsHandy : ModCardTemplate
 
     protected override void OnUpgrade()
     {
-        UpgradeStarCostBy(-1);   // 辉星 1 -> 0
-        DynamicVars.GetRequired<IntVar>("PowerAmount").UpgradeValueBy(1);   // 3 -> 4
+        UpgradeStarCostBy(-1);   // 辉星 1 -> 0（保留原有升级收益）
+        DynamicVars.GetRequired<IntVar>("PowerAmount").UpgradeValueBy(1);   // 4 -> 5
     }
 }

@@ -16,8 +16,9 @@ using STS2RitsuLib.Scaffolding.Content;
 namespace Gaoshou.Cards;
 
 // 囤积：技能（普通）。耗 1 能量。
-// 获得 3 层囤积（回合结束保留）；奇迹（进入手牌的方式非回合开始时抽牌）：获得 3 点格挡。
+// 获得 3 层囤积（回合结束保留）；奇迹（进入手牌的方式非回合开始时抽牌）：获得 5(8) 点格挡。
 // 升级后获得"保留"。
+// 【2026-10-05 条件收益】奇迹格挡 3(5) → 5(8)：提高条件满足时的兑现（不改变囤积层数，也不加无条件底板）。
 [RegisterCard(typeof(GaoshouCardPool))]
 public sealed class Stockpile : ModCardTemplate
 {
@@ -51,7 +52,7 @@ public override CardAssetProfile AssetProfile => new(
 
     protected override IEnumerable<DynamicVar> CanonicalVars =>
     [
-        new BlockVar(3m, ValueProp.Move),
+        new BlockVar(5m, ValueProp.Move),
         ModCardVars.Int("Hoard", 3),
     ];
 
@@ -72,8 +73,8 @@ public override CardAssetProfile AssetProfile => new(
 
     protected override void OnUpgrade()
     {
-        // 升级后获得"保留"（直接改实例词条）；奇迹格挡 3 -> 5。
+        // 升级后获得"保留"（直接改实例词条）；奇迹格挡 5 -> 8。
         AddKeyword(CardKeyword.Retain);
-        DynamicVars.Block.UpgradeValueBy(2m);   // 3 -> 5
+        DynamicVars.Block.UpgradeValueBy(3m);   // 5 -> 8
     }
 }

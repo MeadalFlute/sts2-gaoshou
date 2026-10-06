@@ -1,7 +1,7 @@
 {
   "GAOSHOU_KEYWORD_FLOW.title": "Flow",
   "GAOSHOU_KEYWORD_FLOW.description": "Triggers its extra effect if this card's color differs entirely from the last card played.",
-  "GAOSHOU_KEYWORD_AMPLIFY.title": "Kick",
+  "GAOSHOU_KEYWORD_AMPLIFY.title": "Kick n",
   "GAOSHOU_KEYWORD_AMPLIFY.description": "Discard up to n cards; for each card discarded, play this card once more.",
   "GAOSHOU_KEYWORD_MIRACLE.title": "Miracle",
   "GAOSHOU_KEYWORD_MIRACLE.description": "Triggers its extra effect after played when this card enters your hand by any means other than drawing at this turn start.",
@@ -31,6 +31,6 @@
   "GAOSHOU_KEYWORD_VIRTUE.title": "Virtue",
   "GAOSHOU_KEYWORD_VIRTUE.description": "When played, gain 1 Energy and draw 1 card.",
   "GAOSHOU_KEYWORD_LIMITED.title": "Limited",
-  "GAOSHOU_KEYWORD_LIMITED.description": "You can only play 1 Limited card each turn.",
-  "GAOSHOU_KEYWORD_LIMITED.dialogue": "I can only play 1 Limited card each turn."
+  "GAOSHOU_KEYWORD_LIMITED.description": "Each turn you can only play 1 card of each Limited name.",
+  "GAOSHOU_KEYWORD_LIMITED.dialogue": "I can only play 1 card of each Limited name each turn."
 }

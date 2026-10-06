@@ -1,7 +1,7 @@
 {
   "GAOSHOU_KEYWORD_FLOW.title": "流转",
   "GAOSHOU_KEYWORD_FLOW.description": "这张牌与上一张打出的牌颜色完全不同时，触发其额外效果。",
-  "GAOSHOU_KEYWORD_AMPLIFY.title": "增幅",
+  "GAOSHOU_KEYWORD_AMPLIFY.title": "增幅n",
   "GAOSHOU_KEYWORD_AMPLIFY.description": "弃置最多n张牌，每弃置一张，本卡牌重复打出一次。",
   "GAOSHOU_KEYWORD_MIRACLE.title": "奇迹",
   "GAOSHOU_KEYWORD_MIRACLE.description": "该卡以“本回合开始时抽牌”以外的任意方式进入手牌时，打出后触发其额外效果。",
@@ -25,6 +25,6 @@
   "GAOSHOU_KEYWORD_VIRTUE.title": "美德",
   "GAOSHOU_KEYWORD_VIRTUE.description": "打出后获得1点能量，抽1张牌。",
   "GAOSHOU_KEYWORD_LIMITED.title": "限制",
-  "GAOSHOU_KEYWORD_LIMITED.description": "每回合只能打出1张限制牌。",
-  "GAOSHOU_KEYWORD_LIMITED.dialogue": "我每回合只能打出1张限制牌。"
+  "GAOSHOU_KEYWORD_LIMITED.description": "每回合，每种「限制」牌只能打出1张。",
+  "GAOSHOU_KEYWORD_LIMITED.dialogue": "我每回合每种限制牌只能打出1张。"
 }

@@ -15,7 +15,7 @@ using STS2RitsuLib.Scaffolding.Content;
 
 namespace Gaoshou.Cards;
 
-// 垃圾喷射器-装填：技能（稀有）。耗 3 能量 0 辉星。消耗。
+// 垃圾喷射器-装填：技能（稀有）。耗 2 能量 0 辉星。消耗。
 // 效果：将**所有「临时牌」打出并消耗**；每以此法消耗一张，获得 5(6) 点格挡；
 //       将一张「垃圾喷射器」加入你的手牌，其攻击次数 = 本次消耗的临时牌数量。
 //
@@ -31,7 +31,7 @@ namespace Gaoshou.Cards;
 [RegisterCard(typeof(GaoshouCardPool))]
 public sealed class RockItLauncherReload : ModCardTemplate
 {
-    private const int BaseEnergyCost = 3;
+    private const int BaseEnergyCost = 2;
     private const CardType CardKind = CardType.Skill;
     private const CardRarity CardRarityValue = CardRarity.Rare;
     private const TargetType CardTarget = TargetType.Self;

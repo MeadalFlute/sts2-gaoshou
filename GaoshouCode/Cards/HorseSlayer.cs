@@ -15,8 +15,9 @@ using STS2RitsuLib.Scaffolding.Content;
 
 namespace Gaoshou.Cards;
 
-// 斩马长刀：攻击（普通）。耗 2 能量 0 辉星（升级后伤害 9->12、临时力量 2->4）。
-// 对所有敌人造成 9(12) 点伤害。流转（默认直接触发）：获得 2(4) 层临时力量。
+// 斩马长刀：攻击（普通）。耗 2 能量 0 辉星。
+// 对所有敌人造成 11(14) 点伤害。流转（默认直接触发）：获得 2(3) 层临时力量。
+// 【2026-10-05 底板/上限调整】群攻底板 9→11（升级 12→14，抬普通局手感）；升级临时力量 2→4 收紧为 2→3。
 [RegisterCard(typeof(GaoshouCardPool))]
 public sealed class HorseSlayer : ModCardTemplate
 {
@@ -48,7 +49,7 @@ public sealed class HorseSlayer : ModCardTemplate
 
     protected override IEnumerable<DynamicVar> CanonicalVars =>
     [
-        new DamageVar(9m, ValueProp.Move),
+        new DamageVar(11m, ValueProp.Move),
         ModCardVars.Int("TemporaryStrength", 2),
     ];
 
@@ -73,7 +74,7 @@ public sealed class HorseSlayer : ModCardTemplate
 
     protected override void OnUpgrade()
     {
-        DynamicVars.Damage.UpgradeValueBy(3);                                  // 9 -> 12
-        DynamicVars.GetRequired<IntVar>("TemporaryStrength").UpgradeValueBy(2); // 2 -> 4
+        DynamicVars.Damage.UpgradeValueBy(3);                                  // 11 -> 14
+        DynamicVars.GetRequired<IntVar>("TemporaryStrength").UpgradeValueBy(1); // 2 -> 3
     }
 }

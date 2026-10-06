@@ -3,7 +3,6 @@ using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
 using MegaCrit.Sts2.Core.HoverTips;
 using MegaCrit.Sts2.Core.Localization.DynamicVars;
-using MegaCrit.Sts2.Core.Models;
 using Gaoshou.Characters;
 using Gaoshou.Keywords;
 using Gaoshou.Powers;
@@ -13,13 +12,12 @@ using STS2RitsuLib.Scaffolding.Content;
 
 namespace Gaoshou.Cards;
 
-// 人月神话：能力（稀有）。耗 1(0) 能量 0 辉星。
-// 效果：附赠 1（**不是**原版 Innate/固有 ✗，2026-09-29 用户实测纠正）+ 本场战斗中临时加入你牌组的牌将被升级。
-// 「附赠」的确切语义（按本 mod 既有卡「急！PureAnger」= 用户指定参考）：
-//   词条 GaoshouKeyword.Bonus（GaoshouKeyword.cs:26/56-57，仅声明+悬浮释义）
-//   + 卡自己 override AfterCardDrawn，且 `card == this` 时才额外抽 {Cards} 张
-//   （PureAnger.cs:37-64；Cryptic.cs:40/48/143 同一套）。
-// 能力实现见 Powers/MythicalManMonthPower.cs（参考 资料\Watcher\WatcherMod\MasterRealityPower.cs:16-24）。
+// 人月神话：能力（稀有）。耗 1 能量 0 辉星（**升级不再减费**）。
+// 效果：本场战斗中临时加入你牌组的牌将被升级。
+// 【2026-10-06 用户调整】**默认没有附赠**；升级效果改为"追加附赠 1"（旧版是默认附赠 1 + 升级降到 0 费）。
+//   实现：附赠词条在 OnUpgrade 里 AddKeyword（与 SniperRifle 升级加幻影同一写法），张数走动态变量 Bonus（0 -> 1）；
+//   机制由词条规则 Keywords\BonusDrawRule.cs 统一驱动，本卡不写任何抽牌逻辑。
+//   卡面文案用 {IfUpgraded:show:...} 只在升级后显示那一行。
 [RegisterCard(typeof(GaoshouCardPool))]
 public sealed class TheMythicalManMonth : ModCardTemplate
 {
@@ -35,27 +33,15 @@ public sealed class TheMythicalManMonth : ModCardTemplate
     public override CardAssetProfile AssetProfile => new(
         PortraitPath: $"{Entry.ResPath}/images/cards/{GetType().Name}.png");
 
-    // 词条：附赠（附赠 1 = 抽到这张牌时额外抽 1 张；机制由下面的 AfterCardDrawn 实现）。
-    public override IEnumerable<CardKeyword> CanonicalKeywords =>
-    [
-        GaoshouKeyword.Bonus,
-    ];
+    // 默认**没有**词条：附赠 1 是升级奖励（升级时由 OnUpgrade 追加）。
+    // （CanonicalKeywords 不写 Bonus ⇒ 未升级的牌不带附赠词条、也不额外抽牌。）
+    public override IEnumerable<CardKeyword> CanonicalKeywords => [];
 
-    // 附赠张数（描述里的 {Cards}）。
+    // 附赠张数（描述里升级后的 {Bonus}）。基础 0 = 未升级不抽；升级 +1。
     protected override IEnumerable<DynamicVar> CanonicalVars =>
     [
-        ModCardVars.Int("Cards", 1),
+        ModCardVars.Int("Bonus", 0),
     ];
-
-    // 附赠：抽到**本牌自身**时额外抽 {Cards} 张（必须 card == this 守卫，否则任意抽牌都会级联 —
-    // 照 PureAnger.cs:58-64 的原话）。
-    public override Task AfterCardDrawn(PlayerChoiceContext choiceContext, CardModel card, bool fromHandDraw)
-    {
-        if (card != this)
-            return Task.CompletedTask;
-
-        return CardPileCmd.Draw(choiceContext, DynamicVars.GetRequired<IntVar>("Cards").BaseValue, Owner);
-    }
 
     // 悬浮释义：预览它施加的能力。
     protected override IEnumerable<IHoverTip> AdditionalHoverTips =>
@@ -75,6 +61,9 @@ public sealed class TheMythicalManMonth : ModCardTemplate
 
     protected override void OnUpgrade()
     {
-        EnergyCost.UpgradeBy(-1);   // 费用 1 -> 0（升级只降费，效果不变）
+        // 升级效果 = 追加"附赠 1"词条（费用不变，仍是 1 能量）。
+        // ⚠️ 词条必须在 OnUpgrade 里加（不要依赖 IsUpgraded 惰性缓存，见 SniperRifle 的同款注释）。
+        DynamicVars.GetRequired<IntVar>("Bonus").UpgradeValueBy(1);   // 0 -> 1
+        AddKeyword(GaoshouKeyword.Bonus);
     }
 }

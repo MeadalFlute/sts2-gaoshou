@@ -1,0 +1,8 @@
+{
+  "GAOSHOU_POTION_EQUILIBRIUM.title": "Equilibrium Potion",
+  "GAOSHOU_POTION_EQUILIBRIUM.description": "Gain {Energy:energyIcons()} and {Stars:starIcons()}.",
+  "GAOSHOU_POTION_WASTE_BREW.title": "Scavenger Potion",
+  "GAOSHOU_POTION_WASTE_BREW.description": "Add [blue]{WasteCount:diff()}[/blue] [gold]Upgraded[/gold] random [gold]Waste[/gold] cards to your [gold]hand[/gold].",
+  "GAOSHOU_POTION_ACUPOINT_POWDER.title": "Acupoint Powder",
+  "GAOSHOU_POTION_ACUPOINT_POWDER.description": "Stun an enemy for 1 turn."
+}

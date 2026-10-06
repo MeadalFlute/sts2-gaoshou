@@ -46,6 +46,12 @@ public sealed class GameOverVisualPlacementPatch : IPatchMethod
     /// <summary>本模组所有贴图都在这个前缀下。</summary>
     private const string OurResourcePrefix = "res://Gaoshou/";
 
+    /// <summary>节点元数据键：居中**之前**的原始 <c>Position</c>（用于还原，见 Postfix 里的注释）。</summary>
+    private const string PrevPositionMeta = "gaoshou_prev_pos";
+
+    /// <summary>容器元数据键：还原处理器是否已经接上（避免重复订阅信号）。</summary>
+    private const string RestoreHookedMeta = "gaoshou_restore_hooked";
+
     public static string PatchId => "gaoshou_game_over_visual_placement";
 
     public static string Description =>
@@ -80,8 +86,30 @@ public sealed class GameOverVisualPlacementPatch : IPatchMethod
         var startOffset = (ours.Count - 1) * (0f - spacing) * 0.5f;
         foreach (var visual in ours)
         {
+            // ⚠️⚠️【2026-10-06 修复"所有死亡动画都被居中"】本补丁只该管**游戏结束界面**里的摆位，
+            //    但 RitsuLib 会把同一个形象节点**复用到战斗 / 建筑师演出**等场合 ×
+            //    而我们写下的 `Position` 是**节点自身**的局部坐标 ⇒ 它会被**带回去** ✗
+            //    ⇒ 实机症状：战斗死亡、建筑师演出时角色**瞬移到屏幕中间**（原本应死在左侧原位）✗。
+            // 修法（按用户要求"把商店/火堆的居中与其它场合区分开"）：
+            //   ① 居中前先把**原位置**快照到节点元数据（只记一次）；
+            //   ② 节点**离开容器**时（= 被换回战斗/过场）把位置**还原** ⇒ 居中不再"粘"出去 ✓。
+            if (!visual.HasMeta(PrevPositionMeta))
+            {
+                visual.SetMeta(PrevPositionMeta, visual.Position);
+            }
+
             visual.Position = container.Size * 0.5f + new Vector2(startOffset, 200f);
             startOffset += spacing;
+        }
+
+        // 还原的接线**只做一次**（挂在容器上，处理器是**具名静态方法**、不带闭包 ✗）：
+        // ⚠️ 本仓库铁律：补丁回调路径里绝不出现编译器生成的闭包 / lambda
+        //    （MonoMod 的 JIT hook 编译它们时会抛 ArgumentException，历史事故见 GaoshouAttackStyle 的类注释 ✗）。
+        //    所以"哪个节点要还原"这个信息**存在节点自己的元数据里**，处理器只按元数据干活 ✓。
+        if (!container.HasMeta(RestoreHookedMeta))
+        {
+            container.SetMeta(RestoreHookedMeta, true);
+            container.ChildExitingTree += OnChildExitingContainer;
         }
 
         Entry.Logger.Info(
@@ -105,6 +133,19 @@ public sealed class GameOverVisualPlacementPatch : IPatchMethod
         }
 
         return false;
+    }
+
+    /// <summary>
+    /// 节点**离开容器**时把位置还原（= 形象被换回战斗 / 建筑师演出等场合）✓
+    /// 具名静态方法、无闭包（理由见 Postfix 里的注释 ✓）；靠节点元数据判断该不该还原 ✓。
+    /// </summary>
+    private static void OnChildExitingContainer(Node child)
+    {
+        if (child is not Node2D visual || !visual.HasMeta(PrevPositionMeta))
+            return;
+
+        visual.Position = (Vector2)visual.GetMeta(PrevPositionMeta);
+        visual.RemoveMeta(PrevPositionMeta);
     }
 
     private static bool IsOurs(Texture2D texture) =>

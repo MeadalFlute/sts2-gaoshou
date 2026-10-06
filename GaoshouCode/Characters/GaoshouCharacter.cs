@@ -1437,10 +1437,22 @@ public sealed class GaoshouCharacter : ModCharacterTemplate<GaoshouCardPool, Gao
             {
                 // 进入取刀 ⇒ 一串新的横扫连击开始 ⇒ 两个计数都重置
                 //（上一串的残留绝不能带进来）✓。
-                // ⚠️ pending **直接取"实际段数"**（权威），不再靠命中事件累加 ——
-                //    见声明处的日志实证（2 段牌只收到 1 次命中派发）✓。
-                aoeCutsPlayed = 0;
-                aoePendingHits = Math.Max(1, GaoshouAttackStyle.EffectiveHitCount);
+                // ⚠️【2026-10-06 修复"第一次伤害判定砍了两刀"】多目标攻击时游戏会**按目标逐个派发
+                //    `Attack` 触发器**（`AttackCommand._playOnEveryHit`）⇒ 在 `cut_*` / `hold_*` 上
+                //    会再次命中 `--Attack--> aoe_draw` 这几条分支（:712-723，谓词是 `IsAoe` ✓）。
+                //    链内重入原先也**无条件清零** ⇒ 已经播过/正在播的那一串被重头再播一次，
+                //    观感就是"第一次伤害判定砍了两刀"；敌人结算流程越长，第二次派发越容易插进来
+                //    （玩家实测：打蜂群术士这类敌人时格外明显）✗。
+                // 判据（只用既有计数，不新增状态 ✓）：**只有"上一串已播完 / 还没开始"才算新的一串**；
+                //    链内重入时 `aoeCutsPlayed < aoePendingHits` ⇒ 保留计数 ✓
+                //    ⇒ 已播刀数继续累计，仍由 `pending - cutsPlayed` 决定还欠几刀 ✓
+                //      （与下面 `cut_*` 里"AoeNextCut 预约补刀"的既有逻辑完全同构 ✓）。
+                var startsNewAoeChain = aoePendingHits <= 0 || aoeCutsPlayed >= aoePendingHits;
+                if (startsNewAoeChain)
+                {
+                    aoeCutsPlayed = 0;
+                    aoePendingHits = Math.Max(1, GaoshouAttackStyle.EffectiveHitCount);
+                }
             }
             else if (string.Equals(state.Id, cueAoeHoldR, StringComparison.Ordinal) ||
                      string.Equals(state.Id, cueAoeHoldL, StringComparison.Ordinal))

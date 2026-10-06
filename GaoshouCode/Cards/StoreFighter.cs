@@ -13,13 +13,14 @@ using STS2RitsuLib.Scaffolding.Content;
 
 namespace Gaoshou.Cards;
 
-// 百货战神：能力（稀有）。耗 0 能量 2 辉星。
-// 每当你打出【临时】牌后，获得 1 层临时力量"和"1 层临时敏捷。
-// 升级后获得"固有"。
+// 百货战神：能力（稀有）。耗 2 能量 2 辉星。
+// 每回合你（升级后前两次 / 未升级首次）打出【废品】牌：获得 1 层力量、1 层敏捷。
+// 【2026-10-05 重做】触发牌张 临时牌→废品牌；收益 临时力敏→**永久力敏各 1**；加"每回合次数上限"刹车。
+//   次数上限 = 施加的能力层数（未升级 1 / 升级 2）⇒ 升级即"首次 → 前两次"（因此不再给"固有"）。
 [RegisterCard(typeof(GaoshouCardPool))]
 public sealed class StoreFighter : ModCardTemplate
 {
-    private const int BaseEnergyCost = 0;
+    private const int BaseEnergyCost = 2;
     private const CardType CardKind = CardType.Power;
     private const CardRarity CardRarityValue = CardRarity.Rare;
     private const TargetType CardTarget = TargetType.Self;
@@ -30,21 +31,21 @@ public sealed class StoreFighter : ModCardTemplate
     public override CardAssetProfile AssetProfile => new(
         PortraitPath: $"{Entry.ResPath}/images/cards/StoreFighter.png");
 
-    // 悬浮释义：临时力量、临时敏捷（自定义能力）。
+    // 悬浮释义：力量、敏捷（原版能力）。
     protected override IEnumerable<IHoverTip> AdditionalHoverTips =>
     [
-        HoverTipFactory.FromPower<GaoshouTemporaryStrengthPower>(),
-        HoverTipFactory.FromPower<GaoshouTemporaryDexterityPower>(),
+        HoverTipFactory.FromPower<StrengthPower>(),
+        HoverTipFactory.FromPower<DexterityPower>(),
     ];
 
     public StoreFighter() : base(BaseEnergyCost, CardKind, CardRarityValue, CardTarget, ShowInCardLibrary)
     {
     }
 
-    // 0 能量 2 辉星。
+    // 2 能量 2 辉星。
     public override int CanonicalStarCost => 2;
 
-    // 每次触发获得的层数（临时力量/临时敏捷各 1）。
+    // 能力层数 = 每回合可兑现次数（未升级 1、升级 2）。每次固定给 1 力 1 敏。
     protected override IEnumerable<DynamicVar> CanonicalVars =>
     [
         ModCardVars.Power<DepartmentStoreGodPower>(1m),
@@ -52,14 +53,14 @@ public sealed class StoreFighter : ModCardTemplate
 
     protected override async Task OnPlay(PlayerChoiceContext choiceContext, CardPlay cardPlay)
     {
-        // 施加能力：每当你打出【临时】牌后获得 1 层临时力量、1 层临时敏捷。
+        // 施加能力：每回合前 N 次打出废品牌 → 1 力 1 敏（永久）。
         await PowerCmd.Apply<DepartmentStoreGodPower>(choiceContext, Owner.Creature,
             DynamicVars["DepartmentStoreGodPower"].BaseValue, Owner.Creature, this);
     }
 
     protected override void OnUpgrade()
     {
-        // 升级后获得"固有"（直接改实例词条）。
-        AddKeyword(CardKeyword.Innate);
+        // 升级：每回合可兑现次数 1 -> 2（"首次"变"前两次"）。
+        DynamicVars["DepartmentStoreGodPower"].UpgradeValueBy(1m);
     }
 }

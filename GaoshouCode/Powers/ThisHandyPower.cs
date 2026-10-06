@@ -1,17 +1,25 @@
 using System.Linq;
 using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.Entities.Cards;
-using MegaCrit.Sts2.Core.Entities.Creatures;
+using MegaCrit.Sts2.Core.Entities.Players;
 using MegaCrit.Sts2.Core.Entities.Powers;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
+using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.ValueProps;
 using STS2RitsuLib.Interop.AutoRegistration;
 using STS2RitsuLib.Scaffolding.Content;
 
 namespace Gaoshou.Powers;
 
-// 这个顺手（能力）：每当你打出一张【临时】牌后，对随机敌人造成 Amount 点伤害。
-// 临时机制：打出的牌带「临时」词条（当前幻影复制品等）即触发。
+// 这个顺手（能力）：每当你**生成**一张【临时】牌后，对随机敌人造成 Amount 点伤害。
+//
+// 【2026-10-05 重做】触发点由"**打出**临时牌后"改为"**生成**临时牌后"：
+//   * 钩子用原版 `AfterCardGeneratedForCombat(card, creator)`（与「武器库 ArsenalPower」同一钩子，
+//     见反编译 Models\Powers\ArsenalPower.cs:19-26）—— 凡是 `CardPileCmd.AddGeneratedCardToCombat`
+//     的生成路径都会走到这里（本模组的废品牌/装填/喷射器等生成同样计入）✓
+//   * 生成物一律是"不在卡组里"的战斗内牌 ⇒ 与词条【临时】的口径一致 ✓
+//   * 只认**自己**生成的牌：生成者与牌主都必须是本能力拥有者（多人防串触发）✓
+//   * 该钩子没有 choiceContext / cardPlay ⇒ 用 `ThrowingPlayerChoiceContext`（本模组既有一致做法）✓
 [RegisterPower]
 public sealed class ThisHandyPower : ModPowerTemplate
 {
@@ -22,18 +30,22 @@ public sealed class ThisHandyPower : ModPowerTemplate
         IconPath: $"{Entry.ResPath}/images/powers/thishandy.png",
         BigIconPath: $"{Entry.ResPath}/images/powers/thishandy.png");
 
-    public override async Task AfterCardPlayed(PlayerChoiceContext choiceContext, CardPlay cardPlay)
+    public override async Task AfterCardGeneratedForCombat(CardModel card, Player? creator)
     {
-        var player = cardPlay.Player;
-        // 临时牌 = 局内生成、不属于牌组（DeckVersion == null）。仅响应自己的打出（多人防串触发）。
-        if (player == null || player != Owner.Player || cardPlay.Card.DeckVersion != null)
+        var self = Owner.Player;
+        if (self == null || creator == null || creator.NetId != self.NetId)
             return;
 
-        var enemies = player.Creature.CombatState?.HittableEnemies.ToList() ?? [];
+        // 生成物必须也属于自己（防队友/敌人那边的生成串到本能力上）。
+        if (card?.Owner?.NetId != self.NetId)
+            return;
+
+        var enemies = Owner.CombatState?.HittableEnemies.ToList() ?? [];
         if (enemies.Count == 0)
             return;
 
-        var enemy = player.RunState.Rng.CombatTargets.NextItem(enemies)!;
-        await CreatureCmd.Damage(choiceContext, enemy, Amount, ValueProp.Unpowered, player.Creature, cardPlay.Card, cardPlay);
+        var enemy = self.RunState.Rng.CombatTargets.NextItem(enemies)!;
+        Flash();
+        await CreatureCmd.Damage(new ThrowingPlayerChoiceContext(), enemy, Amount, ValueProp.Unpowered, Owner, card, null);
     }
 }
