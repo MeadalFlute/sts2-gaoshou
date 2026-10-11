@@ -43,9 +43,12 @@ public sealed class RockItLauncherReload : ModCardTemplate
     public override CardAssetProfile AssetProfile => new(
         PortraitPath: $"{Entry.ResPath}/images/cards/{GetType().Name}.png");
 
-    // 悬浮释义：预览它生成的「垃圾喷射器」（升级后预览「垃圾喷射器+」，写法照 LossAversion.cs:35）。
+    // 悬浮释义：①「临时」词条（卡面第一行「打出并消耗所有临时牌」里的那个词 ——
+    //   2026-10-12 用户反馈"hovertips 缺少临时牌" ⇒ 补上；同款写法见 ThatsHandy.cs:34 / Spark.cs:34）✓
+    // ②预览它生成的「垃圾喷射器」（升级后预览「垃圾喷射器+」，写法照 LossAversion.cs:35）✓
     protected override IEnumerable<IHoverTip> AdditionalHoverTips =>
     [
+        HoverTipFactory.FromKeyword(GaoshouKeyword.Temporary),
         HoverTipFactory.FromCard<RockItLauncher>(IsUpgraded),
     ];
 

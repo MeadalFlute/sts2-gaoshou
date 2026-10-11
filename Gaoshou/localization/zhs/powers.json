@@ -72,6 +72,6 @@
   "GAOSHOU_POWER_TIRED_OUT_POWER.description": "你这回合已经打出过限制牌了。",
   "GAOSHOU_POWER_TIRED_OUT_POWER.smartDescription": "你这回合已经打出过限制牌了。",
   "GAOSHOU_POWER_MYTHICAL_MAN_MONTH_POWER.title": "人月神话",
-  "GAOSHOU_POWER_MYTHICAL_MAN_MONTH_POWER.description": "每当你在本场战斗中生成一张[gold]临时[/gold]牌，将其[gold]升级[/gold]。",
-  "GAOSHOU_POWER_MYTHICAL_MAN_MONTH_POWER.smartDescription": "每当你在本场战斗中生成一张[gold]临时[/gold]牌，将其[gold]升级[/gold]。"
+  "GAOSHOU_POWER_MYTHICAL_MAN_MONTH_POWER.description": "你在本场战斗中生成卡牌时，将其[gold]升级[/gold]。",
+  "GAOSHOU_POWER_MYTHICAL_MAN_MONTH_POWER.smartDescription": "你在本场战斗中生成卡牌时，将其[gold]升级[/gold]。"
 }

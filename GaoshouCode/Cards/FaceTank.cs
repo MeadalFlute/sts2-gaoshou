@@ -15,7 +15,7 @@ using STS2RitsuLib.Scaffolding.Content;
 
 namespace Gaoshou.Cards;
 
-// 脸接大招：能力（罕见）。耗 0 能量。获得 1(2) 层缓冲；将 3 张眩晕加入你的抽牌堆。
+// 脸接大招：能力（罕见）。耗 0 能量。获得 1(2) 层缓冲；将 2 张眩晕加入你的抽牌堆。
 [RegisterCard(typeof(GaoshouCardPool))]
 public sealed class FaceTank : ModCardTemplate
 {
@@ -41,11 +41,11 @@ public sealed class FaceTank : ModCardTemplate
     {
     }
 
-    // 缓冲 1(2) 层、眩晕 3 张。
+    // 缓冲 1(2) 层、眩晕 2 张。
     protected override IEnumerable<DynamicVar> CanonicalVars =>
     [
         ModCardVars.Power<BufferPower>(1m),
-        ModCardVars.Cards(3),
+        ModCardVars.Cards(2),
     ];
 
     protected override async Task OnPlay(PlayerChoiceContext choiceContext, CardPlay cardPlay)
@@ -54,7 +54,7 @@ public sealed class FaceTank : ModCardTemplate
         await PowerCmd.Apply<BufferPower>(choiceContext, Owner.Creature,
             DynamicVars["BufferPower"].BaseValue, Owner.Creature, this);
 
-        // 将 3 张眩晕加入你的抽牌堆。
+        // 将 2 张眩晕加入你的抽牌堆。
         for (var i = 0; i < DynamicVars.Cards.IntValue; i++)
         {
             var dazed = Owner.Creature.CombatState?.CreateCard(ModelDb.Card<Dazed>(), Owner);
