@@ -72,6 +72,6 @@
   "GAOSHOU_POWER_TIRED_OUT_POWER.description": "You already played a Limited card this turn.",
   "GAOSHOU_POWER_TIRED_OUT_POWER.smartDescription": "You already played a Limited card this turn.",
   "GAOSHOU_POWER_MYTHICAL_MAN_MONTH_POWER.title": "The Mythical Man-Month",
-  "GAOSHOU_POWER_MYTHICAL_MAN_MONTH_POWER.description": "Cards added to your deck during this combat are upgraded.",
-  "GAOSHOU_POWER_MYTHICAL_MAN_MONTH_POWER.smartDescription": "Cards added to your deck during this combat are upgraded."
+  "GAOSHOU_POWER_MYTHICAL_MAN_MONTH_POWER.description": "Whenever you generate a [gold]Temporary[/gold] card during this combat, [gold]Upgrade[/gold] it.",
+  "GAOSHOU_POWER_MYTHICAL_MAN_MONTH_POWER.smartDescription": "Whenever you generate a [gold]Temporary[/gold] card during this combat, [gold]Upgrade[/gold] it."
 }

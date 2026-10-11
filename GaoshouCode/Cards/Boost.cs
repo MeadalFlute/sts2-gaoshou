@@ -13,6 +13,7 @@ using STS2RitsuLib.Scaffolding.Content;
 namespace Gaoshou.Cards;
 
 // 气势：技能（普通）。耗 0 能量。获得 2(3) 点临时敏捷。
+// 词条：**奇巧**（2026-10-12 平衡调整追加；效果数值不变）。
 [RegisterCard(typeof(GaoshouCardPool))]
 public sealed class Boost : ModCardTemplate
 {
@@ -28,6 +29,13 @@ public sealed class Boost : ModCardTemplate
     protected override IEnumerable<IHoverTip> AdditionalHoverTips =>
     [
         HoverTipFactory.FromPower<GaoshouTemporaryDexterityPower>(),
+    ];
+
+    // 奇巧（Sly）：2026-10-12 平衡调整 —— **只追加这个词条**，
+    // 0 费 / 获得 2(3) 点临时敏捷等其余效果一律不变 ✓（奇巧的行为由原版引擎处理，这里不用写任何逻辑）。
+    public override IEnumerable<CardKeyword> CanonicalKeywords =>
+    [
+        CardKeyword.Sly,
     ];
 
     public override CardAssetProfile AssetProfile => new(

@@ -90,8 +90,17 @@ public sealed class RockItLauncher : ModCardTemplate
             var generated = CardFactory.GetDistinctForCombat(
                     Owner, wastePool, count, Owner.RunState.Rng.CombatCardGeneration)
                 .ToList();
+
+            // 【2026-10-07 用户反馈：这里缺动画】旧写法只 `AddGeneratedCardToCombat` 就完事 ⇒
+            //   玩家完全看不到"生成的废品牌飞进弃牌堆"这一步 ✗。
+            //   改成先收集结果、再一次性 `CardCmd.PreviewCardPileAdd`（写法同 FistOfStupid.cs:84 / WasteNot /
+            //   DualSMG 等所有"生成牌"的地方）：预览只对**牌的拥有者**显示（命令内部有 LocalContext.IsMine 守卫）
+            //   ⇒ 多人安全 ✓，也正是"生成牌"的标准动画 ✓
+            var results = new List<CardPileAddResult>(generated.Count);
             foreach (var waste in generated)
-                await CardPileCmd.AddGeneratedCardToCombat(waste, PileType.Discard, Owner);
+                results.Add(await CardPileCmd.AddGeneratedCardToCombat(waste, PileType.Discard, Owner));
+
+            CardCmd.PreviewCardPileAdd(results);
         }
 
         // 3) 让"生成自己的那张装填"回到手牌：按 PairId 在消耗牌堆里精确配对（同 Cards/Reload.cs:95-106）。

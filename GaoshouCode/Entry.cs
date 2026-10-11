@@ -224,6 +224,10 @@ public partial class Entry
         // ⇒ 人物与死亡动画停在容器左下角（原版 else 分支是会居中的）。这条 Postfix 跑在它之后覆盖位置
         //（Harmony 的 Postfix 在 Prefix 跳过原方法后仍会执行）。
         patcher.RegisterPatch<GameOverVisualPlacementPatch>();
+        // 关键词教程：**卡牌奖励**里出现带「流转/奇迹/风暴」的牌时讲解一次
+        //（原版同款场景 NPowerCardFtue = "奖励里出现能力牌就讲解"）。
+        // 挂在 NCardRewardSelectionScreen.AfterOverlayOpened（公开回调，此刻奖励牌已建好）✓
+        patcher.RegisterPatch<CardRewardKeywordTutorialPatch>();
         if (!patcher.PatchAll())
             Logger.Error("Patch application failed!");
 

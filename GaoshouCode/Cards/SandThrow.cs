@@ -74,7 +74,17 @@ public sealed class SandThrow : ModCardTemplate
             var amount = DynamicVars.GetRequired<IntVar>("StrengthDown").BaseValue;
             foreach (var enemy in this.CombatState?.HittableEnemies ?? [])
             {
-                await PowerCmd.Apply<StrengthPower>(choiceContext, enemy, -amount, Owner.Creature, this);
+                // 【2026-10-07 修复：人工制品敌人越打越强】
+                //   `PowerCmd.Apply` 的返回值文档写得很清楚：**被挡下（人工制品等）或最终层数为 0 时返回 null**。
+                //   旧写法不管结果都补一层 `SandThrowStrDropPower` ⇒ 减力量被人工制品挡掉、回补却在回合末照常生效
+                //   ⇒ 敌人白涨 `amount` 点力量（玩家实测）✗
+                //   ⇒ 现在：拿不到"真的减了力量"这个结果，就**连回补一起跳过** ——
+                //     这正是原版「尖啸 PiercingWail」的表现（人工制品吃掉减力量，之后也不会还回来）✓
+                var strengthApplied = await PowerCmd.Apply<StrengthPower>(
+                    choiceContext, enemy, -amount, Owner.Creature, this);
+                if (strengthApplied == null)
+                    continue;
+
                 await PowerCmd.Apply<SandThrowStrDropPower>(choiceContext, enemy, amount, Owner.Creature, this);
             }
         }
@@ -88,6 +98,8 @@ public sealed class SandThrow : ModCardTemplate
 }
 
 // 飞沙·回补：敌人本回合失去的力量，在敌人回合结束时加回（Amount=减少量）。
+// ⚠️ 只在**确实减掉了力量**时才该被施加（2026-10-07 人工制品 bug：被挡下还补这一层 ⇒ 敌人反而涨力量）✗
+//    调用点见 SandThrow.OnPlay：用 `PowerCmd.Apply<StrengthPower>` 的返回值判定 ✓
 [RegisterPower]
 public sealed class SandThrowStrDropPower : ModPowerTemplate
 {

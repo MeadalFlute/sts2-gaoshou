@@ -12,7 +12,8 @@ using STS2RitsuLib.Scaffolding.Content;
 namespace Gaoshou.Cards;
 
 // 新视野：技能（稀有）。耗 1 能量（升级 0）。交换你的抽牌堆和弃牌堆。
-// 奇迹（非回合开始抽牌进入手牌）：抽 3 张牌。消耗。
+// 奇迹（非回合开始抽牌进入手牌）：抽 3(5) 张牌。消耗。
+// 【2026-10-07 用户调整】升级在原来的"费用 1 -> 0"之外**追加新效果**：奇迹抽牌 3 -> 5（卡面 "抽3（5）张牌"）✓
 [RegisterCard(typeof(GaoshouCardPool))]
 public sealed class NewPerspective : ModCardTemplate
 {
@@ -63,6 +64,7 @@ public sealed class NewPerspective : ModCardTemplate
 
     protected override void OnUpgrade()
     {
-        EnergyCost.UpgradeBy(-1);   // 1 -> 0
+        EnergyCost.UpgradeBy(-1);                                          // 1 -> 0
+        DynamicVars.GetRequired<IntVar>("Cards").UpgradeValueBy(2);        // 奇迹抽牌 3 -> 5
     }
 }

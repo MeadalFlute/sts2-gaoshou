@@ -38,6 +38,9 @@ public sealed class GaoshouTutorialSettings : SingletonModel
     [
         GaoshouTutorial.IntroFtueKey,
         GaoshouTutorial.FirstWinFtueKey,
+        GaoshouTutorial.FlowFtueKey,
+        GaoshouTutorial.MiracleFtueKey,
+        GaoshouTutorial.StormFtueKey,
     ];
 
     public override bool ShouldReceiveCombatHooks => false;
@@ -212,6 +215,9 @@ public sealed class GaoshouTutorialSettings : SingletonModel
     {
         GaoshouTutorial.IntroFtueKey => "第一场战斗开场",
         GaoshouTutorial.FirstWinFtueKey => "首战胜利后",
+        GaoshouTutorial.FlowFtueKey => "流转",
+        GaoshouTutorial.MiracleFtueKey => "奇迹",
+        GaoshouTutorial.StormFtueKey => "风暴",
         _ => key,
     };
 
@@ -219,6 +225,9 @@ public sealed class GaoshouTutorialSettings : SingletonModel
     {
         GaoshouTutorial.IntroFtueKey => "first combat",
         GaoshouTutorial.FirstWinFtueKey => "after first win",
+        GaoshouTutorial.FlowFtueKey => "Flow",
+        GaoshouTutorial.MiracleFtueKey => "Miracle",
+        GaoshouTutorial.StormFtueKey => "Storm",
         _ => key,
     };
 

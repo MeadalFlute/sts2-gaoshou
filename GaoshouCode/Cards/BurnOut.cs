@@ -28,10 +28,10 @@ public sealed class BurnOut : ModCardTemplate
     public override CardAssetProfile AssetProfile => new(
         PortraitPath: $"{Entry.ResPath}/images/cards/{GetType().Name}.png");
 
-    // 悬浮释义：临时力量（能力）。
+    // This card grants normal Strength, not temporary Strength.
     protected override IEnumerable<IHoverTip> AdditionalHoverTips =>
     [
-        HoverTipFactory.FromPower<GaoshouTemporaryStrengthPower>(),
+        HoverTipFactory.FromPower<StrengthPower>(),
     ];
 
     protected override IEnumerable<DynamicVar> CanonicalVars =>

@@ -1,4 +1,3 @@
-using MegaCrit.Sts2.Core.Nodes.Rooms;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -105,10 +104,11 @@ public sealed class SmiteMaster : ModEventTemplate
 
     private async Task Leave()
     {
-        // TAUGHT 页本身就是结束页 → 结束并直接离开（不再多按一次"继续"）。
-        SetEventFinished(PageDescription("END"));
-        await Cmd.CustomScaledWait(0.35f, 0.5f);
-        await NEventRoom.Proceed();
+        // 结束在 DONE 页（原来写的是不存在的 END 页 ⇒ 收尾文案会空掉）。
+        // 单人自动离开、多人交给房间的「继续」按钮 —— 见 EventFlow：
+        // ⚠️ 原来这里无条件调 NEventRoom.Proceed()，多人时会把**其他玩家**的客户端直接拽到地图（事件被跳过）。
+        SetEventFinished(PageDescription("DONE"));
+        await EventFlow.ProceedIfSinglePlayer(Owner);
     }
 
     // ---- 给牌 ----

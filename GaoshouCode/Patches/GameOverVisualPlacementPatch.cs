@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Godot;
+using MegaCrit.Sts2.Core.Nodes.Rooms;
 using MegaCrit.Sts2.Core.Nodes.Screens.GameOverScreen;
 using STS2RitsuLib.Patching.Models;
 
@@ -40,6 +41,15 @@ namespace Gaoshou.Patches;
 ///
 /// **只动我们自己的节点**：用「子树里有没有 <c>res://Gaoshou/</c> 的贴图」来判定，
 /// 不碰原版角色、不碰别人的模组 ✓（判据见 <see cref="LooksLikeOurs" />）。
+///
+/// ═══════════════════════【2026-10-07 补充：只居中"非战斗"场合】═══════════════════════
+/// 用户实测：**建筑师演出时人物仍被居中** ✗。原因是上面的定位是"无条件"的，
+/// 只用「节点离开容器时还原」来兜底 —— 而建筑师事件（<c>EventLayoutType.Combat</c>）期间
+/// 形象节点**一直留在容器里**，还原永远不触发 ✗。
+/// 现在改为**结构性**判断：<c>NCombatRoom.Instance != null</c> ⇒ 一律不碰位置
+/// （战斗分支本来就是"留在角色槽位"，那才是死亡动画 / 建筑师演出的正确表现 ✓）。
+/// 注意 <c>NCombatRoom.Instance</c> 在事件房间的**嵌入式战斗**里也非 null（<c>NRun.CombatRoom</c>
+/// 会返回 <c>NEventRoom.EmbeddedCombatRoom</c>），所以建筑师事件同样被这条挡住 ✓。
 /// </summary>
 public sealed class GameOverVisualPlacementPatch : IPatchMethod
 {
@@ -66,6 +76,21 @@ public sealed class GameOverVisualPlacementPatch : IPatchMethod
 
     public static void Postfix(NGameOverScreen __instance)
     {
+        // ⚠️⚠️【2026-10-07 修复"建筑师演出时人物仍被居中"】只在**非战斗**场合补居中 ✓
+        //    `NCombatRoom.Instance` 走 `NRun.CombatRoom`，而它在**事件房间的嵌入式战斗**里
+        //    返回的是 `NEventRoom.EmbeddedCombatRoom`（NRun.cs:150-154）⇒ **建筑师事件（LayoutType=Combat）
+        //    期间它是非 null 的**。而战斗分支（原版与 RitsuLib 都一样）**从不设置位置**——
+        //    "让形象留在角色槽位"才是那里的正确表现（死亡动画、建筑师演出都靠它）✗
+        //    旧写法无条件居中，再用"离开容器时还原"打补丁；但建筑师演出期间节点**一直留在容器里**
+        //    ⇒ 还原永远不触发 ⇒ 演出时人物被拽到屏幕中央（玩家实测）✗
+        //    ⇒ 结构性修法：**战斗里根本不碰位置**（也就不需要依赖还原）✓
+        //    非战斗（商店 / 火堆 / 假商人摊位 / 普通事件房间）保持原来的补居中 ✓
+        if (NCombatRoom.Instance != null)
+        {
+            Entry.Logger.Info("[GameOver] 战斗/建筑师演出场合：沿用原版摆位（留在角色槽位），不做居中 ✓");
+            return;
+        }
+
         if (__instance.GetNodeOrNull<Control>("%CreatureContainer") is not { } container)
             return;
 

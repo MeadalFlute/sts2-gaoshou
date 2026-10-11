@@ -13,12 +13,12 @@ using STS2RitsuLib.Scaffolding.Content;
 
 namespace Gaoshou.Cards;
 
-// 铁山靠：攻击（普通）。耗 2 辉星。你每有 3 点格挡，就对目标敌人造成 4(6) 点伤害。
+// 铁山靠：攻击（普通）。1/0。你每有 3 点格挡，就对目标敌人造成 4(6) 点伤害。
 // 描述内嵌战斗伤害预览（{CalculatedDamage:diff()}）＝floor(格挡/3) × 4。
 [RegisterCard(typeof(GaoshouCardPool))]
 public sealed class MountainLean : ModCardTemplate
 {
-    private const int BaseEnergyCost = 0;
+    private const int BaseEnergyCost = 1;
     private const CardType CardKind = CardType.Attack;
     private const CardRarity CardRarityValue = CardRarity.Common;
     private const TargetType CardTarget = TargetType.AnyEnemy;
@@ -45,7 +45,7 @@ public sealed class MountainLean : ModCardTemplate
             static (card, target) => (int)(card.Owner!.Creature.Block / (decimal)card.DynamicVars.GetRequired<IntVar>("BlockPerHit").IntValue)),
     ];
 
-    public override int CanonicalStarCost => 2;
+    // public override int CanonicalStarCost => 2;
 
     public MountainLean() : base(BaseEnergyCost, CardKind, CardRarityValue, CardTarget, ShowInCardLibrary)
     {

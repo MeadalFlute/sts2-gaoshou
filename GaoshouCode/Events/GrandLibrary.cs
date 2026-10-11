@@ -3,7 +3,6 @@
 // 捐赠给的是纯度（精简牌组）外加一份遗物，两者都只能做一次。
 //   选项2 捐赠：删 1 张 → 1 个**普通**遗物（2026-09-23 起明确限定普通；原先用无参重载，稀有度是随机摇的）。
 //   选项3 贵客：牌组里有本模组的「神秘」时可选 → 删最多 3 张 → 1 个**稀有**遗物（不消耗「神秘」）。
-using MegaCrit.Sts2.Core.Nodes.Rooms;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -172,13 +171,13 @@ public sealed class GrandLibrary : ModEventTemplate
         return Task.CompletedTask;
     }
 
-    /// <summary>离开（AFTER 页）：AFTER 的旁白本身就是结束句 → 直接结束（空文案 pages.END，避免重复）。</summary>
+    /// <summary>离开（AFTER 页）：走 DONE 收尾页（原来写的是不存在的 END 页）。</summary>
     private async Task LeaveAfter()
     {
-        // AFTER 页本身就是结束页 → 结束并直接离开事件。
-        SetEventFinished(PageDescription("END"));
-        await Cmd.CustomScaledWait(0.35f, 0.5f);
-        await NEventRoom.Proceed();
+        // 单人自动离开、多人交给房间的「继续」按钮 —— 见 EventFlow：
+        // ⚠️ 原来这里无条件调 NEventRoom.Proceed()，多人时会把**其他玩家**的客户端直接拽到地图（事件被跳过）。
+        SetEventFinished(PageDescription("DONE"));
+        await EventFlow.ProceedIfSinglePlayer(Owner);
     }
 
     /// <summary>借书/捐赠都进同一页 AFTER，页面上只有一个「走了！」。</summary>

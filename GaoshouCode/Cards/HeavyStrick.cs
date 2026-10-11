@@ -25,6 +25,8 @@ public sealed class HeavyStrick : ModCardTemplate
 
     public GaoshouCardColor CardColor => GaoshouCardColor.Red;
 
+    protected override HashSet<CardTag> CanonicalTags => new() { CardTag.Strike };
+
     public override CardAssetProfile AssetProfile => new(
         PortraitPath: $"{Entry.ResPath}/images/cards/{GetType().Name}.png");
 

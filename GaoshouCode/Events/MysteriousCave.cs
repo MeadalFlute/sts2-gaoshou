@@ -1,4 +1,3 @@
-using MegaCrit.Sts2.Core.Nodes.Rooms;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -112,10 +111,11 @@ public sealed class MysteriousCave : ModEventTemplate
     private async Task DoneOpt()
     {
         await Cmd.CustomScaledWait(0.3f, 0.5f);
-        // DEEP3 页本身就是结束页：保留这段旁白、直接离开事件（连"继续"都不用再点一次）。
-        SetEventFinished(PageDescription("END"));
-        await Cmd.CustomScaledWait(0.35f, 0.5f);
-        await NEventRoom.Proceed();
+        // 结束在 DONE 页（原来写的是不存在的 END 页 ⇒ 收尾文案会空掉）。
+        // 单人自动离开、多人交给房间的「继续」按钮 —— 见 EventFlow：
+        // ⚠️ 原来这里无条件调 NEventRoom.Proceed()，多人时会把**其他玩家**的客户端直接拽到地图（事件被跳过）。
+        SetEventFinished(PageDescription("DONE"));
+        await EventFlow.ProceedIfSinglePlayer(Owner);
     }
 
     private Task Leave()

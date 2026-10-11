@@ -1,10 +1,12 @@
 using System.Linq;
+using MegaCrit.Sts2.Core.Combat;
 using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
 using MegaCrit.Sts2.Core.Hooks;
 using MegaCrit.Sts2.Core.Localization.DynamicVars;
 using MegaCrit.Sts2.Core.Models;
+using MegaCrit.Sts2.Core.Models.Powers;
 using Gaoshou.Characters;
 using Gaoshou.Keywords;
 using STS2RitsuLib.Cards.DynamicVars;
@@ -44,7 +46,7 @@ public sealed class TensionAndRelaxation : ModCardTemplate
         ModCardVars.Cards("BlueCards", 1),
     ];
 
-        protected override async Task OnPlay(PlayerChoiceContext choiceContext, CardPlay cardPlay)
+    protected override async Task OnPlay(PlayerChoiceContext choiceContext, CardPlay cardPlay)
     {
         await DrawByColorAsync(choiceContext, GaoshouCardColor.Red,
             DynamicVars.GetRequired<CardsVar>("RedCards").IntValue);
@@ -54,13 +56,23 @@ public sealed class TensionAndRelaxation : ModCardTemplate
 
     private async Task DrawByColorAsync(PlayerChoiceContext choiceContext, GaoshouCardColor want, int count)
     {
+        var combatState = Owner.Creature.CombatState;
+        if (combatState == null)
+            return;
+
         for (var i = 0; i < count; i++)
         {
+            if (CombatManager.Instance.IsOverOrEnding)
+                return;
+
+            var hand = PileType.Hand.GetPile(Owner);
+            if (hand.Cards.Count >= CardPile.MaxCardsInHand)
+                return;
             // 尊重“不可抽牌”debuff（如 NoDrawPower）：与游戏 CardPileCmd.Draw 一致，先判定是否可抽。
-            if (!Hook.ShouldDraw(Owner.Creature.CombatState, Owner, false, out var modifier))
+            if (!Hook.ShouldDraw(combatState, Owner, false, out var modifier))
             {
                 if (modifier != null)
-                    await Hook.AfterPreventingDraw(Owner.Creature.CombatState, modifier);
+                    await Hook.AfterPreventingDraw(combatState, modifier);
                 return;
             }
 
@@ -68,7 +80,16 @@ public sealed class TensionAndRelaxation : ModCardTemplate
             var candidates = draw.Where(c => MatchesColor(c, want)).ToList();
             if (candidates.Count == 0)
                 return;
-            await CardPileCmd.Add(candidates[0], PileType.Hand);
+            var selected = candidates[0];
+            await CardPileCmd.Add(selected, PileType.Hand);
+            if (selected.Pile?.Type != PileType.Hand)
+                continue;
+
+            // This is a search, not a draw. Notify only the requested Automation
+            // synergy, rather than broadcasting unrelated draw hooks/history.
+            var automation = Owner.Creature.Powers.OfType<AutomationPower>().ToList();
+            foreach (var power in automation)
+                await power.AfterCardDrawn(choiceContext, selected, false);
         }
     }
 

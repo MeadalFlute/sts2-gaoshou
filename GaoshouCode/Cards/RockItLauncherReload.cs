@@ -55,6 +55,13 @@ public sealed class RockItLauncherReload : ModCardTemplate
         new BlockVar("BlockPer", 5m, ValueProp.Move),
         // 配对编号的存储位（生成喷射器时与它写同一个数；卡面不引用，所以不显示）。
         ModCardVars.Int("PairId", 0),
+        // 【2026-10-07 用户 QoL 要求】战斗内预览"即将装填几张卡"（= 本次会打出并消耗的临时牌数）。
+        //   写法照 Strengthen.cs:45-48：CalculationBase(0) + CalculationExtra(1) × 乘数函数 = 直接显示张数。
+        //   乘数函数是 **static lambda**（无闭包 ✓），真正的计数放在具名静态方法里用**显式 foreach** 做
+        //   （本仓库铁律：回调/渲染路径不出现闭包与闭包型 LINQ ✗）。
+        new CalculationBaseVar(0m),
+        new CalculationExtraVar(1m),
+        new CalculatedVar("WillLoad").WithMultiplier(static (card, _) => CountTemporaryCards(card)),
     ];
 
     public override IEnumerable<CardKeyword> CanonicalKeywords =>
@@ -66,25 +73,53 @@ public sealed class RockItLauncherReload : ModCardTemplate
     {
     }
 
+    /// <summary>
+    /// 本次会被"打出并消耗"的临时牌列表（= 即将装填进喷射器的张数）。
+    /// 卡面预览 <c>{WillLoad:diff()}</c> 与实际结算**共用这一个方法** ⇒ 两边永远不会算出不同的数 ✓
+    ///
+    /// 判定（本 mod 对「临时牌」的权威定义 = 局内生成、不属于牌组，见 Powers/ThisHandyPower.cs:28-29）：
+    ///   * <c>DeckVersion == null</c>（不属于牌组）；
+    ///   * 排除**本卡自己**（装填本身就是衍生牌，不排除会自递归 ✗）；
+    ///   * 排除已在**结算区 Play** 的牌（重复 AutoPlay 会让这次出牌永远收不了尾 ✗）；
+    ///   * 排除已在**消耗堆**的牌。
+    /// ⚠️ 用**显式 foreach**（不用 LINQ/闭包）：本方法会在卡面预览渲染路径里被调用 ✗
+    /// </summary>
+    public static List<CardModel> CollectTemporaryCards(CardModel self)
+    {
+        var result = new List<CardModel>();
+        var state = self.Owner?.PlayerCombatState;
+        if (state == null)
+            return result;
+
+        foreach (var card in state.AllCards)
+        {
+            if (card == null)
+                continue;
+
+            if (ReferenceEquals(card, self))
+                continue;
+
+            if (card.DeckVersion != null)
+                continue;
+
+            var pile = card.Pile?.Type;
+            if (pile == PileType.Exhaust || pile == PileType.Play)
+                continue;
+
+            result.Add(card);
+        }
+
+        return result;
+    }
+
+    /// <summary>只数张数（卡面预览用）。</summary>
+    public static int CountTemporaryCards(CardModel self) => CollectTemporaryCards(self).Count;
+
     protected override async Task OnPlay(PlayerChoiceContext choiceContext, CardPlay cardPlay)
     {
         // 1) 取牌 + **先确定数量**（格挡要按它算，见第 2 步）
-        //    本 mod 对「临时牌」的权威定义 = **局内生成、不属于牌组**（DeckVersion == null）
-        //      —— Powers/ThisHandyPower.cs:28-29 的注释与判定就是这条；取牌范围沿用散射炮
-        //      FlakCannon.cs:48-51 的口径 PlayerCombatState.AllCards（= 所有战斗牌堆）。
-        //    ⚠️【2026-09-29 修"卡在屏幕中间"】还必须再排除两种：
-        //      * **本卡自己**（ReferenceEquals(c, this)）：装填是衍生牌（DeckVersion == null），
-        //        不排除就会在结算途中把自己也当成"临时牌"再打一次 ⇒ 递归 ✗；
-        //      * **已经在结算区 Play 的牌**：它们正在结算，重复 AutoPlay 会让这次出牌永远收不了尾 ✗。
-        //      日志实证（godot.log L1907-1956）：`找到临时牌 1 张: ...ROCK_IT_LAUNCHER_RELOAD@Play` +
-        //      `第 1 张处理完: ...ROCK_IT_LAUNCHER_RELOAD -> pile=Play` 连续约 20 次 ⇒ 自递归 ✗
-        //      ⇒ 出牌流程卡住 ⇒ 卡面停在屏幕中间 ✗。
-        var temporary = (Owner.PlayerCombatState?.AllCards ?? [])
-            .Where(c => c.DeckVersion == null
-                        && !ReferenceEquals(c, this)
-                        && c.Pile?.Type != PileType.Exhaust
-                        && c.Pile?.Type != PileType.Play)
-            .ToList();
+        //    判定与卡面预览共用 CollectTemporaryCards（见其注释；那段历史坑都写在那里）✓
+        var temporary = CollectTemporaryCards(this);
 
         // 【临时调试日志】确认"打出了/消耗了"用（定位完可删）：
 

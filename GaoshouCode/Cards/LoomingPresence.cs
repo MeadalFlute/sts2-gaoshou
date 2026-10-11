@@ -12,9 +12,10 @@ using STS2RitsuLib.Scaffolding.Content;
 
 namespace Gaoshou.Cards;
 
-// 浮光掠影：能力（稀有）。耗 2 能量。获得 2 层浮光掠影；流转：再获得 2 层。虚无（升级移除虚无）。
-// 【2026-10-05 重做】由"技能 / 1 费 / 每层 1"改为"**能力** / 2 费 / 每层 2"：
-//   原版对"某流派的兑现"一贯用蓝色能力牌 ⇒ 归位为能力；层数翻倍以补偿 2 费与稀有槽位。
+// 浮光掠影：能力（稀有）。耗 2 能量（升级 1）。获得 1 层浮光掠影；流转：再获得 1 层。
+// 【2026-10-07 用户调整】①层数由每段 2 收紧为**每段 1**（线上实测偏强）；
+//   ②**不再自带虚无**（Ethereal 移除，词条表里也不再声明）；
+//   ③升级效果由"移除虚无"改为**能量花费 -1**（2 -> 1）。
 [RegisterCard(typeof(GaoshouCardPool))]
 public sealed class LoomingPresence : ModCardTemplate
 {
@@ -32,11 +33,10 @@ public sealed class LoomingPresence : ModCardTemplate
     // 泛光：流转就绪时（颜色与上一张牌完全不同）。
     protected override bool ShouldGlowGoldInternal => GaoshouFlowTracker.IsFlowGlowReady(this);
 
-    // 词条：流转、虚无（升级移除虚无）。
+    // 词条：流转（**不再带虚无** —— 2026-10-07 用户要求移除）。
     public override IEnumerable<CardKeyword> CanonicalKeywords =>
     [
         GaoshouKeyword.Flow,
-        CardKeyword.Ethereal,
     ];
 
     protected override IEnumerable<IHoverTip> AdditionalHoverTips =>
@@ -46,7 +46,7 @@ public sealed class LoomingPresence : ModCardTemplate
 
     protected override IEnumerable<DynamicVar> CanonicalVars =>
     [
-        ModCardVars.Int("FlowGain", 2),
+        ModCardVars.Int("FlowGain", 1),
     ];
 
     public LoomingPresence() : base(BaseEnergyCost, CardKind, CardRarityValue, CardTarget, ShowInCardLibrary)
@@ -55,11 +55,11 @@ public sealed class LoomingPresence : ModCardTemplate
 
     protected override async Task OnPlay(PlayerChoiceContext choiceContext, CardPlay cardPlay)
     {
-        // 获得 2 层浮光掠影。
+        // 获得 1 层浮光掠影。
         await PowerCmd.Apply<LoomingPresencePower>(choiceContext, Owner.Creature,
             DynamicVars.GetRequired<IntVar>("FlowGain").BaseValue, Owner.Creature, this);
 
-        // 流转（颜色与上一张牌完全不同）：再获得 2 层。
+        // 流转（颜色与上一张牌完全不同）：再获得 1 层。
         if (GaoshouFlowTracker.IsFlowReady(this))
             await PowerCmd.Apply<LoomingPresencePower>(choiceContext, Owner.Creature,
                 DynamicVars.GetRequired<IntVar>("FlowGain").BaseValue, Owner.Creature, this);
@@ -67,7 +67,7 @@ public sealed class LoomingPresence : ModCardTemplate
 
     protected override void OnUpgrade()
     {
-        // 升级只移除"虚无"（费用与层数不变）。
-        RemoveKeyword(CardKeyword.Ethereal);
+        // 升级：能量花费 2 -> 1（层数与费用之外的一切都不变）。
+        EnergyCost.UpgradeBy(-1);
     }
 }

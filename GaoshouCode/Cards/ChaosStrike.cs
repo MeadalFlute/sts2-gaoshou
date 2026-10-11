@@ -25,6 +25,8 @@ public sealed class ChaosStrike : ModCardTemplate
 
     public GaoshouCardColor CardColor => GaoshouCardColor.Purple;
 
+    protected override HashSet<CardTag> CanonicalTags => new() { CardTag.Strike };
+
     public override CardAssetProfile AssetProfile => new(
         PortraitPath: $"{Entry.ResPath}/images/cards/{GetType().Name}.png");
 
