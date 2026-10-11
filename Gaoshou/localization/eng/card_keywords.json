@@ -5,7 +5,7 @@
   "GAOSHOU_KEYWORD_AMPLIFY.description": "Discard up to n cards; for each card discarded, play this card once more.",
   "GAOSHOU_KEYWORD_MIRACLE.title": "Miracle",
   "GAOSHOU_KEYWORD_MIRACLE.description": "Triggers its extra effect if this card was not auto drawn at the start of this turn.",
-  "GAOSHOU_KEYWORD_PHANTOM.title": "Phantom n",
+  "GAOSHOU_KEYWORD_PHANTOM.title": "Phantom",
   "GAOSHOU_KEYWORD_PHANTOM.description": "After playing, add n temporary copies to your hand with -1 Energy cost, no Phantom or Rebound, and Exhaust. \nDefaults to 1 if no number is specified.",
   "GAOSHOU_KEYWORD_STORM.title": "Storm",
   "GAOSHOU_KEYWORD_STORM.description": "Storm (condition): After playing, if your current [gold]Energy[/gold]/[gold]Stars[/gold] meet the condition shown on the card, play it once more.",

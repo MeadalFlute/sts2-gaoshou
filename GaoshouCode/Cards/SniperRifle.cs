@@ -49,23 +49,40 @@ public sealed class SniperRifle : ModCardTemplate
         CardKeyword.Retain, // 追加保留
     ];
 
-    // 计算伤害：基础 0 + 3 × （当前力量 + 本牌第一行给的 3 层临时力量）。
+    // 计算伤害：基础 0 + 1 × 乘数函数（= 手算值，见下）。
     // 描述 {CalculatedDamage:diff()} 显示战斗内伤害预览。
     // 【2026-10-06 用户调整】预览必须**算上本牌自己给的 3 层临时力量**（出牌顺序是从上到下，
     //   第一行的临时力量在伤害之前结算 ⇒ 实打伤害 = (力量 + 3) × 3）。
-    //   同时把 ExtraDamage 由 2 修正为 3：本表的 ExtraDamage 是**倍率系数**
-    //   （预览公式 = CalculationBase + ExtraDamage × 乘数函数，见 CalculatedVar.Calculate），
-    //   旧值 2 会让预览只有实伤的 2/3；系数必须与 OnPlay 用的 Multiplier(3) 一致。
+    //
+    // 【2026-10-12 BUG 修复】用户实测：1 点力量时预览显示 13、实伤 16，而预期都是 (1+3)×3 = 12。
+    //   根因：**原版伤害管线会自己再加一次力量** —— Hook.ModifyDamage 会调用
+    //   `StrengthPower.ModifyDamageAdditive`，而它只在 `props.IsPoweredAttack()`
+    //   （= 带 `ValueProp.Move` 且**不带** `ValueProp.Unpowered`）时生效；
+    //   本卡用的是手算力量（`GetPowerAmount<StrengthPower>()`），于是力量被算了两次：
+    //     * 实伤 = 3×力量(4) + 力量(4) = 16 ⇒ 等于"4 倍力量" ✗
+    //     * 预览 = 3×(1+3) + 力量(1) = 13 ⇒ 多算 1 次 ✗
+    //   修法：手算时**先扣掉引擎一定会补的那一次力量**，其余（ValueProp.Move ⇒ 易伤/虚弱/活力等
+    //   互动）全部保持原样 ✓：
+    //     * 出牌：给完临时力量后力量 = s+t ⇒ 基础伤害 = N(s+t) − (s+t) = (N−1)(s+t)，
+    //             引擎再补 (s+t) ⇒ 合计 N(s+t) ✓
+    //     * 预览：预览发生在出牌**之前**，引擎只会补"当前力量 s" ⇒ 乘数函数取 N(s+t) − s
+    //             = (N−1)s + N·t（N = 卡面上的 Multiplier = 3），引擎再补 s ⇒ N(s+t) ✓
+    //   ⇒ 预览与实伤都是 N × 力量 ✓（本卡是全动态伤害，按原版 BodySlam 的写法：base 0 + ExtraDamage 1 ✓）
     protected override IEnumerable<DynamicVar> CanonicalVars =>
     [
         // 【2026-09-29 用户调整】第一行：获得 3 层临时力量（变量名与其它临时力量卡一致：TemporaryStrength）。
         ModCardVars.Int("TemporaryStrength", 3),
         new CalculationBaseVar(0m),
-        new ExtraDamageVar(3m),
+        new ExtraDamageVar(1m),
         ModCardVars.Int("Multiplier", 3),
         new CalculatedDamageVar(ValueProp.Move).WithMultiplier(
-            static (card, target) => card.Owner!.Creature.GetPowerAmount<StrengthPower>()
-                + card.DynamicVars.GetRequired<IntVar>("TemporaryStrength").BaseValue),
+            static (card, target) =>
+            {
+                var times = card.DynamicVars.GetRequired<IntVar>("Multiplier").BaseValue;
+                var temporary = card.DynamicVars.GetRequired<IntVar>("TemporaryStrength").BaseValue;
+                // (N−1)×当前力量 + N×本牌临时力量 —— 引擎随后会再补一次当前力量，合计正好 N×(力量+临时) ✓
+                return card.Owner!.Creature.GetPowerAmount<StrengthPower>() * (times - 1m) + temporary * times;
+            }),
     ];
 
     public SniperRifle() : base(BaseEnergyCost, CardKind, CardRarityValue, CardTarget, ShowInCardLibrary)
@@ -90,9 +107,12 @@ public sealed class SniperRifle : ModCardTemplate
         await GaoshouTemporaryStrengthPower.GrantAsync(choiceContext, Owner.Creature,
             DynamicVars.GetRequired<IntVar>("TemporaryStrength").BaseValue, Owner.Creature, this);
 
-        // 第二行（原有、未改）：造成当前力量 3 倍的伤害。
+        // 第二行（原有、未改设计）：造成当前力量 N 倍的伤害。
+        // ⚠️ strength 取的是**给完临时力量之后**的值（卡面从上到下结算）；
+        //    引擎随后按 ValueProp.Move 自动再补一次力量 ⇒ 这里先扣掉那一次，合计才是 N 倍 ✓（见 CanonicalVars 注释）
         var strength = Owner.Creature.GetPowerAmount<StrengthPower>();
-        var damage = strength * DynamicVars.GetRequired<IntVar>("Multiplier").BaseValue;
+        var times = DynamicVars.GetRequired<IntVar>("Multiplier").BaseValue;
+        var damage = strength * (times - 1m);
         if (damage <= 0)
             return;
 
