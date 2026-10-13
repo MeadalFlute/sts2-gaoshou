@@ -46,6 +46,7 @@ public override RelicAssetProfile AssetProfile => new(
         {
             _tempPlayedThisTurn = 0;
             _triggeredThisTurn = false;
+            InvokeDisplayAmountChanged();
         }
         return Task.CompletedTask;
     }

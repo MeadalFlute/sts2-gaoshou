@@ -12,7 +12,7 @@
   "GAOSHOU_KEYWORD_ECHO.title": "Rebound",
   "GAOSHOU_KEYWORD_ECHO.description": "Return this card to your hand after playing it.",
   "GAOSHOU_KEYWORD_TEMPORARY.title": "Temporary",
-  "GAOSHOU_KEYWORD_TEMPORARY.description": "A card temporarily added during combat. Generated copies count even if a card with the same name is in your permanent deck.",
+  "GAOSHOU_KEYWORD_TEMPORARY.description": "A card temporarily added during combat.",
   "GAOSHOU_KEYWORD_HOARD.title": "Hoard",
   "GAOSHOU_KEYWORD_HOARD.description": "At end of turn, retain up to n cards, then lose stacks equal to the number retained.",
   "EXHAUST.title": "Exhaust",
