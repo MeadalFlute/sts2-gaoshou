@@ -6,7 +6,6 @@ using MegaCrit.Sts2.Core.GameActions.Multiplayer;
 using MegaCrit.Sts2.Core.Hooks;
 using MegaCrit.Sts2.Core.Localization.DynamicVars;
 using MegaCrit.Sts2.Core.Models;
-using MegaCrit.Sts2.Core.Models.Powers;
 using Gaoshou.Characters;
 using Gaoshou.Keywords;
 using STS2RitsuLib.Cards.DynamicVars;
@@ -85,11 +84,11 @@ public sealed class TensionAndRelaxation : ModCardTemplate
             if (selected.Pile?.Type != PileType.Hand)
                 continue;
 
-            // This is a search, not a draw. Notify only the requested Automation
-            // synergy, rather than broadcasting unrelated draw hooks/history.
-            var automation = Owner.Creature.Powers.OfType<AutomationPower>().ToList();
-            foreach (var power in automation)
-                await power.AfterCardDrawn(choiceContext, selected, false);
+            // Count only successful searches as non-turn-start draws, using the
+            // same history/hook/notification order as CardPileCmd.Draw.
+            CombatManager.Instance.History.CardDrawn(combatState, selected, false);
+            await Hook.AfterCardDrawn(combatState, choiceContext, selected, false);
+            selected.InvokeDrawn();
         }
     }
 

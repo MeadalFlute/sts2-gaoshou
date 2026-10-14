@@ -13,7 +13,7 @@ using STS2RitsuLib.Scaffolding.Content;
 
 namespace Gaoshou.Powers;
 
-// 搏命（能力）：本回合你造成的伤害翻倍；你的回合开始时，你直接死亡。
+// 搏命（能力）：每层提供一回合伤害翻倍；你的回合开始时，你直接死亡。
 // 登记为 **Buff**（而不是 Debuff），是刻意的：效果是负面的，但**不希望它被"净化/移除负面效果"清掉**，
 // 否则可以靠净化白嫖一回合双倍伤害却不死。PowerType 只影响图标呈现与"能否被净化"这一层。
 [RegisterPower]
@@ -26,7 +26,7 @@ public sealed class DyingSurgePower : ModPowerTemplate
         IconPath: $"{Entry.ResPath}/images/powers/dyingsurge.png",
         BigIconPath: $"{Entry.ResPath}/images/powers/dyingsurge.png");
 
-    // 本回合造成的伤害翻倍。
+    // 层数延长持续时间，不增加伤害倍率。
     public override decimal ModifyDamageMultiplicative(Creature? target, decimal amount, ValueProp props,
         Creature? dealer, CardModel? cardSource, CardPlay? cardPlay)
     {
@@ -36,15 +36,14 @@ public sealed class DyingSurgePower : ModPowerTemplate
     }
 
     // 下回合（自己的回合）开始时：直接死亡。
-    public override Task AfterSideTurnStart(CombatSide side, IReadOnlyList<Creature> participants, ICombatState combatState)
-    {
-        return KillIfOwnTurn(side, participants);
-    }
-
-    private Task KillIfOwnTurn(CombatSide side, IReadOnlyList<Creature> participants)
+    public override async Task AfterSideTurnStart(CombatSide side, IReadOnlyList<Creature> participants, ICombatState combatState)
     {
         if (side != Owner.Side || !participants.Contains(Owner))
-            return Task.CompletedTask;
-        return CreatureCmd.Kill(Owner);
+            return;
+
+        // 保留最后一层直到执行死亡，避免回合末移除能力导致死亡被跳过。
+        await CreatureCmd.Kill(Owner);
+        if (Owner.IsAlive && Owner.Powers.Contains(this))
+            await PowerCmd.Decrement(this);
     }
 }

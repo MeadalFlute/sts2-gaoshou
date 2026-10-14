@@ -13,7 +13,7 @@ using STS2RitsuLib.Scaffolding.Content;
 
 namespace Gaoshou.Cards;
 
-// 偏斜（交换后）：技能（罕见）。耗 0 能量 2 辉星。
+// 偏斜（交换后）：技能（罕见）。耗 0 能量 1 辉星。
 // 本回合结束时，你的格挡不会被移除（给予 1 层残影）。
 // 奇迹（非回合开始抽牌进入手牌）：重复打出这张牌 1(2) 次。
 [RegisterCard(typeof(GaoshouCardPool))]
@@ -45,7 +45,7 @@ public sealed class Deflection : ModCardTemplate
     // 奇迹就绪（进入手牌的方式非"回合开始时抽牌"）时泛橙光。
     protected override bool ShouldGlowGoldInternal => MiracleCounter.IsMiracleGlowReady(this);
 
-    public override int CanonicalStarCost => 2;
+    public override int CanonicalStarCost => 1;
 
     // 残影 1 层；奇迹重复次数 1(2)。
     protected override IEnumerable<DynamicVar> CanonicalVars =>

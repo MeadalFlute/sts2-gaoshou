@@ -11,7 +11,7 @@ using STS2RitsuLib.Scaffolding.Content;
 
 namespace Gaoshou.Cards;
 
-// 伺机待发：技能（普通）。耗 1 能量。下回合开始时获得 1 能量、1 辉星、抽 2 张牌。消耗（升级后移除）。
+// 伺机待发：技能（普通）。耗 1 能量。下回合开始时获得 1 能量、1(2) 辉星、抽 2 张牌。消耗（升级后移除）。
 [RegisterCard(typeof(GaoshouCardPool))]
 public sealed class WaitingforChance : ModCardTemplate
 {
@@ -47,15 +47,19 @@ public sealed class WaitingforChance : ModCardTemplate
 
     protected override async Task OnPlay(PlayerChoiceContext choiceContext, CardPlay cardPlay)
     {
-        // 下回合开始时：获得 1 能量、1 辉星、抽 2 张牌（全部使用游戏原生"下回合"buff）。
-        await PowerCmd.Apply<EnergyNextTurnPower>(choiceContext, Owner.Creature, 1m, Owner.Creature, this);
-        await PowerCmd.Apply<StarNextTurnPower>(choiceContext, Owner.Creature, 1m, Owner.Creature, this);
-        await PowerCmd.Apply<DrawCardsNextTurnPower>(choiceContext, Owner.Creature, 2m, Owner.Creature, this);
+        // 下回合效果与卡面共用变量，全部使用游戏原生能力。
+        await PowerCmd.Apply<EnergyNextTurnPower>(choiceContext, Owner.Creature,
+            DynamicVars.GetRequired<EnergyVar>("Energy").BaseValue, Owner.Creature, this);
+        await PowerCmd.Apply<StarNextTurnPower>(choiceContext, Owner.Creature,
+            DynamicVars.GetRequired<StarsVar>("Stars").BaseValue, Owner.Creature, this);
+        await PowerCmd.Apply<DrawCardsNextTurnPower>(choiceContext, Owner.Creature,
+            DynamicVars.GetRequired<IntVar>("Cards").BaseValue, Owner.Creature, this);
     }
 
     protected override void OnUpgrade()
     {
         // 升级移除"消耗"（直接改实例词条）。
         RemoveKeyword(CardKeyword.Exhaust);
+        DynamicVars.GetRequired<StarsVar>("Stars").UpgradeValueBy(1);
     }
 }
