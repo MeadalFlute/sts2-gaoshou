@@ -62,9 +62,21 @@ public sealed class BrainSurge : ModCardTemplate
         {
             var discardPrefs = new CardSelectorPrefs(
                 new LocString("cards", "GAOSHOU_BRAIN_SURGE_DISCARD_PROMPT"), discardCount, discardCount);
-            var toDiscard = (await CardSelectCmd.FromHand(choiceContext, player, discardPrefs, null, this)).ToList();
-            if (toDiscard.Count != 0)
-                await CardCmd.Discard(choiceContext, toDiscard);
+            // 【2026-10-15 BUG 修复】原来用的是通用的 `CardSelectCmd.FromHand` ⇒ 它**不会**设置
+            //   `prefs.ShouldGlowGold`，于是选牌界面上「奇巧（Sly）」牌（如醉拳）的**金色高光指示器不亮** ✗。
+            //   原版只有 `CardSelectCmd.FromHandForDiscard` 会注入那条谓词（CardSelectCmd.cs:883-896：
+            //   `ShouldGlowGold = c => c.IsSlyThisTurn && (可打出 || 只差资源)）⇒ 改用原版这个弃牌专用入口 ✓
+            //   与「增幅」的修法完全一致（见 Keywords/GaoshouKeywordMechanics.cs:62-70 的踩坑记录：
+            //   绝不自己注入 glow 委托 —— 那会被 MonoMod JIT hook 拒绝）。
+            var toDiscard = (await CardSelectCmd.FromHandForDiscard(choiceContext, player, discardPrefs, null, this)).ToList();
+            // 弃置：去重 + 只弃置**此刻仍在手牌里**的牌（与增幅的实现同款防御：返回异常时不会重复弃置造成"卡牌复制"假象）
+            foreach (var card in toDiscard.Distinct())
+            {
+                if (card.Pile?.Type != PileType.Hand)
+                    continue;
+
+                await CardCmd.Discard(choiceContext, card);
+            }
         }
 
         // 2) 从弃牌堆选择**最多** 2 张牌加入手牌（刚弃掉的那张此时也在弃牌堆里，可以被选回）。

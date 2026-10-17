@@ -44,9 +44,13 @@ public sealed class StockTogether : ModCardTemplate
         CardKeyword.Exhaust,
     ];
 
-    // 悬浮释义：囤积（自定义词条）与囤积癖（本卡挂的能力）。
+    // 悬浮释义：①发出去的那张「囤积+」卡牌预览（`FromCard`，写法照 LossAversion.cs:35
+    //   —— 加进手牌的**一定是升级版**（OnPlay 里 CreateCard<Stockpile> + CardCmd.Upgrade），
+    //   所以这里写死 upgrade: true，悬停看到的就是「囤积+」✓）
+    // ②囤积（自定义词条）③囤积癖（本卡挂的能力）✓
     protected override IEnumerable<IHoverTip> AdditionalHoverTips =>
     [
+        HoverTipFactory.FromCard<Stockpile>(true),
         HoverTipFactory.FromKeyword(GaoshouKeyword.Hoard),
         HoverTipFactory.FromPower<GaoshouStockTogetherPower>(),
     ];

@@ -34,6 +34,12 @@ public sealed class SuperUpgrader : ModEventTemplate
     /// <summary>每失败一次累加的成功概率（百分数）；成功后清零。</summary>
     private const decimal ChancePerFailure = 20m;
 
+    /// <summary>投币价格的基础值；每次重掷 ±5 ⇒ 25~35。（GoldVar 收 int，故这里用 int。）</summary>
+    private const int GoldCostBase = 30;
+
+    /// <summary>投入生命的基础值；每次重掷 ±1 ⇒ **2~4**（2026-10-15 用户口径）。</summary>
+    private const decimal HpCostBase = 3m;
+
     /// <summary>前 5 次使用的页面：机身上并排 5 个一模一样的按钮。</summary>
     private static readonly string[] PageOrder = ["INITIAL", "ROUND1", "ROUND2", "ROUND3", "ROUND4"];
 
@@ -66,10 +72,10 @@ public sealed class SuperUpgrader : ModEventTemplate
 
     protected override IEnumerable<DynamicVar> CanonicalVars =>
     [
-        // 投币价格：基础 30，CalculateVars 里 ±5。loc 里用 {GoldCost}。
-        new GoldVar("GoldCost", 30),
-        // 投入的生命：基础 5，CalculateVars 里 -1~+1。loc 里用 {HpCost}。
-        new HpLossVar("HpCost", 5m),
+        // 投币价格：基础 30，RerollCosts 里 ±5（⇒ 25~35）。loc 里用 {GoldCost}。
+        new GoldVar("GoldCost", GoldCostBase),
+        // 投入的生命：基础 3，RerollCosts 里 ±1（⇒ **2~4**）。loc 里用 {HpCost}。
+        new HpLossVar("HpCost", HpCostBase),
         // 当前成功率（百分数）：loc 里用 [gold]{Chance}%[/gold]，随连败累积、成功后清零。
         new IntVar("Chance", BaseChance),
     ];
@@ -79,14 +85,24 @@ public sealed class SuperUpgrader : ModEventTemplate
 
     public override void CalculateVars()
     {
-        // 每次遇到机器价格都略有浮动，让玩家无法把价格背下来。
-        // 变量名必须与 CanonicalVars 一致（"GoldCost" / "HpCost"）：
-        // 曾经误写成 DynamicVars.Gold → 字典里没有 'Gold' 键，
-        // BeginEvent 时抛 KeyNotFoundException（表现为进事件弹 "You found a bug"）。
-        DynamicVars["GoldCost"].BaseValue += Rng.NextInt(-5, 6);
-        DynamicVars["HpCost"].BaseValue += Rng.NextInt(-1, 2);
-        if (DynamicVars["HpCost"].BaseValue < 1m)
-            DynamicVars["HpCost"].BaseValue = 1m;
+        // 事件开始先掷一次价格（之后每次选择完都会重掷，见 AdvanceRound → RerollCosts）。
+        RerollCosts();
+    }
+
+    /// <summary>
+    /// 在范围内重掷一次价格：金币 30±5（25~35）、生命 3±1（**2~4**）。
+    ///
+    /// 【2026-10-15 用户口径】事件开始掷一次，之后**每选一次（投币/投命）就重掷**，让下一页的金额变化 ✓
+    /// —— 因为文案里的 {GoldCost}/{HpCost} 是渲染页面时从 DynamicVar 取的，重掷后下一页显示的就是新价 ✓
+    ///
+    /// ⚠️ 一律用**赋值**而不是 `+=`：重掷点有两处（开始 + 每次翻页），用 `+=` 会一路叠加、价格越翻越高 ✗
+    /// （旧写法就是 `+=`，只在 BeginEvent 调一次才安全：见 EventModel.BeginEvent → CalculateVars）。
+    /// 生命下限天然是 2（3-1），不会出现 0 或负数 ⇒ 不需要额外夹取 ✓
+    /// </summary>
+    private void RerollCosts()
+    {
+        DynamicVars["GoldCost"].BaseValue = GoldCostBase + Rng.NextInt(-5, 6);
+        DynamicVars["HpCost"].BaseValue = HpCostBase + Rng.NextInt(-1, 2);
     }
 
     protected override IReadOnlyList<EventOption> GenerateInitialOptions()
@@ -187,11 +203,13 @@ public sealed class SuperUpgrader : ModEventTemplate
     /// <summary>
     /// 抽完一次翻到下一页；到 LOOP 页之后就**一直留在 LOOP**（可以无限抽），不再出现"机器空了"。
     /// 每页都必须 new 出新的 EventOption 实例，所以这里每次都重建选项（原因见 BuildRoundOptions 注释）。
+    /// 【2026-10-15 用户口径】每次选择完**重掷价格**（RerollCosts）⇒ 下一页的金额是新的。
     /// </summary>
     private Task AdvanceRound()
     {
         _roundIndex++;
         SyncChanceVar();   // 刚掷完可能变了成功率（失败 +20%），下一页的文案要显示新值
+        RerollCosts();     // 下一页的价格重掷一次（金币 30±5 / 生命 3±1 ⇒ 2~4）
         SetEventState(PageDescription(CurrentPage()), BuildRoundOptions());
         return Task.CompletedTask;
     }

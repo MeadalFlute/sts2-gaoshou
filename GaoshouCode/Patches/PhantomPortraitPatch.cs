@@ -64,7 +64,8 @@ public sealed class PhantomPortraitPatch : IPatchMethod
 
         var path = $"{Entry.ResPath}/images/cards/{card.GetType().Name}_{suffix}.png";
 
-        // 没做单色图的卡（目前只有杠杆霰弹枪做了 R/P）自动回落本体卡面，不会出现空图。
+        // 没做单色图的卡自动回落本体卡面，不会出现空图。
+        // 目前做了单色图的：杠式霰弹枪 R/P（红紫卡）、折凳 R/B（红蓝卡，2026-10-15 追加）。
         return ResourceLoader.Exists(path) ? path : null;
     }
 }

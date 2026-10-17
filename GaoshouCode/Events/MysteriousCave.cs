@@ -20,11 +20,18 @@ using STS2RitsuLib.Scaffolding.Content;
 namespace Gaoshou.Events;
 
 // 神秘洞穴（出现章节：Overgrowth / ACT1）：
-// 设计意图：越往里走奖励越好（金币 → 卡牌 → 遗物），但每深入一层都要付出固定生命。
+// 设计意图：越往里走奖励越好（金币 → 卡牌 → 遗物），但每深入一层都要付出生命。
 // 玩家可以随时离开，属于「贪心换收益」的经典事件结构。
+// 【2026-10-15 用户口径】每层消耗的生命改为**递增数列 3、5、7、9……**（每次 +2，起点 3）。
 [RegisterActEvent(typeof(Overgrowth))]
 public sealed class MysteriousCave : ModEventTemplate
 {
+    /// <summary>第一层要付的生命（3、5、7、9…… 的首项）。</summary>
+    private const decimal CaveHpBase = 3m;
+
+    /// <summary>每深入一层的生命增幅（+2）。</summary>
+    private const decimal CaveHpStep = 2m;
+
     // 立绘：本模组自制底图（图由美术侧生成）。
     public override EventAssetProfile AssetProfile => new(
         InitialPortraitPath: $"{Entry.ResPath}/images/events/_base_notebook.png"
@@ -34,8 +41,9 @@ public sealed class MysteriousCave : ModEventTemplate
     [
         // 洞里捡到的金币：基础 60，CalculateVars 里 ±10。
         new GoldVar("Gold1", 60),
-        // 每深入一层失去的生命：固定 6（无浮动，所以直接当常量用，不改 BaseValue）。
-        new HpLossVar("CaveHp", 6m),
+        // 本层要付的生命：3 起步、每层 +2。变量同时驱动扣血与选项文案，
+        // 每次付完立刻推进到下一层的数值（见 PayCaveHp）⇒ 文案写的就是下一步真扣的数 ✓
+        new HpLossVar("CaveHp", CaveHpBase),
     ];
 
     public override bool IsAllowed(IRunState runState)
@@ -55,10 +63,10 @@ public sealed class MysteriousCave : ModEventTemplate
         new EventOption(this, Leave, InitialOptionKey("LEAVE")),
     ];
 
-    /// <summary>初入洞穴：拿到一笔金币，但被洞里的东西划伤。</summary>
+    /// <summary>初入洞穴：拿到一笔金币，但被洞里的东西划伤（第一层：3 点生命）。</summary>
     private async Task Dig()
     {
-        await LoseCaveHp();
+        await PayCaveHp();
         await PlayerCmd.GainGold(DynamicVars["Gold1"].BaseValue, Owner!);
         // 洞穴有多张插图：逐场景换（原版 Trial 事件也是运行时换立绘）。
         EventArtOverlay.ShowInRoom("mysterious_cave_1");
@@ -69,10 +77,10 @@ public sealed class MysteriousCave : ModEventTemplate
         ]);
     }
 
-    /// <summary>再探：一组普通卡牌奖励 + 继续掉血。</summary>
+    /// <summary>再探：一组普通卡牌奖励 + 继续掉血（第二层：5 点生命）。</summary>
     private async Task More()
     {
-        await LoseCaveHp();
+        await PayCaveHp();
         await RewardsCmd.OfferCustom(Owner!,
         [
             new CardReward(
@@ -87,10 +95,10 @@ public sealed class MysteriousCave : ModEventTemplate
         ]);
     }
 
-    /// <summary>探到头：一个随机遗物 + 最后一次掉血。</summary>
+    /// <summary>探到头：一个随机遗物 + 最后一次掉血（第三层：7 点生命）。</summary>
     private async Task Bottom()
     {
-        await LoseCaveHp();
+        await PayCaveHp();
 
         // 随机遗物可能被抽干（遗物池空了），必须判空。
         RelicModel? relic = RelicFactory.PullNextRelicFromFront(Owner!, RelicRarity.Uncommon, _ => true)?.ToMutable();
@@ -104,9 +112,17 @@ public sealed class MysteriousCave : ModEventTemplate
         ]);
     }
 
-    private Task LoseCaveHp()
-        => CreatureCmd.Damage(new ThrowingPlayerChoiceContext(), Owner!.Creature,
+    /// <summary>
+    /// 付出本层的生命，然后立刻把变量推进到**下一层**的数值（3 → 5 → 7 → 9……，每次 +2）。
+    /// ⚠️ 必须在 <c>SetEventState</c> **之前**推进：选项文案里的 {CaveHp} 是渲染该页时取的，
+    ///    先推进 ⇒ DEEP1/DEEP2 上写的就是下一层真正会扣的数（文案与结算不脱节）✓
+    /// </summary>
+    private async Task PayCaveHp()
+    {
+        await CreatureCmd.Damage(new ThrowingPlayerChoiceContext(), Owner!.Creature,
             DynamicVars["CaveHp"].BaseValue, ValueProp.Unblockable | ValueProp.Unpowered, null, null, null);
+        DynamicVars["CaveHp"].BaseValue += CaveHpStep;
+    }
 
     private async Task DoneOpt()
     {
